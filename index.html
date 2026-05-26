@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Apps Script Embed</title>
+    <title>Ponti Data Studio - Portfolio</title>
     <style>
         body {
             margin: 0;
@@ -13,21 +13,24 @@
             min-height: 100vh;
             background-color: #f5f5f5;
             font-family: Arial, sans-serif;
+            overflow: hidden; /* Mencegah seluruh halaman ikut me-scroll */
         }
 
         .iframe-container {
-            width: 90%;            /* Lebar kontainer di layar (bisa disesuaikan) */
-            max-width: 600px;      /* Batas lebar maksimal agar tidak terlalu besar */
-            aspect-ratio: 1 / 1;   /* Memaksa rasio selalu 1:1 (Kotak Sempurna) */
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-            overflow: hidden;
+            width: 90%;            
+            max-width: 600px;      
+            aspect-ratio: 1 / 1;   
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); /* Shadow dibuat lebih halus */
+            border-radius: 12px;   /* Lengkungan sudut disesuaikan agar lebih modern */
+            overflow: hidden;      /* Menyembunyikan sisa konten/scrollbar di luar kotak */
+            background-color: #101726; /* Match warna background dengan tema gelap Anda saat loading */
         }
 
         .iframe-container iframe {
             width: 100%;
             height: 100%;
             border: none;
+            display: block;
         }
     </style>
 </head>
