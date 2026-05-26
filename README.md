@@ -1,16 +1,31 @@
-## Hi there 👋
+# Hi there, I'm Ponti Data Studio 👋
 
-<!--
-**ponti-data-studio/ponti-data-studio** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+I am a **Google Workspace Developer & Data Specialist** dedicated to transforming messy data into streamlined, automated workflows and actionable insights. I specialize in building custom internal tools, automating repetitive tasks, and creating interactive dashboards using the Google ecosystem.
 
-Here are some ideas to get you started:
+---
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+### 🛠️ My Tech Stack & Expertise
+
+* **Google Sheets:** Advanced data modeling, complex formulas, pivot tables, and optimization for large datasets.
+* **Google Apps Script:** Custom macros, workflow automation, API integrations, and building add-ons.
+* **AppSheet:** Developing no-code/low-code mobile and web applications integrated with your cloud data.
+* **Looker Studio:** Designing dynamic, interactive, and executive-ready business intelligence dashboards.
+
+---
+
+### 🚀 What I Do
+
+* 🔄 **Automation:** Turning hours of manual data entry into one-click automations.
+* 📱 **Custom Apps:** Building tailored business apps (CRM, Inventory, Project Management) via AppSheet.
+* 📊 **Data Visualization:** Translating complex data structures into beautiful, easy-to-understand Looker Studio reports.
+* 🔌 **Integrations:** Connecting Google Workspace with third-party tools and external APIs using Apps Script.
+
+---
+
+### 📫 Connect with Me
+
+* 💼 **LinkedIn:** [Your LinkedIn Profile Link]
+* 🌐 **Website/Portfolio:** [Your Website Link]
+* 📧 **Email:** [Your Email Address]
+
+*“Turning your data into your most valuable asset.”*
