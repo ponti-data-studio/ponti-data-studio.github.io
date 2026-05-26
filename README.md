@@ -24,7 +24,7 @@ I am a **Google Workspace Developer & Data Specialist** dedicated to transformin
 
 ### 📫 Connect with Me
 
-* 💼 **Fastwork:** https://fastwork.id/user/ardhi.yudha.id
+* 💼 **Fastwork:** https://fastwork.id/user/ponti.data.studio
 * 🌐 **Website/Portfolio:** https://ponti-data-studio.github.io
 * 📧 **Email:** ponti.data.studio@gmail.com
 
