@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POS PWA - Login</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-white text-gray-800 min-h-screen flex flex-col items-center justify-center p-4">
+
+  <div id="networkStatus" class="fixed top-4 right-4 px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm border transition-all duration-300">
+    Checking...
+  </div>
+
+  <div class="w-full max-w-md border border-gray-100 rounded-2xl shadow-xl p-8 bg-white">
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gray-900 text-white font-bold text-2xl mb-3">POS</div>
+      <h2 class="text-2xl font-bold text-gray-900 tracking-tight">POS PWA System</h2>
+      <p class="text-sm text-gray-500 mt-1">Mode Offline & API Terintegrasi</p>
+    </div>
+
+    <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-5">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
+        <input type="text" id="username" required class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 text-sm" placeholder="Username Anda">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+        <input type="password" id="password" required class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 text-sm" placeholder="••••••••">
+      </div>
+      <button type="submit" id="btnSubmit" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 px-4 rounded-xl transition duration-200 text-sm cursor-pointer">
+        Masuk ke Sistem
+      </button>
+    </form>
+  </div>
+
+  <script>
+    // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI
+    const API_URL = "GANTI_DENGAN_URL_WEB_APP_ANDA_YANG_BARU";
+
+    // 1. MANAGEMENT STATUS JARINGAN (ONLINE / OFFLINE)
+    function updateNetworkStatus() {
+      const statusEl = document.getElementById('networkStatus');
+      if (navigator.onLine) {
+        statusEl.innerText = "● Online";
+        statusEl.className = "fixed top-4 right-4 px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm border bg-emerald-50 text-emerald-700 border-emerald-200";
+        // Picu sinkronisasi otomatis saat mendadak online kembali
+        periksaDanSinkronisasiData();
+      } else {
+        statusEl.innerText = "○ Offline Mode";
+        statusEl.className = "fixed top-4 right-4 px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm border bg-amber-50 text-amber-700 border-amber-200";
+      }
+    }
+    window.addEventListener('online', () => {
+      updateNetworkStatus();
+      Swal.fire({ icon: 'success', title: 'Kembali Terhubung!', text: 'Koneksi internet aktif. Memulai sinkronisasi data...', timer: 2000, showConfirmButton: false });
+    });
+    window.addEventListener('offline', () => {
+      updateNetworkStatus();
+      Swal.fire({ icon: 'warning', title: 'Mode Offline Aktif', text: 'Anda dapat terus melakukan transaksi. Data disimpan lokal.', confirmButtonColor: '#111827' });
+    });
+    updateNetworkStatus(); // Jalankan pertama kali saat load
+
+    // 2. LOGIKA LOGIN VIA FETCH API
+    async function handleLogin(event) {
+      event.preventDefault();
+      
+      // Validasi jika user mencoba login saat benar-benar offline pertama kali
+      if (!navigator.onLine) {
+        Swal.fire({ icon: 'error', title: 'Akses Gagal', text: 'Login pertama kali membutuhkan koneksi internet untuk verifikasi akun.', confirmButtonColor: '#111827' });
+        return;
+      }
+
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const btn = document.getElementById('btnSubmit');
+
+      Swal.fire({ title: 'Menghubungkan ke API...', text: 'Mohon tunggu', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+      btn.disabled = true;
+
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          mode: 'cors',
+          body: JSON.stringify({ action: 'login', username, password })
+        });
+        
+        const result = await response.json();
+        btn.disabled = false;
+
+        if (result.success) {
+          // Simpan sesi login lokal agar saat offline kedepannya tetap bisa masuk aplikasi
+          localStorage.setItem('session_user', JSON.stringify(result.user));
+          
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil Masuk',
+            text: `Selamat datang, ${result.user.username}`,
+            timer: 1500,
+            showConfirmButton: false
+          }).then(() => {
+            // Lanjut ke view POS dashboard Utama
+            alert("Sesi Berhasil Disimpan Lokal! Siap lanjut ke Dashboard POS Utama.");
+          });
+        } else {
+          Swal.fire({ icon: 'error', title: 'Gagal', text: result.message, confirmButtonColor: '#111827' });
+        }
+      } catch (error) {
+        btn.disabled = false;
+        Swal.fire({ icon: 'error', title: 'Koneksi API Gagal', text: 'Pastikan URL API Anda sudah benar dan mendukung CORS.', confirmButtonColor: '#111827' });
+      }
+    }
+
+    // 3. LOGIKA INDEXEDDB (DATABASE OFFLINE) & SINKRONISASI
+    // Fungsi ini disiapkan untuk tahap berikutnya saat menangani input transaksi di kasir
+    function periksaDanSinkronisasiData() {
+      // Logika membaca antrean transaksi di IndexedDB dan menembakkannya ke API_URL dengan action "sync_transaksi"
+      console.log("Sistem mengecek antrean data offline di IndexedDB untuk disinkronkan...");
+    }
+  </script>
+</body>
+</html>
