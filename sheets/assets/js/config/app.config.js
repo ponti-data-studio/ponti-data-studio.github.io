@@ -22,7 +22,7 @@ export const APP_CONFIG = {
 export const GOOGLE_CONFIG = {
   // Client ID sebaiknya diisi lewat menu Settings aplikasi (localStorage), bukan di sini.
   // Nilai di bawah ini hanya dipakai sebagai fallback opsional. Lihat google-auth.service.js.
-  clientId: "GANTI_DENGAN_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+  clientId: "1064547295258-taeuv30teq4hrh5v5i2rj8k2hmisp119.apps.googleusercontent.com",
   // CATATAN PERMISSION: sejak fitur "Database Builder" ditambahkan, scope Sheets diubah
   // dari read-only menjadi read-write ("spreadsheets") karena Ponti Sheets perlu bisa
   // MEMBUAT spreadsheet baru lewat Google Sheets API. Scope ini secara teknis juga
