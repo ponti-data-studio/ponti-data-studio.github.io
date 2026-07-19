@@ -41,6 +41,24 @@ mengikuti [Semantic Versioning](https://semver.org/).
 
 Lihat bagian [Roadmap](./README.md#21-roadmap) di README untuk rencana lengkap V2–V4.
 
+### Ditambahkan (1.5.3) — Schema Editor: Desktop UX
+- **Toolbar melekat (sticky)** di bagian atas — tombol "Terapkan Perubahan" tetap terlihat walau sedang scroll jauh ke bawah di antara banyak sheet.
+- **Sheet bisa diciutkan (collapse)** — klik ikon ▾ di header kartu sheet untuk menyembunyikan detail kolomnya sementara, tampil ringkasan (jumlah kolom & conditional format) saja. Ada juga tombol "Ciutkan Semua" / "Perluas Semua" untuk fokus ke satu sheet dengan cepat.
+- **Navigasi cepat antar sheet** — deretan pill nama sheet muncul di atas (kalau spreadsheet punya lebih dari 1 sheet), klik untuk langsung lompat & auto-expand ke sheet tersebut tanpa perlu scroll manual.
+
+### Diubah (1.5.2) — Schema Editor: Polish UI
+- **PK / FK / Wajib / Filter / Protect Header** sekarang tampil sebagai chip toggle berwarna (bukan checkbox polos) — PK pakai warna accent, FK pakai warna info, konsisten dengan badge yang sudah dipakai di Analysis/ERD.
+- **Header kartu sheet dirombak**: nama sheet jadi input bergaya judul yang lebih menonjol, kontrol Warna Tab/Freeze Row/Filter/Protect Header dikelompokkan rapi dalam satu baris meta, tombol reorder/hapus sheet pindah ke pojok kanan atas.
+- **Judul seksi** (Kolom, Conditional Formatting, Named Ranges) diberi ikon supaya lebih mudah dipindai sekilas.
+- **Grup aksi kolom** dipisah dengan garis pembatas tipis antara tombol reorder (geser/↑/↓) dan tombol hapus (destruktif), mengurangi risiko salah klik.
+- Toolbar atas diberi latar kartu supaya terasa sebagai control bar yang persisten, bukan menyatu dengan konten.
+
+### Ditambahkan (1.5.1) — Schema Editor: Mobile & Interaksi
+- **Mobile-friendly**: tabel kolom di Schema Editor otomatis berubah jadi daftar kartu bertumpuk di layar HP (bukan tabel lebar yang di-scroll horizontal).
+- **Formula aktif vs statis**: tambah centang di kolom Formula — dicentang = formula sungguhan (nilai ikut berubah otomatis), tidak dicentang = simpan HASIL hitungannya saja sebagai nilai tetap, formula-nya sendiri tidak ditulis.
+- **Drag-to-reorder kolom**: geser ikon ⠿ untuk mengurutkan ulang kolom secara langsung (mouse & sentuhan), selain tombol ↑/↓ yang sudah ada.
+- Tombol **"Tambah Sheet Baru"** dipindah ke bagian bawah halaman (setelah semua kartu sheet) supaya tidak perlu scroll bolak-balik ke atas.
+
 ### Ditambahkan (1.5.0) — 🔒 Multi-User / Login Gate
 - **Login Gate wajib**: seluruh halaman (termasuk Dashboard) sekarang mengharuskan login Google terlebih dahulu — tidak ada lagi akses tanpa login. Login Google berfungsi ganda: izin akses Sheets/Drive API, DAN identitas aplikasi.
 - **Data terpisah per akun Google**: Settings, API Key AI, dan History sekarang otomatis terpisah per akun Google yang login (disimpan dengan namespace `user_{id}.*` di localStorage) — beberapa orang bisa memakai device/browser yang sama tanpa saling melihat data satu sama lain.
@@ -86,6 +104,8 @@ Lihat bagian [Roadmap](./README.md#21-roadmap) di README untuk rencana lengkap V
 - **Schema Editor**: mengubah **tipe data** atau **formula** sebuah kolom sekarang selalu memicu penulisan ulang data (sebelumnya, ubah tipe data saja tanpa tambah/hapus kolom tidak memicu apa-apa). Data yang sudah ada juga otomatis **dikonversi ke tipe barunya** — contoh: teks "15.000" jadi angka 15000 kalau diubah ke Number, "Ya"/"Tidak" jadi TRUE/FALSE kalau diubah ke Checkbox, tanggal berbagai format dinormalisasi ke YYYY-MM-DD. Kalau sebuah nilai tidak bisa dikonversi (format tidak dikenali), nilai aslinya dipertahankan apa adanya supaya tidak ada data hilang.
 
 ### Diperbaiki (post-1.0.0)
+- **Schema Editor (akar masalah kolom Validasi/FK/Formula/Aksi tampak kosong)**: `display: flex` sempat dipasang LANGSUNG di elemen `<td>` supaya beberapa kontrol (dropdown validasi, checkbox FK, dll) tersusun rapi — tapi ini bikin browser salah menghitung lebar kolom tabel (`table-layout: auto` tidak tahu cara mengukur konten flex dengan benar), sehingga kolom itu bisa mengempis nyaris nol lebar dan tampak kosong. Sekarang flex-nya dipindah ke elemen `<div>` pembungkus di DALAM sel, bukan di sel itu sendiri — sel tabel tetap `table-cell` biasa yang diukur dengan benar oleh browser.
+- **Schema Editor (bug tampilan)**: tabel Kolom sempat pakai `table-layout: fixed` dengan lebar kolom dipatok persentase — begitu banyak kontrol baru ditambahkan (chip toggle, checkbox formula, dll), beberapa kolom (termasuk Validasi) jadi keremuk nyaris tak terlihat. Diganti dengan strategi lebar minimum per kolom + kontainer scroll horizontal khusus untuk tabelnya saja, supaya tetap rapi di berbagai lebar layar tanpa ada kolom yang "hilang".
 - **Dark mode**: teks nama spreadsheet di menu Spreadsheet, teks di kartu quick-action Dashboard, dan ikon tombol hamburger menu di HP sempat tampil **hitam** di mode gelap (elemen `<button>` tanpa warna teks eksplisit ikut memakai warna default browser, bukan warna tema aplikasi). Sekarang semuanya eksplisit mengikuti tema aktif.
 - **Router (bug fundamental, penyebab "harus refresh dulu")**: browser tidak memicu event `hashchange` kalau URL hash-nya SAMA dengan yang sedang dibuka — jadi kalau Anda "pindah" ke halaman yang sebenarnya sedang Anda buka juga (contoh paling umum: klik Login di halaman Spreadsheet, lalu kode mencoba pindah ke halaman Spreadsheet lagi setelah berhasil login), halaman tidak pernah ter-render ulang secara otomatis meski data-nya (mis. status login) sudah berubah — harus refresh manual. Sekarang navigasi ke route yang sama tetap memicu render ulang secara manual.
 - **Schema Editor (bug kritis, penyebab validasi/format "tidak berubah")**: `schemaSyncService.apply()` mengembalikan bentuk `{ blueprint, warnings }`, tapi halaman Schema Editor masih memperlakukan hasilnya seolah objek blueprint langsung — menyebabkan proses reload state di halaman gagal diam-diam setelah Terapkan Perubahan, walau sebagian perubahan sudah tersimpan di backend. Sekarang bentuknya di-unwrap dengan benar.

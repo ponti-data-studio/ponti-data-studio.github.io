@@ -33,6 +33,9 @@ function normalizeColumn(raw, idx) {
     referencesColumn: raw?.referencesColumn || raw?.references_column || null,
     defaultValue: raw?.defaultValue ?? raw?.default_value ?? null,
     formula: raw?.formula || null,
+    // formulaIsLive: true = tulis sebagai formula aktif (nilai ikut berubah otomatis);
+    // false = "bekukan" jadi nilai hasil hitungannya saat ini (statis, formula tidak ditulis).
+    formulaIsLive: raw?.formulaIsLive !== undefined ? !!raw.formulaIsLive : true,
     validation: raw?.validation || null,
     sampleData: Array.isArray(raw?.sampleData) ? raw.sampleData : Array.isArray(raw?.sample_data) ? raw.sample_data : [],
   };

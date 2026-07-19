@@ -157,18 +157,121 @@
 .schema-sheet-card__header .field--inline input[type="text"] { width: 180px; }
 .schema-sheet-card__header input[type="color"] { width: 40px; height: 32px; padding: 2px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: none; cursor: pointer; }
 .schema-sheet-card__order-actions { display: flex; gap: 6px; margin-left: auto; }
-.schema-column-table { table-layout: fixed; }
-.schema-column-table th:nth-child(1), .schema-column-table td:nth-child(1) { width: 15%; }
-.schema-column-table th:nth-child(2), .schema-column-table td:nth-child(2) { width: 11%; }
-.schema-column-table td input[type="text"], .schema-column-table td select { width: 100%; font-size: 12.5px; }
-.schema-column-table td { vertical-align: top; }
+.schema-column-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 10px 0; }
+.schema-column-table { min-width: 980px; }
+.schema-column-table th:nth-child(1), .schema-column-table td:nth-child(1) { min-width: 130px; }
+.schema-column-table th:nth-child(2), .schema-column-table td:nth-child(2) { min-width: 100px; }
+.schema-column-table th:nth-child(4), .schema-column-table td:nth-child(4) { min-width: 160px; }
+.schema-column-table th:nth-child(6), .schema-column-table td:nth-child(6) { min-width: 170px; }
+.schema-column-table th:nth-child(7), .schema-column-table td:nth-child(7) { min-width: 150px; }
+.schema-column-table th:nth-child(8), .schema-column-table td:nth-child(8) { min-width: 110px; }
+.schema-column-table td input[type="text"], .schema-column-table td select { width: 100%; font-size: 12.5px; min-width: 80px; }
+.schema-column-table td { vertical-align: top; padding: 10px; }
+.schema-column-table th { white-space: nowrap; }
 .cell-center { text-align: center; }
-.cell-actions { white-space: nowrap; display: flex; gap: 4px; align-items: center; }
+.cell-actions { white-space: nowrap; }
+.cell-actions-row { display: flex; gap: 4px; align-items: center; }
 .validation-extra { display: flex; gap: 6px; margin-top: 6px; }
 .validation-extra input { width: 100%; }
 .warning-panel { border-color: var(--danger); }
 .warning-panel h4 { color: var(--danger); margin-bottom: 10px; }
 .warning-panel .field--inline { margin: 12px 0; }
+.fk-cell, .formula-cell, .validation-cell { vertical-align: top; }
+.cell-stack { display: flex; flex-direction: column; gap: 5px; min-width: 80px; flex: 1; }
+.formula-live-toggle { display: flex; align-items: flex-start; gap: 6px; font-size: 11px; color: var(--text-tertiary); cursor: pointer; line-height: 1.4; }
+.formula-live-toggle input { margin-top: 2px; flex-shrink: 0; }
+.drag-handle { cursor: grab; touch-action: none; font-size: 15px; line-height: 1; letter-spacing: -1px; }
+.drag-handle:active { cursor: grabbing; background: var(--accent-soft); }
+.row-dragging { opacity: 0.65; background: var(--bg-hover) !important; box-shadow: var(--shadow-md); position: relative; z-index: 5; }
+.schema-column-hint { margin-bottom: 8px; }
+.schema-add-sheet-btn { width: 100%; justify-content: center; margin: 4px 0 24px; }
+
+/* Chip toggle (PK/FK/Wajib/Filter/Protect Header) */
+.chip-toggle {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border);
+  cursor: pointer; font-size: 11px; font-weight: 600; color: var(--text-tertiary);
+  transition: all var(--transition-fast); user-select: none; white-space: nowrap;
+}
+.chip-toggle:hover { border-color: var(--accent); }
+.chip-toggle__input { position: absolute; opacity: 0; width: 0; height: 0; }
+.chip-toggle:has(.chip-toggle__input:checked) { border-color: transparent; background: var(--bg-hover); color: var(--text-primary); }
+.chip-toggle--pk:has(.chip-toggle__input:checked) { background: rgba(99, 102, 241, 0.15); color: var(--accent); }
+.chip-toggle--fk:has(.chip-toggle__input:checked) { background: rgba(56, 189, 248, 0.15); color: var(--info); }
+
+/* Sheet card header */
+.schema-sheet-card__title-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.sheet-name-input {
+  flex: 1; min-width: 160px; font-size: 15px; font-weight: 700;
+  background: transparent; border: none; border-bottom: 2px solid transparent; padding: 4px 2px;
+}
+.sheet-name-input:hover, .sheet-name-input:focus { border-bottom-color: var(--accent); }
+.schema-sheet-card__order-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.schema-sheet-card__meta-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+.tab-color-swatch {
+  display: inline-flex; width: 30px; height: 30px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); overflow: hidden; cursor: pointer; padding: 0; flex-shrink: 0;
+}
+.tab-color-swatch input[type="color"] { width: 100%; height: 100%; border: none; padding: 0; cursor: pointer; }
+.freeze-row-field {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-tertiary);
+  font-weight: 600; border: 1px solid var(--border); border-radius: 999px; padding: 5px 11px 5px 12px;
+}
+.freeze-row-field input { width: 32px; padding: 0; border: none; background: none; font-size: 12px; text-align: center; }
+
+/* Section headings within a sheet card */
+.schema-section-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.schema-section-heading--spaced { margin-top: 22px; }
+.schema-section-heading__icon { display: inline-flex; color: var(--accent); }
+.schema-section-heading h3, .schema-section-heading h4 { margin: 0; }
+.schema-empty-hint { padding: 12px 0; }
+
+/* Formula cell */
+.formula-live-toggle { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-tertiary); cursor: pointer; }
+.formula-live-toggle input { flex-shrink: 0; }
+.formula-live-toggle__info { display: inline-flex; opacity: 0.6; }
+
+/* Action cell grouping — jarak visual antara aksi reorder & aksi hapus (destruktif) */
+.cell-actions__group { display: flex; gap: 4px; align-items: center; }
+.cell-actions__divider { width: 1px; align-self: stretch; background: var(--border); margin: 0 2px; }
+.icon-btn--danger-text { color: var(--danger); }
+.icon-btn--danger-text:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--danger); }
+
+/* Sticky toolbar — tetap terlihat saat scroll di antara banyak sheet */
+.schema-editor-toolbar {
+  position: sticky; top: var(--topbar-height); z-index: 8;
+  align-items: center;
+}
+
+/* Sheet quick-nav */
+.schema-quick-nav {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; margin-bottom: 16px;
+}
+.schema-quick-nav__pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.schema-quick-nav__actions { display: flex; gap: 6px; flex-shrink: 0; }
+.schema-nav-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--bg-card); color: var(--text-secondary); font-size: 12px; font-weight: 500;
+  transition: all var(--transition-fast);
+}
+.schema-nav-pill:hover { border-color: var(--accent); color: var(--accent); }
+.schema-nav-pill__count {
+  font-size: 10px; font-family: var(--font-mono); color: var(--text-tertiary);
+  background: var(--bg-hover); padding: 1px 6px; border-radius: 999px;
+}
+
+/* Collapsible sheet card */
+.schema-collapse-btn { font-size: 12px; flex-shrink: 0; }
+.schema-sheet-card__summary {
+  font-size: 11.5px; color: var(--text-tertiary); white-space: nowrap;
+  margin-left: auto; padding-right: 12px;
+}
+.schema-sheet-card--collapsed { padding-bottom: 20px; }
+.schema-sheet-card--collapsed .schema-sheet-card__header { margin-bottom: 0; }
+.schema-sheet-card--collapsed .schema-sheet-card__meta-row { opacity: 0.7; }
 
 /* ---------- ERD ---------- */
 .erd-toolbar { justify-content: space-between; align-items: center; }
@@ -226,6 +329,40 @@
   .erd-canvas-wrap { max-height: 55vh; }
   .auth-panel { margin: 24px auto; padding: 24px 18px; }
   .login-gate__card { padding: 28px 22px; }
+
+  /* Schema Editor: tabel kolom yang lebar diubah jadi daftar kartu bertumpuk,
+     bukan di-scroll horizontal — jauh lebih nyaman dipakai di HP. */
+  .schema-column-table { min-width: 0; width: 100%; }
+  .schema-column-table thead { display: none; }
+  .schema-column-table, .schema-column-table tbody, .schema-column-table tr, .schema-column-table td {
+    display: block; width: 100%;
+  }
+  .schema-column-table tr {
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    margin-bottom: 12px; padding: 10px 12px; background: var(--bg-card);
+  }
+  .schema-column-table tr.row-dragging { border-color: var(--accent); }
+  .schema-column-table td {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 8px 0; border: none !important;
+  }
+  .schema-column-table td::before {
+    content: attr(data-label); font-weight: 600; font-size: 10.5px;
+    color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.03em;
+    flex-shrink: 0;
+  }
+  .schema-column-table td[data-label=""] { justify-content: flex-end; padding-top: 10px; border-top: 1px solid var(--border) !important; margin-top: 4px; }
+  .schema-column-table td[data-label=""]::before { display: none; }
+  .schema-column-table td input[type="text"], .schema-column-table td input[type="number"], .schema-column-table td select {
+    width: 100%;
+  }
+  .schema-column-table .cell-actions { gap: 8px; }
+  .schema-column-table .cell-actions__group { gap: 8px; }
+  .schema-column-table .drag-handle { width: 36px; height: 36px; font-size: 20px; }
+  .chip-toggle { padding: 7px 13px; }
+  .schema-sheet-card__title-row { align-items: flex-start; }
+  .sheet-name-input { font-size: 14px; }
+  .schema-sheet-card__order-actions .btn span:last-child { display: none; } /* ikon saja di tombol Hapus Sheet, hemat ruang */
 }
 
 @media (max-width: 480px) {

@@ -4,7 +4,7 @@
  * untuk panggilan API Google/AI (karena data harus selalu up-to-date).
  */
 
-const CACHE_NAME = "ponti-sheets-v1.5.0";
+const CACHE_NAME = "ponti-sheets-v1.5.5";
 const APP_SHELL = [
   "./",
   "./index.html",

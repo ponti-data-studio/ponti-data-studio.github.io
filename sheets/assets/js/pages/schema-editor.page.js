@@ -31,6 +31,18 @@ function newSheet(existingNames) {
 
 function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
 
+/** Checkbox yang ditampilkan sebagai "chip" kecil (mis. badge PK/FK) — lebih gampang
+ *  dipindai matanya dibanding checkbox polos + label panjang di dalam tabel sempit. */
+function chipToggle(label, checked, variant, onChange) {
+  const input = el("input", { type: "checkbox", class: "chip-toggle__input", checked: checked ? "true" : undefined });
+  input.addEventListener("change", () => onChange(input.checked));
+  const wrap = el("label", { class: `chip-toggle ${variant ? `chip-toggle--${variant}` : ""}` }, [
+    input,
+    el("span", { class: "chip-toggle__label" }, label),
+  ]);
+  return { wrap, input };
+}
+
 export async function renderSchemaEditorPage(navigate) {
   const state = appState.get();
   const container = el("div", { class: "page page--schema-editor" });
@@ -66,6 +78,9 @@ export async function renderSchemaEditorPage(navigate) {
 
   let original = null;
   let edited = null;
+  // UI-only: sheet mana yang sedang diciutkan (collapsed). Tidak pernah dikirim ke
+  // Google Sheets — murni state tampilan, supaya fokus ke satu sheet lebih mudah di desktop.
+  const collapsedSheets = new Set();
 
   async function loadSchema() {
     clear(bodyHost);
@@ -88,23 +103,24 @@ export async function renderSchemaEditorPage(navigate) {
     }
   }
 
-  function field(label, node) {
-    return el("label", { class: "field field--inline" }, [el("span", { class: "field__label" }, label), node]);
-  }
-
-  function renderColumnRow(sheet, col, onStructuralChange) {
+  function renderColumnRow(sheet, col, onStructuralChange, getTbody) {
     const nameInput = el("input", { type: "text", value: col.name });
     nameInput.addEventListener("input", () => { col.name = nameInput.value; col.label = nameInput.value; });
 
     const typeSelect = el("select", {}, BLUEPRINT_COLUMN_TYPES.map((t) => el("option", { value: t, selected: t === col.type ? "true" : undefined }, t)));
     typeSelect.addEventListener("change", () => { col.type = typeSelect.value; });
 
-    const pkCheck = el("input", { type: "checkbox", checked: col.isPrimaryKey ? "true" : undefined });
-    pkCheck.addEventListener("change", () => { col.isPrimaryKey = pkCheck.checked; });
+    const { wrap: pkWrap } = chipToggle("PK", col.isPrimaryKey, "pk", (checked) => { col.isPrimaryKey = checked; });
 
-    const fkCheck = el("input", { type: "checkbox", checked: col.isForeignKey ? "true" : undefined });
-    const fkSheetSelect = el("select", { style: col.isForeignKey ? "" : "display:none" });
-    const fkColSelect = el("select", { style: col.isForeignKey ? "" : "display:none" });
+    const { wrap: fkWrap, input: fkCheck } = chipToggle("FK", col.isForeignKey, "fk", (checked) => {
+      col.isForeignKey = checked;
+      fkSelectsWrap.style.display = checked ? "" : "none";
+      if (!checked) { col.referencesSheet = null; col.referencesColumn = null; }
+      else refreshFkSheetOptions();
+    });
+    const fkSheetSelect = el("select", {});
+    const fkColSelect = el("select", {});
+    const fkSelectsWrap = el("div", { class: "fk-selects", style: col.isForeignKey ? "" : "display:none" }, [fkSheetSelect, fkColSelect]);
 
     function refreshFkSheetOptions() {
       clear(fkSheetSelect);
@@ -123,22 +139,24 @@ export async function renderSchemaEditorPage(navigate) {
       col.referencesColumn = fkColSelect.value || null;
     }
     refreshFkSheetOptions();
-
-    fkCheck.addEventListener("change", () => {
-      col.isForeignKey = fkCheck.checked;
-      fkSheetSelect.style.display = col.isForeignKey ? "" : "none";
-      fkColSelect.style.display = col.isForeignKey ? "" : "none";
-      if (!col.isForeignKey) { col.referencesSheet = null; col.referencesColumn = null; }
-      else refreshFkSheetOptions();
-    });
     fkSheetSelect.addEventListener("change", () => { col.referencesSheet = fkSheetSelect.value || null; refreshFkColOptions(); });
     fkColSelect.addEventListener("change", () => { col.referencesColumn = fkColSelect.value || null; });
 
-    const requiredCheck = el("input", { type: "checkbox", checked: col.required ? "true" : undefined });
-    requiredCheck.addEventListener("change", () => { col.required = requiredCheck.checked; });
+    const { wrap: requiredWrap } = chipToggle("Wajib", col.required, null, (checked) => { col.required = checked; });
 
     const formulaInput = el("input", { type: "text", placeholder: "kosongkan jika bukan kolom formula", value: col.formula || "" });
     formulaInput.addEventListener("input", () => { col.formula = formulaInput.value.trim() || null; });
+
+    const formulaLiveCheck = el("input", { type: "checkbox", checked: col.formulaIsLive !== false ? "true" : undefined });
+    formulaLiveCheck.addEventListener("change", () => { col.formulaIsLive = formulaLiveCheck.checked; });
+    const formulaLiveLabel = el("label", {
+      class: "formula-live-toggle",
+      title: "Dicentang: formula sungguhan ditulis (nilai ikut berubah otomatis). Tidak dicentang: hasil hitungannya saja yang disimpan sebagai nilai tetap.",
+    }, [
+      formulaLiveCheck,
+      el("span", {}, "Formula aktif"),
+      el("span", { class: "formula-live-toggle__info", html: icon("alert", { size: 12 }) }),
+    ]);
 
     // ---- Validasi ----
     const validationTypeSelect = el("select", {}, ["none", "list", "number", "date", "checkbox", "email", "phone"].map((t) =>
@@ -183,6 +201,7 @@ export async function renderSchemaEditorPage(navigate) {
     const upBtn = el("button", { class: "icon-btn icon-btn--sm", title: "Naik" }, "↑");
     const downBtn = el("button", { class: "icon-btn icon-btn--sm", title: "Turun" }, "↓");
     const deleteBtn = el("button", { class: "icon-btn icon-btn--sm icon-btn--danger", title: "Hapus kolom" }, [el("span", { html: icon("trash", { size: 13 }) })]);
+    const dragHandle = el("button", { class: "icon-btn icon-btn--sm drag-handle", title: "Geser untuk mengurutkan" }, "⠿");
 
     upBtn.addEventListener("click", () => {
       const idx = sheet.columns.findIndex((c) => c._key === col._key);
@@ -198,16 +217,76 @@ export async function renderSchemaEditorPage(navigate) {
       onStructuralChange();
     });
 
-    return el("tr", {}, [
-      el("td", {}, nameInput),
-      el("td", {}, typeSelect),
-      el("td", { class: "cell-center" }, pkCheck),
-      el("td", {}, [fkCheck, fkSheetSelect, fkColSelect]),
-      el("td", { class: "cell-center" }, requiredCheck),
-      el("td", {}, formulaInput),
-      el("td", {}, [validationTypeSelect, validationExtra]),
-      el("td", { class: "cell-actions" }, [upBtn, downBtn, deleteBtn]),
+    const row = el("tr", { "data-key": col._key }, [
+      el("td", { "data-label": "Nama" }, nameInput),
+      el("td", { "data-label": "Tipe" }, typeSelect),
+      el("td", { class: "cell-center", "data-label": "PK" }, pkWrap),
+      el("td", { class: "fk-cell", "data-label": "FK" }, [el("div", { class: "cell-stack" }, [fkWrap, fkSelectsWrap])]),
+      el("td", { class: "cell-center", "data-label": "Wajib" }, requiredWrap),
+      el("td", { class: "formula-cell", "data-label": "Formula" }, [el("div", { class: "cell-stack" }, [formulaInput, formulaLiveLabel])]),
+      el("td", { class: "validation-cell", "data-label": "Validasi" }, [el("div", { class: "cell-stack" }, [validationTypeSelect, validationExtra])]),
+      el("td", { class: "cell-actions", "data-label": "" }, [
+        el("div", { class: "cell-actions-row" }, [
+          el("div", { class: "cell-actions__group" }, [dragHandle, upBtn, downBtn]),
+          el("div", { class: "cell-actions__divider" }),
+          deleteBtn,
+        ]),
+      ]),
     ]);
+
+    makeRowDraggable(dragHandle, row, getTbody, (orderedKeys) => {
+      const byKey = new Map(sheet.columns.map((c) => [c._key, c]));
+      sheet.columns = orderedKeys.map((k) => byKey.get(k)).filter(Boolean);
+    });
+
+    return row;
+  }
+
+  /** Membuat sebuah baris tabel bisa "digeser" naik-turun lewat drag handle-nya (mouse & sentuhan) */
+  function makeRowDraggable(handle, row, getTbody, onReorderCommit) {
+    let dragging = false;
+
+    handle.addEventListener("pointerdown", (e) => {
+      dragging = true;
+      handle.setPointerCapture(e.pointerId);
+      row.classList.add("row-dragging");
+      e.preventDefault();
+    });
+
+    handle.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const tbody = getTbody();
+      if (!tbody) return;
+      const rowRect = row.getBoundingClientRect();
+      const pointerY = e.clientY;
+      const siblings = Array.from(tbody.children).filter((r) => r !== row);
+
+      for (const other of siblings) {
+        const rect = other.getBoundingClientRect();
+        const mid = rect.top + rect.height / 2;
+        if (rowRect.top > rect.top && pointerY < mid) {
+          tbody.insertBefore(row, other);
+          break;
+        }
+        if (rowRect.top < rect.top && pointerY > mid) {
+          tbody.insertBefore(row, other.nextSibling);
+          break;
+        }
+      }
+    });
+
+    function endDrag() {
+      if (!dragging) return;
+      dragging = false;
+      row.classList.remove("row-dragging");
+      const tbody = getTbody();
+      if (!tbody) return;
+      const orderedKeys = Array.from(tbody.children).map((r) => r.dataset.key);
+      onReorderCommit(orderedKeys);
+    }
+
+    handle.addEventListener("pointerup", endDrag);
+    handle.addEventListener("pointercancel", endDrag);
   }
 
   function renderConditionalFormatRow(sheet, cf, onStructuralChange) {
@@ -236,20 +315,30 @@ export async function renderSchemaEditorPage(navigate) {
   }
 
   function renderSheetCard(sheet, sheetIdx, totalSheets, onStructuralChange) {
-    const nameInput = el("input", { type: "text", value: sheet.name });
-    nameInput.addEventListener("input", () => { sheet.name = nameInput.value; });
-    const colorInput = el("input", { type: "color", value: sheet.tabColor || "#6366F1" });
-    colorInput.addEventListener("input", () => { sheet.tabColor = colorInput.value; });
-    const freezeInput = el("input", { type: "number", min: "0", max: "5", value: String(sheet.freezeRow ?? 1), style: "width:60px" });
-    freezeInput.addEventListener("input", () => { sheet.freezeRow = Number(freezeInput.value) || 0; });
-    const filterCheck = el("input", { type: "checkbox", checked: sheet.filter ? "true" : undefined });
-    filterCheck.addEventListener("change", () => { sheet.filter = filterCheck.checked; });
-    const protectedCheck = el("input", { type: "checkbox", checked: sheet.protected ? "true" : undefined });
-    protectedCheck.addEventListener("change", () => { sheet.protected = protectedCheck.checked; });
+    const isCollapsed = collapsedSheets.has(sheet._key);
 
-    const upBtn = el("button", { class: "btn btn--ghost btn--sm", disabled: sheetIdx === 0 ? "true" : undefined }, "↑ Sheet");
-    const downBtn = el("button", { class: "btn btn--ghost btn--sm", disabled: sheetIdx === totalSheets - 1 ? "true" : undefined }, "↓ Sheet");
-    const deleteSheetBtn = el("button", { class: "btn btn--ghost btn--sm" }, [el("span", { html: icon("trash", { size: 13 }) }), "Hapus Sheet"]);
+    const nameInput = el("input", { type: "text", class: "sheet-name-input", value: sheet.name });
+    nameInput.addEventListener("input", () => { sheet.name = nameInput.value; });
+    const colorInput = el("input", { type: "color", title: "Warna tab", value: sheet.tabColor || "#6366F1" });
+    colorInput.addEventListener("input", () => { sheet.tabColor = colorInput.value; });
+    const freezeInput = el("input", { type: "number", min: "0", max: "5", value: String(sheet.freezeRow ?? 1) });
+    freezeInput.addEventListener("input", () => { sheet.freezeRow = Number(freezeInput.value) || 0; });
+    const { wrap: filterWrap } = chipToggle("Filter", sheet.filter, null, (checked) => { sheet.filter = checked; });
+    const { wrap: protectedWrap } = chipToggle("Protect Header", sheet.protected, null, (checked) => { sheet.protected = checked; });
+
+    const collapseBtn = el("button", {
+      class: "icon-btn icon-btn--sm schema-collapse-btn",
+      title: isCollapsed ? "Perluas sheet ini" : "Ciutkan sheet ini",
+    }, isCollapsed ? "▸" : "▾");
+    collapseBtn.addEventListener("click", () => {
+      if (collapsedSheets.has(sheet._key)) collapsedSheets.delete(sheet._key);
+      else collapsedSheets.add(sheet._key);
+      onStructuralChange();
+    });
+
+    const upBtn = el("button", { class: "icon-btn icon-btn--sm", title: "Pindah sheet ke atas", disabled: sheetIdx === 0 ? "true" : undefined }, "↑");
+    const downBtn = el("button", { class: "icon-btn icon-btn--sm", title: "Pindah sheet ke bawah", disabled: sheetIdx === totalSheets - 1 ? "true" : undefined }, "↓");
+    const deleteSheetBtn = el("button", { class: "btn btn--ghost btn--sm icon-btn--danger-text" }, [el("span", { html: icon("trash", { size: 13 }) }), "Hapus Sheet"]);
     const addColBtn = el("button", { class: "btn btn--ghost btn--sm" }, [el("span", { html: icon("plus", { size: 13 }) }), "Tambah Kolom"]);
     const addCfBtn = el("button", { class: "btn btn--ghost btn--sm" }, [el("span", { html: icon("plus", { size: 13 }) }), "Tambah Conditional Format"]);
 
@@ -272,33 +361,63 @@ export async function renderSchemaEditorPage(navigate) {
       onStructuralChange();
     });
 
-    const colRows = sheet.columns.map((col) => renderColumnRow(sheet, col, onStructuralChange));
-    const cfRows = sheet.conditionalFormats.map((cf) => renderConditionalFormatRow(sheet, cf, onStructuralChange));
+    const card = el("div", { class: "card sheet-card schema-sheet-card", id: `schema-sheet-${sheet._key}` });
 
-    return el("div", { class: "card sheet-card schema-sheet-card" }, [
-      el("div", { class: "schema-sheet-card__header" }, [
-        field("Nama Sheet", nameInput),
-        field("Warna Tab", colorInput),
-        field("Freeze Row", freezeInput),
-        field("Filter", filterCheck),
-        field("Protect Header", protectedCheck),
+    const header = el("div", { class: "schema-sheet-card__header" }, [
+      el("div", { class: "schema-sheet-card__title-row" }, [
+        collapseBtn,
+        nameInput,
+        el("span", { class: "schema-sheet-card__summary" }, `${sheet.columns.length} kolom · ${sheet.conditionalFormats.length} conditional format`),
         el("div", { class: "schema-sheet-card__order-actions" }, [upBtn, downBtn, deleteSheetBtn]),
       ]),
-      el("h4", {}, "Kolom"),
-      el("table", { class: "data-table schema-column-table" }, [
-        el("thead", {}, el("tr", {}, ["Nama", "Tipe", "PK", "FK", "Wajib", "Formula", "Validasi", ""].map((h) => el("th", {}, h)))),
-        el("tbody", {}, colRows),
+      el("div", { class: "schema-sheet-card__meta-row" }, [
+        el("label", { class: "tab-color-swatch", title: "Warna tab" }, [colorInput]),
+        el("label", { class: "freeze-row-field", title: "Freeze row" }, [
+          el("span", {}, "Freeze"), freezeInput,
+        ]),
+        filterWrap,
+        protectedWrap,
+      ]),
+    ]);
+    card.appendChild(header);
+
+    if (isCollapsed) {
+      card.classList.add("schema-sheet-card--collapsed");
+      return card;
+    }
+
+    let colTbody = null;
+    const colRows = sheet.columns.map((col) => renderColumnRow(sheet, col, onStructuralChange, () => colTbody));
+    colTbody = el("tbody", {}, colRows);
+    const cfRows = sheet.conditionalFormats.map((cf) => renderConditionalFormatRow(sheet, cf, onStructuralChange));
+
+    card.append(
+      el("div", { class: "schema-section-heading" }, [
+        el("span", { class: "schema-section-heading__icon", html: icon("table", { size: 14 }) }),
+        el("h4", {}, "Kolom"),
+      ]),
+      el("p", { class: "field__hint schema-column-hint" }, "Geser ikon ⠿ untuk mengurutkan ulang kolom, atau pakai tombol ↑/↓."),
+      el("div", { class: "schema-column-table-wrap" }, [
+        el("table", { class: "data-table schema-column-table" }, [
+          el("thead", {}, el("tr", {}, ["Nama", "Tipe", "PK", "FK", "Wajib", "Formula", "Validasi", ""].map((h) => el("th", {}, h)))),
+          colTbody,
+        ]),
       ]),
       addColBtn,
-      el("h4", {}, "Conditional Formatting"),
+      el("div", { class: "schema-section-heading schema-section-heading--spaced" }, [
+        el("span", { class: "schema-section-heading__icon", html: icon("wand-2", { size: 14 }) }),
+        el("h4", {}, "Conditional Formatting"),
+      ]),
       sheet.conditionalFormats.length
         ? el("table", { class: "data-table" }, [
             el("thead", {}, el("tr", {}, ["Kolom", "Kondisi", "Nilai", "Warna", "Keterangan", ""].map((h) => el("th", {}, h)))),
             el("tbody", {}, cfRows),
           ])
-        : el("p", { class: "muted" }, "Belum ada conditional formatting."),
+        : el("p", { class: "muted schema-empty-hint" }, "Belum ada conditional formatting untuk sheet ini."),
       addCfBtn,
-    ]);
+    );
+
+    return card;
   }
 
   function renderNamedRangesSection(onStructuralChange) {
@@ -321,10 +440,14 @@ export async function renderSchemaEditorPage(navigate) {
     });
 
     return el("div", { class: "card" }, [
-      el("h3", {}, "Named Ranges"),
+      el("div", { class: "schema-section-heading" }, [
+        el("span", { class: "schema-section-heading__icon", html: icon("book-open", { size: 14 }) }),
+        el("h3", {}, "Named Ranges"),
+      ]),
+      el("p", { class: "field__hint" }, "Dipakai sebagai sumber dropdown/VLOOKUP di Google Sheets — opsional, tambahkan hanya jika Anda butuh."),
       edited.namedRanges.length
         ? el("table", { class: "data-table" }, [el("thead", {}, el("tr", {}, ["Nama", "Sheet", "Range", ""].map((h) => el("th", {}, h)))), el("tbody", {}, rows)])
-        : el("p", { class: "muted" }, "Belum ada named range."),
+        : el("p", { class: "muted schema-empty-hint" }, "Belum ada named range."),
       addBtn,
     ]);
   }
@@ -338,11 +461,6 @@ export async function renderSchemaEditorPage(navigate) {
       class: "btn btn--ghost", href: `https://docs.google.com/spreadsheets/d/${state.activeSpreadsheet.id}/edit`,
       target: "_blank", rel: "noopener",
     }, [el("span", { html: icon("external-link", { size: 14 }) }), "Buka Google Sheets"]);
-    const addSheetBtn = el("button", { class: "btn btn--ghost" }, [el("span", { html: icon("plus", { size: 14 }) }), "Tambah Sheet Baru"]);
-    addSheetBtn.addEventListener("click", () => {
-      edited.sheets.push(newSheet(edited.sheets.map((s) => s.name)));
-      onStructuralChange();
-    });
     const reloadBtn = el("button", { class: "btn btn--ghost" }, [el("span", { html: icon("history", { size: 14 }) }), "Muat Ulang dari Google Sheets"]);
     reloadBtn.addEventListener("click", () => {
       if (!confirm("Semua editan yang belum diterapkan akan hilang dan diganti dengan struktur terbaru dari Google Sheets. Lanjutkan?")) return;
@@ -351,8 +469,42 @@ export async function renderSchemaEditorPage(navigate) {
     const applyBtn = el("button", { class: "btn btn--primary" }, [el("span", { html: icon("check", { size: 14 }) }), "Terapkan Perubahan ke Google Sheets"]);
 
     bodyHost.append(
-      el("div", { class: "toolbar schema-editor-toolbar" }, [openSheetBtn, reloadBtn, addSheetBtn, el("div", { class: "toolbar__spacer" }), applyBtn])
+      el("div", { class: "toolbar schema-editor-toolbar card" }, [openSheetBtn, reloadBtn, el("div", { class: "toolbar__spacer" }), applyBtn])
     );
+
+    // Navigasi cepat antar sheet + tombol ciutkan/perluas semua — berguna terutama
+    // di desktop saat spreadsheet punya banyak sheet dan halaman jadi panjang.
+    if (edited.sheets.length > 1) {
+      const navPills = edited.sheets.map((sheet) =>
+        el("button", { class: "schema-nav-pill", type: "button", onClick: () => {
+          if (collapsedSheets.has(sheet._key)) {
+            collapsedSheets.delete(sheet._key);
+            onStructuralChange();
+          }
+          document.getElementById(`schema-sheet-${sheet._key}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}, [
+          sheet.name,
+          el("span", { class: "schema-nav-pill__count" }, String(sheet.columns.length)),
+        ])
+      );
+      const collapseAllBtn = el("button", { class: "btn btn--ghost btn--sm" }, "Ciutkan Semua");
+      collapseAllBtn.addEventListener("click", () => {
+        edited.sheets.forEach((s) => collapsedSheets.add(s._key));
+        onStructuralChange();
+      });
+      const expandAllBtn = el("button", { class: "btn btn--ghost btn--sm" }, "Perluas Semua");
+      expandAllBtn.addEventListener("click", () => {
+        collapsedSheets.clear();
+        onStructuralChange();
+      });
+
+      bodyHost.appendChild(
+        el("div", { class: "schema-quick-nav" }, [
+          el("div", { class: "schema-quick-nav__pills" }, navPills),
+          el("div", { class: "schema-quick-nav__actions" }, [collapseAllBtn, expandAllBtn]),
+        ])
+      );
+    }
 
     const resultHost = el("div", {});
     bodyHost.appendChild(resultHost);
@@ -360,6 +512,17 @@ export async function renderSchemaEditorPage(navigate) {
     edited.sheets.forEach((sheet, idx) => {
       bodyHost.appendChild(renderSheetCard(sheet, idx, edited.sheets.length, onStructuralChange));
     });
+
+    // Tombol "Tambah Sheet Baru" sengaja diletakkan di BAWAH (setelah semua kartu sheet),
+    // bukan di toolbar atas — supaya tidak perlu bolak-balik scroll ke atas saat sedang
+    // bekerja di bagian bawah halaman dengan banyak sheet.
+    const addSheetBtn = el("button", { class: "btn btn--ghost schema-add-sheet-btn" }, [el("span", { html: icon("plus", { size: 14 }) }), "Tambah Sheet Baru"]);
+    addSheetBtn.addEventListener("click", () => {
+      edited.sheets.push(newSheet(edited.sheets.map((s) => s.name)));
+      onStructuralChange();
+    });
+    bodyHost.appendChild(addSheetBtn);
+
     bodyHost.appendChild(renderNamedRangesSection(onStructuralChange));
 
     applyBtn.addEventListener("click", () => runApply(resultHost));

@@ -12,30 +12,31 @@ Ponti Sheets adalah **AI Development Workspace** yang membaca struktur Google Sh
 
 1. [Apa itu Ponti Sheets?](#1-apa-itu-ponti-sheets)
 2. [Istilah Penting: Apa itu Primary Key (PK) dan Foreign Key (FK)?](#11-istilah-penting-apa-itu-primary-key-pk-dan-foreign-key-fk)
-3. [Visi Produk](#2-visi-produk)
-4. [Manfaat](#3-manfaat)
-5. [Fitur Utama](#4-fitur-utama)
-6. [Cara Instalasi](#5-cara-instalasi)
-7. [Cara Menjalankan Project](#6-cara-menjalankan-project)
-8. [Struktur Folder](#7-struktur-folder)
-9. [Cara Login Google](#8-cara-login-google)
-10. [Cara Menggunakan Database Builder (Generate Database dengan AI)](#85-cara-menggunakan-database-builder-generate-database-dengan-ai)
-11. [Cara Memilih Spreadsheet](#9-cara-memilih-spreadsheet)
-12. [Cara Melakukan Analisis](#10-cara-melakukan-analisis)
-13. [Cara Membaca Database Context](#11-cara-membaca-database-context)
-14. [Cara Menggunakan Schema Editor (Edit Struktur)](#112-cara-menggunakan-schema-editor-edit-struktur-database-yang-sudah-ada)
-15. [Cara Membaca Hasil Analisis](#12-cara-membaca-hasil-analisis)
-16. [Cara Menggunakan Prompt Builder](#13-cara-menggunakan-prompt-builder)
-17. [Cara Menggunakan AI Studio](#14-cara-menggunakan-ai-studio)
-18. [Cara Export](#15-cara-export)
-19. [Cara Build menjadi PWA](#16-cara-build-menjadi-pwa)
-20. [Cara Build menjadi Android APK](#17-cara-build-menjadi-android-apk)
-21. [Cara Build menjadi Windows EXE](#18-cara-build-menjadi-windows-exe)
-22. [FAQ](#19-faq)
-23. [Troubleshooting](#20-troubleshooting)
-24. [Roadmap](#21-roadmap)
-25. [Changelog](#22-changelog)
-26. [License](#23-license)
+3. [Istilah Penting: Apa itu Named Range?](#12-istilah-penting-apa-itu-named-range)
+4. [Visi Produk](#2-visi-produk)
+5. [Manfaat](#3-manfaat)
+6. [Fitur Utama](#4-fitur-utama)
+7. [Cara Instalasi](#5-cara-instalasi)
+8. [Cara Menjalankan Project](#6-cara-menjalankan-project)
+9. [Struktur Folder](#7-struktur-folder)
+10. [Cara Login Google](#8-cara-login-google)
+11. [Cara Menggunakan Database Builder (Generate Database dengan AI)](#85-cara-menggunakan-database-builder-generate-database-dengan-ai)
+12. [Cara Memilih Spreadsheet](#9-cara-memilih-spreadsheet)
+13. [Cara Melakukan Analisis](#10-cara-melakukan-analisis)
+14. [Cara Membaca Database Context](#11-cara-membaca-database-context)
+15. [Cara Menggunakan Schema Editor (Edit Struktur)](#112-cara-menggunakan-schema-editor-edit-struktur-database-yang-sudah-ada)
+16. [Cara Membaca Hasil Analisis](#12-cara-membaca-hasil-analisis)
+17. [Cara Menggunakan Prompt Builder](#13-cara-menggunakan-prompt-builder)
+18. [Cara Menggunakan AI Studio](#14-cara-menggunakan-ai-studio)
+19. [Cara Export](#15-cara-export)
+20. [Cara Build menjadi PWA](#16-cara-build-menjadi-pwa)
+21. [Cara Build menjadi Android APK](#17-cara-build-menjadi-android-apk)
+22. [Cara Build menjadi Windows EXE](#18-cara-build-menjadi-windows-exe)
+23. [FAQ](#19-faq)
+24. [Troubleshooting](#20-troubleshooting)
+25. [Roadmap](#21-roadmap)
+26. [Changelog](#22-changelog)
+27. [License](#23-license)
 
 ---
 
@@ -77,6 +78,32 @@ Contoh: di sheet **Penjualan**, kolom `id_produk` (isinya PRD001, PRD002, dst �
 Dengan PK & FK yang jelas, data antar sheet jadi **konsisten dan tidak berantakan** — kalau harga produk berubah, cukup diubah sekali di sheet Produk, semua transaksi yang merujuk ke situ otomatis "ikut" tanpa perlu diedit satu-satu. Ini juga yang memungkinkan Ponti Sheets menggambar diagram ERD, membuat dropdown Foreign Key otomatis di Schema Editor, dan menyusun prompt AI yang memahami struktur database Anda dengan benar.
 
 > Anda tidak perlu menghafal ini untuk memakai Ponti Sheets — cukup pahami bahwa **PK = kolom ID unik**, dan **FK = kolom yang "menunjuk" ke PK di sheet lain**.
+
+---
+
+## 1.2 Istilah Penting: Apa itu Named Range?
+
+**Named Range** adalah cara memberi **nama panggilan** untuk sekelompok sel di Google Sheets, supaya lebih gampang dirujuk daripada mengetik alamat sel mentah seperti `Produk!A2:A100`.
+
+### Analoginya: seperti menyimpan kontak di HP
+
+Bayangkan Anda bisa menelepon seseorang dengan mengetik nomornya langsung (`081234567890`), atau dengan menyimpannya sebagai kontak lalu tinggal pilih nama "Budi". Named Range itu seperti **menyimpan kontak** — daripada tulis rumus yang merujuk range sel mentah (`Produk!A2:A100`), Anda cukup beri nama, misalnya `DaftarProduk`, dan pakai nama itu di mana saja.
+
+### Kenapa ini berguna?
+
+- **Dropdown/data validation jadi lebih rapi.** Alih-alih dropdown-nya merujuk ke `Produk!A2:A100`, Anda (atau Ponti Sheets) bisa membuatnya merujuk ke `DaftarProduk` — lebih mudah dibaca, dan kalau data produknya pindah baris, named range otomatis "ikut" tanpa perlu mengedit ulang dropdown-nya.
+- **Formula jadi lebih gampang dibaca.** Rumus seperti `=VLOOKUP(A2, DaftarProduk, 2, FALSE)` jauh lebih mudah dipahami daripada `=VLOOKUP(A2, Produk!A2:D100, 2, FALSE)`.
+- **Tidak gampang rusak kalau struktur berubah.** Kalau Anda menambah baris atau kolom baru, cukup perbarui satu named range-nya saja — semua formula/dropdown yang memakai nama itu otomatis ikut ter-update, tidak perlu dicari & diedit satu-satu.
+
+### Contoh nyata di Ponti Sheets
+
+Kalau sheet **Produk** punya kolom `id_produk` (Primary Key) di kolom A, Ponti Sheets bisa membuatkan named range `DaftarProduk` yang merujuk ke `Produk!A2:A100`. Named range ini lalu dipakai sebagai sumber dropdown Foreign Key di sheet lain (mis. di sheet Penjualan, kolom `id_produk` dropdown-nya menampilkan pilihan dari `DaftarProduk`).
+
+### Cara mengaturnya di Ponti Sheets
+
+Buka menu **Schema Editor**, scroll ke bagian **Named Ranges** di paling bawah halaman. Anda bisa menambah, mengubah nama, memindahkan ke sheet lain, atau mengubah range-nya (format `A2:A100`) secara langsung dari situ — tidak perlu buka Google Sheets dan mengatur named range manual lewat menu Data-nya.
+
+> Anda tidak wajib membuat named range untuk memakai Ponti Sheets — ini murni fitur opsional untuk merapikan formula & dropdown kalau Anda menginginkannya.
 
 ---
 
@@ -416,12 +443,14 @@ Ini berbeda dari **Database Builder** (yang membuat spreadsheet **baru** dari no
 Setiap sheet ditampilkan sebagai kartu berisi tabel kolom yang bisa diedit langsung:
 
 - **Nama Sheet, Warna Tab, Freeze Row, Filter, Protect Header** — diedit di bagian atas kartu.
-- **Kolom** — setiap baris tabel adalah satu kolom: ubah nama, tipe data, centang **PK** (Primary Key) atau **FK** (Foreign Key, lalu pilih sheet & kolom yang direferensikan — ini akan membuat dropdown FK yang benar-benar berfungsi di Google Sheets), centang **Wajib**, isi **Formula** (kosongkan jika bukan kolom formula), dan atur **Validasi** (dropdown list/number/date/checkbox/email/phone).
-- Gunakan tombol **↑ / ↓** di tiap baris untuk mengubah urutan kolom, atau ikon tempat sampah untuk menghapusnya.
+- **Kolom** — setiap baris tabel adalah satu kolom: ubah nama, tipe data, centang **PK** (Primary Key) atau **FK** (Foreign Key, lalu pilih sheet & kolom yang direferensikan — ini akan membuat dropdown FK yang benar-benar berfungsi di Google Sheets), centang **Wajib**, isi **Formula**, dan atur **Validasi** (dropdown list/number/date/checkbox/email/phone).
+- **Formula aktif vs hasil statis** — di kolom Formula ada centang "Formula aktif". Kalau **dicentang** (default), formula-nya ditulis sebagai formula sungguhan di Google Sheets (nilai ikut berubah otomatis kalau data lain berubah). Kalau **tidak dicentang**, Ponti Sheets akan menghitung hasil formula itu lebih dulu lalu menyimpan HASIL akhirnya saja sebagai nilai tetap (statis) — formula-nya sendiri tidak ikut ditulis, cocok untuk kolom yang nilainya ingin "dibekukan" di titik waktu tertentu.
+- **Mengurutkan ulang kolom** — geser ikon **⠿** di sebelah kanan setiap baris ke atas/bawah untuk memindah urutan kolom secara langsung (bisa pakai jari di HP atau mouse di desktop), atau pakai tombol **↑ / ↓** kalau lebih suka klik.
+- Ikon tempat sampah menghapus kolom tersebut.
 - **"+ Tambah Kolom"** menambah kolom baru di akhir tabel (bisa dipindah urutannya setelahnya).
 - **"+ Tambah Conditional Format"** menambah aturan pewarnaan otomatis baru untuk sheet tersebut.
-- **"+ Tambah Sheet Baru"** di toolbar atas menambah sheet kosong baru (dengan 1 kolom `id` sebagai Primary Key).
-- Bagian **Named Ranges** di paling bawah halaman mengatur named range untuk seluruh spreadsheet.
+- **"+ Tambah Sheet Baru"** diletakkan di **bagian bawah halaman** (setelah semua kartu sheet) supaya Anda tidak perlu scroll bolak-balik ke atas saat sedang bekerja dengan banyak sheet — menambah sheet kosong baru (dengan 1 kolom `id` sebagai Primary Key).
+- Bagian **Named Ranges** di paling bawah halaman mengatur named range untuk seluruh spreadsheet. *(Belum tahu apa itu named range? Lihat [penjelasan sederhananya di sini](#12-istilah-penting-apa-itu-named-range).)*
 
 ### Cara menerapkan perubahan
 
@@ -437,6 +466,8 @@ Setelah berhasil, klik **"Analisis Ulang Sekarang"** (toast konfirmasi) untuk la
 - **Ubah urutan kolom (↑/↓)** — data ikut berpindah mengikuti kolomnya, tidak hilang.
 - **Sheet yang strukturnya berubah** (kolom ditambah/dihapus/diurutkan ulang) akan **ditulis ulang seluruh datanya** dalam satu kali proses — data pada kolom yang tidak berubah tetap dipertahankan persis seperti semula. Sheet yang tidak Anda ubah kolomnya sama sekali tidak disentuh datanya.
 - **Ubah Tipe Data atau Formula sebuah kolom** juga memicu penulisan ulang data (bukan cuma tambah/hapus/reorder kolom). Kalau Anda mengubah **Tipe Data**, data yang sudah ada di kolom itu otomatis **dikonversi** ke tipe barunya — misalnya teks "15.000" jadi angka 15000 kalau diubah ke Number, "Ya"/"Tidak" jadi TRUE/FALSE kalau diubah ke Checkbox, berbagai format tanggal dinormalisasi ke YYYY-MM-DD. Kalau ada nilai yang formatnya tidak dikenali dan gagal dikonversi, nilai aslinya tetap dipertahankan (tidak dihapus).
+- **Formula aktif vs statis**: kalau centang "Formula aktif" TIDAK dicentang, Ponti Sheets tetap menulis formulanya dulu ke Google Sheets (supaya Google Sheets sempat menghitungnya), lalu membaca kembali hasil hitungannya dan menimpa formula tersebut dengan nilai hasilnya — jadi butuh satu langkah ekstra dibanding formula aktif biasa, wajar kalau prosesnya sedikit lebih lama untuk kolom seperti ini.
+- Mobile: seluruh tampilan Schema Editor (termasuk tabel kolom) sudah dioptimalkan untuk layar HP — tabel kolom otomatis berubah jadi daftar kartu bertumpuk di layar sempit, bukan tabel lebar yang perlu di-scroll horizontal.
 - **Conditional Formatting** selalu diganti total (dihapus semua lalu ditulis ulang dari daftar yang Anda edit) — kalau ada conditional formatting manual yang Anda buat langsung di Google Sheets (di luar Ponti Sheets) sebelumnya, itu akan hilang setelah Terapkan Perubahan pertama kali. Setelah itu, edit lewat Schema Editor seperti biasa.
 - **Foreign Key** yang Anda centang otomatis dibuatkan **dropdown asli** di Google Sheets yang merujuk ke kolom Primary Key sheet lain (pakai data validation "ONE_OF_RANGE") — kalau data di sheet sumbernya bertambah, dropdown ikut ter-update otomatis.
 - **Tipe data, PK, FK, label, dan deskripsi kolom disimpan sebagai metadata tersembunyi** di spreadsheet-nya sendiri (Developer Metadata Google Sheets — tidak terlihat di tampilan Google Sheets, hanya terbaca lewat API). Ini penting karena Google Sheets sendiri tidak punya konsep "tipe kolom" — tanpa metadata ini, Ponti Sheets harus MENEBAK ULANG tipe setiap kali dibuka (yang tidak akurat untuk tipe seperti Currency/URL/UUID/Percentage/JSON/Array). Dengan metadata ini, apa pun yang Anda set akan selalu diingat persis, bahkan setelah reload berkali-kali.

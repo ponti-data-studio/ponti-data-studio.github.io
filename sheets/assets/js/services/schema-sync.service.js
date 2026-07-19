@@ -67,6 +67,11 @@ async function rewriteSheetData(spreadsheetId, sheet, originalSheet) {
   } else {
     dataRows = baseRows.map((row, rIdx) =>
       sheet.columns.map((c) => {
+        // PENTING: di penulisan tahap ini, kolom berformula SELALU ditulis sebagai
+        // formula aktif dulu (termasuk yang di-set "bukan formula aktif" oleh user) —
+        // supaya Google Sheets sempat MENGHITUNG nilainya. Kalau formulaIsLive:false,
+        // hasil hitungan itu akan "dibekukan" jadi nilai statis di tahap berikutnya
+        // (lihat freezeStaticFormulaColumns di bawah).
         if (c.formula) return shiftFormulaRow(c.formula, rIdx + 2);
 
         const origIdx = origColIndexByKey.get(c._key);
@@ -100,6 +105,27 @@ async function rewriteSheetData(spreadsheetId, sheet, originalSheet) {
     const toLetter = columnIndexToLetter(origColCount - 1);
     const lastRowNum = Math.max(values.length, 2);
     await sheetsService.clearRange(spreadsheetId, `'${sheet.name}'!${fromLetter}1:${toLetter}${lastRowNum}`);
+  }
+
+  // Kolom berformula yang di-set "bukan formula aktif" (checkbox tidak dicentang) —
+  // formula-nya SUDAH ditulis & dihitung Google Sheets di atas, sekarang "dibekukan"
+  // jadi nilai statis (hasil hitungan saat ini), formula-nya sendiri tidak disimpan.
+  const staticFormulaCols = sheet.columns
+    .map((c, idx) => ({ c, idx }))
+    .filter(({ c }) => c.formula && c.formulaIsLive === false);
+
+  if (staticFormulaCols.length > 0 && dataRows.length > 0) {
+    const lastRowNum = dataRows.length + 1;
+    for (const { c, idx } of staticFormulaCols) {
+      const colLetter = columnIndexToLetter(idx);
+      const range = `'${sheet.name}'!${colLetter}2:${colLetter}${lastRowNum}`;
+      // eslint-disable-next-line no-await-in-loop
+      const computed = await sheetsService.getDisplayValues(spreadsheetId, range);
+      if (computed.length > 0) {
+        // eslint-disable-next-line no-await-in-loop
+        await sheetsService.updateValues(spreadsheetId, range, computed, "USER_ENTERED");
+      }
+    }
   }
 
   return values.length; // total baris (termasuk header) setelah ditulis
