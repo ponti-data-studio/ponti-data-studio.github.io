@@ -56,7 +56,7 @@ export async function renderPromptBuilderPage(navigate) {
   ));
   const providerSelect = el("select", {}, Object.values(AI_PROVIDERS).map((p) => el("option", { value: p.id }, p.label)));
   providerSelect.value = settings.activeProvider;
-  const styleSelect = el("select", {}, ["clean-architecture", "mvc", "minimal-script", "microservices"].map((s) => el("option", { value: s }, s)));
+  const styleSelect = el("select", {}, ["Professional - Bersih, rapi, formal, fokus pada fungsi", "Modern - Minimalis, rounded, animasi halus", "Corporate - Formal, warna konservatif, terpercaya", "Elegant - Premium, banyak whitespace, tipografi kuat", "Luxury - Warna gelap, emas, eksklusif", "Minimalist - Sedikit elemen, fokus pada konten", "Clean - Sangat rapi dan mudah dibaca", "Friendly - Warna cerah, ikon membulat", "Playful - Ilustrasi, warna ceria", "Creative - Layout unik, banyak visual", "Futuristic - Neon, glow, AI, cyber", "High-Tech - Banyak data, grafik, nuansa teknologi", "Industrial - Tegas, sederhana, fokus efisiensi", "Financial - Biru, hijau, penuh grafik", "Medical - Putih, biru muda, steril", "Government - Formal, aksesibilitas tinggi", "Educational - Mudah dipahami, ikon informatif", "E-Commerce - Fokus produk dan CTA", "Gaming - Dinamis, kontras tinggi", "Dark Theme - Dominan warna gelap", "Light Theme - Cerah, bersih"].map((s) => el("option", { value: s }, s)));
   const additionalReq = el("textarea", { rows: 3, placeholder: "Contoh: gunakan Bootstrap 5, sertakan validasi form..." });
   const userInstruction = el("textarea", { rows: 4, placeholder: "Contoh: buatkan aplikasi kasir sederhana dari struktur ini..." });
 
@@ -64,7 +64,7 @@ export async function renderPromptBuilderPage(navigate) {
     el("h3", {}, "Konfigurasi"),
     field("Template", templateSelect),
     field("AI Provider", providerSelect),
-    field("Programming Style", styleSelect),
+    field("Visual Style", styleSelect),
     field("Requirement Tambahan", additionalReq),
     field("Instruksi Anda", userInstruction),
   );
