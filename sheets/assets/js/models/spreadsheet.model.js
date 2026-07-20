@@ -10,6 +10,7 @@ export class ColumnModel {
     isForeignKey = false, referencesSheet = null, referencesColumn = null,
     confidence = 0, nullable = true, sampleValues = [], warnings = [],
     formula = null, formulaIsLive = true,
+    required = null, editable = null, show = null,
   } = {}) {
     this.name = name;
     this.index = index;
@@ -28,6 +29,12 @@ export class ColumnModel {
     // sudah tidak ada lagi di sel, cuma hasil hitungannya).
     this.formula = formula;
     this.formulaIsLive = formulaIsLive;
+    // required/editable/show: tri-state {value: "unknown"|"true"|"false", condition}
+    // yang diatur lewat Schema Editor — default "unknown" (AI menyimpulkan sendiri saat
+    // membangun aplikasi) kalau belum pernah disentuh manual.
+    this.required = required || { value: "unknown", condition: null };
+    this.editable = editable || { value: "unknown", condition: null };
+    this.show = show || { value: "unknown", condition: null };
   }
 }
 
@@ -84,6 +91,7 @@ export class SpreadsheetModel {
   constructor({
     id, name, locale = "id_ID", timezone = "Asia/Jakarta",
     owner = null, createdAt = null, modifiedAt = null, sheets = [],
+    namedRanges = [],
   } = {}) {
     this.id = id;
     this.name = name;
@@ -93,5 +101,9 @@ export class SpreadsheetModel {
     this.createdAt = createdAt;
     this.modifiedAt = modifiedAt;
     this.sheets = sheets;
+    // namedRanges: dikonversi ke bentuk siap-pakai {name, sheet, range (A1 notation)} —
+    // dulu cuma disimpan mentah & terduplikasi di tiap SheetModel, sekarang di sini
+    // sekali saja di level spreadsheet, dan benar-benar diteruskan ke Database Context.
+    this.namedRanges = namedRanges;
   }
 }

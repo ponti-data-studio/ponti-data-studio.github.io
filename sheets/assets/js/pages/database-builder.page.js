@@ -19,6 +19,13 @@ function field(label, inputNode, hint) {
   ]);
 }
 
+function formatTriState(field) {
+  if (!field || typeof field !== "object") return field ? "Ya" : "Tidak";
+  if (field.value === "true") return field.condition ? `Ya (${field.condition})` : "Ya";
+  if (field.value === "false") return "Tidak";
+  return "Unknown (AI menentukan)";
+}
+
 function renderBlueprintSheetCard(sheet) {
   const rows = sheet.columns.map((c) =>
     el("tr", {}, [
@@ -28,7 +35,7 @@ function renderBlueprintSheetCard(sheet) {
         c.isPrimaryKey ? el("span", { class: "badge badge--pk" }, "PK") : null,
         c.isForeignKey ? el("span", { class: "badge badge--fk" }, c.referencesSheet ? `FK → ${c.referencesSheet}` : "FK") : null,
       ]),
-      el("td", {}, c.required ? "Ya" : "Tidak"),
+      el("td", {}, formatTriState(c.required)),
       el("td", {}, c.formula ? el("code", {}, c.formula) : c.validation ? `Validasi: ${c.validation.type}` : "-"),
     ])
   );

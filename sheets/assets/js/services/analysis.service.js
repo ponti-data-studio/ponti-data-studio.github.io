@@ -1,12 +1,32 @@
 import { sheetsService } from "./sheets.service.js";
 import { detectColumnType, detectPrimaryKey, detectForeignKeyCandidate } from "./column-type-detector.service.js";
-import { analyzeFormulas } from "./formula-analyzer.service.js";
+import { analyzeFormulas, columnIndexToLetter } from "./formula-analyzer.service.js";
 import { runDataQualityChecks } from "./data-quality.service.js";
 import { SheetModel, ColumnModel, SpreadsheetModel, RelationshipModel } from "../models/spreadsheet.model.js";
 import { SCHEMA_METADATA_KEY, parseSchemaMetadataSnapshot } from "./schema-metadata.util.js";
 import { logger } from "../utils/logger.util.js";
 
 const SAMPLE_ROW_LIMIT = 50;
+
+/** Ubah named range mentah dari Google Sheets API (sheetId + index numerik) jadi
+ *  bentuk siap-pakai {name, sheet, range} dengan notasi A1 yang manusiawi. */
+function buildNamedRangesSummary(meta) {
+  const sheetNameById = new Map((meta.sheets || []).map((s) => [s.properties.sheetId, s.properties.title]));
+
+  return (meta.namedRanges || [])
+    .map((nr) => {
+      const r = nr.range || {};
+      const sheetName = sheetNameById.get(r.sheetId) || "";
+      let range = "";
+      if (r.startColumnIndex !== undefined && r.startRowIndex !== undefined) {
+        const endColIdx = (r.endColumnIndex ?? r.startColumnIndex + 1) - 1;
+        const endRowNum = r.endRowIndex ?? r.startRowIndex + 1;
+        range = `${columnIndexToLetter(r.startColumnIndex)}${r.startRowIndex + 1}:${columnIndexToLetter(endColIdx)}${endRowNum}`;
+      }
+      return { name: nr.name, sheet: sheetName, range };
+    })
+    .filter((nr) => nr.sheet && nr.range);
+}
 
 /**
  * analysis.service.js
@@ -50,6 +70,7 @@ function buildColumnsFromGrid(headerRow, dataRows, savedColumns = {}, formulaSam
 
     if (saved) {
       // Ikuti persis apa yang sudah diatur user di Schema Editor — jangan tebak ulang.
+      const requiredField = saved.required || { value: "unknown", condition: null };
       return new ColumnModel({
         name: headerName || `Kolom${colIdx + 1}`,
         index: colIdx,
@@ -59,11 +80,16 @@ function buildColumnsFromGrid(headerRow, dataRows, savedColumns = {}, formulaSam
         referencesSheet: saved.referencesSheet || null,
         referencesColumn: saved.referencesColumn || null,
         confidence: 1,
-        nullable: !saved.required,
+        // nullable murni untuk tampilan cepat (kebalikan dari Required kalau sudah
+        // ditentukan eksplisit "true"/"false"; tetap true/tidak pasti kalau "unknown").
+        nullable: requiredField.value !== "true",
         sampleValues: [...new Set(columnValues.filter((v) => v !== null && v !== ""))].slice(0, 5),
         warnings: [],
         formula,
         formulaIsLive,
+        required: requiredField,
+        editable: saved.editable || { value: "unknown", condition: null },
+        show: saved.show || { value: "unknown", condition: null },
       });
     }
 
@@ -221,6 +247,7 @@ export const analysisService = {
       locale: meta.properties.locale,
       timezone: meta.properties.timeZone,
       sheets,
+      namedRanges: buildNamedRangesSummary(meta),
     });
 
     onProgress({ step: "done", label: "Analisis selesai." });

@@ -184,13 +184,18 @@
 .schema-sheet-card__header input[type="color"] { width: 40px; height: 32px; padding: 2px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: none; cursor: pointer; }
 .schema-sheet-card__order-actions { display: flex; gap: 6px; margin-left: auto; }
 .schema-column-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 10px 0; }
-.schema-column-table { min-width: 980px; }
+.schema-column-table { min-width: 1320px; }
 .schema-column-table th:nth-child(1), .schema-column-table td:nth-child(1) { min-width: 130px; }
 .schema-column-table th:nth-child(2), .schema-column-table td:nth-child(2) { min-width: 100px; }
 .schema-column-table th:nth-child(4), .schema-column-table td:nth-child(4) { min-width: 160px; }
-.schema-column-table th:nth-child(6), .schema-column-table td:nth-child(6) { min-width: 170px; }
+.schema-column-table th:nth-child(5), .schema-column-table td:nth-child(5) { min-width: 150px; }
+.schema-column-table th:nth-child(6), .schema-column-table td:nth-child(6) { min-width: 150px; }
 .schema-column-table th:nth-child(7), .schema-column-table td:nth-child(7) { min-width: 150px; }
-.schema-column-table th:nth-child(8), .schema-column-table td:nth-child(8) { min-width: 110px; }
+.schema-column-table th:nth-child(8), .schema-column-table td:nth-child(8) { min-width: 170px; }
+.schema-column-table th:nth-child(9), .schema-column-table td:nth-child(9) { min-width: 150px; }
+.schema-column-table th:nth-child(10), .schema-column-table td:nth-child(10) { min-width: 110px; }
+.tri-state-field select { font-size: 12px; }
+.tri-state-field input[type="text"] { font-size: 11.5px; }
 .schema-column-table td input[type="text"], .schema-column-table td select { width: 100%; font-size: 12.5px; min-width: 80px; }
 .schema-column-table td { vertical-align: top; padding: 10px; }
 .schema-column-table th { white-space: nowrap; }
@@ -308,7 +313,7 @@
 }
 
 /* Collapsible sheet card */
-.schema-collapse-btn { font-size: 12px; flex-shrink: 0; }
+.schema-collapse-btn { font-size: 20px; flex-shrink: 0; line-height: 1; width: 30px; height: 30px; }
 .schema-sheet-card__summary {
   font-size: 11.5px; color: var(--text-tertiary); white-space: nowrap;
   margin-left: auto; padding-right: 12px;

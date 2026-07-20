@@ -15,6 +15,14 @@
 
 export const SCHEMA_METADATA_KEY = "ponti_sheets_schema_v1";
 
+/** Menyimpan objek tri-state {value, condition} apa adanya, dengan default aman */
+function snapshotTriState(field) {
+  if (field && typeof field === "object") {
+    return { value: field.value || "unknown", condition: field.value === "true" ? (field.condition || null) : null };
+  }
+  return { value: "unknown", condition: null };
+}
+
 /** Snapshot ringkas (hanya field yang tidak bisa ditebak ulang dari data mentah) */
 export function buildSchemaMetadataSnapshot(blueprint) {
   const sheets = {};
@@ -25,7 +33,13 @@ export function buildSchemaMetadataSnapshot(blueprint) {
         type: c.type,
         label: c.label,
         description: c.description,
-        required: !!c.required,
+        // "Required", "Editable", "Show" — tri-state {value, condition}: value
+        // "true"/"false"/"unknown", condition = keterangan kondisional opsional
+        // (hanya berlaku kalau value "true"). Kalau "unknown", AI yang menyimpulkan
+        // sendiri saat membangun aplikasi.
+        required: snapshotTriState(c.required),
+        editable: snapshotTriState(c.editable),
+        show: snapshotTriState(c.show),
         isPrimaryKey: !!c.isPrimaryKey,
         isForeignKey: !!c.isForeignKey,
         referencesSheet: c.referencesSheet || null,
@@ -35,7 +49,7 @@ export function buildSchemaMetadataSnapshot(blueprint) {
         // false = sudah "dibekukan" jadi nilai statis — formula-nya sendiri sudah tidak ada
         // lagi di sel manapun, jadi HARUS diingat lewat metadata ini, tidak bisa ditebak
         // ulang dari isi sel (yang cuma berupa nilai biasa, tidak ada tanda ia bekas formula).
-        formulaIsLive: c.formulaIsLive !== false,
+        formulaIsLive: c.formula ? c.formulaIsLive !== false : false,
       };
     });
     sheets[sheet.name] = { columns };

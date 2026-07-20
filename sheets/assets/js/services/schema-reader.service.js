@@ -153,7 +153,11 @@ export const schemaReaderService = {
               // user) — jangan tebak ulang. Kalau tidak ada (kolom baru / spreadsheet
               // belum pernah disentuh Schema Editor), baru jatuh ke heuristik.
               type: saved?.type || guessColumnType(validation, sampleValue),
-              required: saved ? !!saved.required : false,
+              // Required/Editable/Show tri-state — default "unknown" (AI menyimpulkan
+              // sendiri) kalau belum pernah diatur manual lewat Schema Editor.
+              required: saved?.required || { value: "unknown", condition: null },
+              editable: saved?.editable || { value: "unknown", condition: null },
+              show: saved?.show || { value: "unknown", condition: null },
               isPrimaryKey: saved ? !!saved.isPrimaryKey : (/^(id_|kode_)/i.test(name) || idx === 0),
               isForeignKey: saved ? !!saved.isForeignKey : false,
               referencesSheet: saved?.referencesSheet || null,

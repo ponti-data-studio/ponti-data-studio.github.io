@@ -9,11 +9,18 @@ import { schemaSyncService } from "../services/schema-sync.service.js";
 import { googleAuthService } from "../services/google-auth.service.js";
 import { showToast } from "../components/toast.component.js";
 
+function newTriState(value = "unknown", condition = null) {
+  return { value, condition };
+}
+
 function newColumn() {
   return {
     _key: generateKey("col"), name: "kolom_baru", label: "kolom_baru", description: "",
-    type: "text", required: false, isPrimaryKey: false, isForeignKey: false,
-    referencesSheet: null, referencesColumn: null, defaultValue: null, formula: null,
+    type: "text",
+    required: newTriState(), editable: newTriState(), show: newTriState(),
+    isPrimaryKey: false, isForeignKey: false,
+    referencesSheet: null, referencesColumn: null, defaultValue: null,
+    formula: null, formulaIsLive: false,
     validation: null, sampleData: [],
   };
 }
@@ -24,7 +31,7 @@ function newSheet(existingNames) {
   while (existingNames.includes(name)) { n += 1; name = `Sheet_Baru_${n}`; }
   return {
     _key: generateKey("sheet"), name, description: "", tabColor: "#6366F1", freezeRow: 1, filter: true,
-    columns: [{ ...newColumn(), name: "id", label: "id", isPrimaryKey: true, required: true }],
+    columns: [{ ...newColumn(), name: "id", label: "id", isPrimaryKey: true, required: newTriState("true") }],
     dummyData: [], conditionalFormats: [], protected: false, sheetId: undefined, lastRow: 1,
   };
 }
@@ -41,6 +48,40 @@ function chipToggle(label, checked, variant, onChange) {
     el("span", { class: "chip-toggle__label" }, label),
   ]);
   return { wrap, input };
+}
+
+/**
+ * Field tri-state ("Unknown" / "TRUE" / "FALSE") + keterangan kondisional opsional
+ * yang cuma muncul kalau nilainya TRUE — dipakai untuk Required, Editable, dan Show.
+ * Default "Unknown" berarti AI yang menyimpulkan sendiri saat membangun aplikasi.
+ * Kalau TRUE dan keterangan diisi (mis. "Wajib jika kondisi A = TRUE"), berarti TRUE
+ * bersyarat; kalau keterangan kosong, berarti TRUE mutlak/tanpa syarat.
+ */
+function triStateField(col, fieldName, exampleText) {
+  if (!col[fieldName]) col[fieldName] = newTriState();
+  const current = col[fieldName];
+
+  const select = el("select", {}, [
+    el("option", { value: "unknown", selected: current.value === "unknown" ? "true" : undefined }, "Unknown (AI menentukan)"),
+    el("option", { value: "true", selected: current.value === "true" ? "true" : undefined }, "TRUE"),
+    el("option", { value: "false", selected: current.value === "false" ? "true" : undefined }, "FALSE"),
+  ]);
+  const condInput = el("input", {
+    type: "text",
+    placeholder: `Keterangan opsional, mis: "${exampleText}"`,
+    value: current.condition || "",
+    style: current.value === "true" ? "" : "display:none",
+  });
+
+  select.addEventListener("change", () => {
+    col[fieldName] = newTriState(select.value, select.value === "true" ? (condInput.value.trim() || null) : null);
+    condInput.style.display = select.value === "true" ? "" : "none";
+  });
+  condInput.addEventListener("input", () => {
+    col[fieldName].condition = condInput.value.trim() || null;
+  });
+
+  return el("div", { class: "cell-stack tri-state-field" }, [select, condInput]);
 }
 
 export async function renderSchemaEditorPage(navigate) {
@@ -142,16 +183,44 @@ export async function renderSchemaEditorPage(navigate) {
     fkSheetSelect.addEventListener("change", () => { col.referencesSheet = fkSheetSelect.value || null; refreshFkColOptions(); });
     fkColSelect.addEventListener("change", () => { col.referencesColumn = fkColSelect.value || null; });
 
-    const { wrap: requiredWrap } = chipToggle("Wajib", col.required, null, (checked) => { col.required = checked; });
+    // ---- Required / Editable / Show (tri-state + keterangan kondisional) ----
+    const requiredField = triStateField(col, "required", "Wajib jika kondisi A = TRUE");
+    const editableField = triStateField(col, "editable", "Edit ini jika kondisi A = TRUE");
+    const showField = triStateField(col, "show", "Tampilkan jika kondisi A = TRUE");
 
+    // ---- Formula ----
     const formulaInput = el("input", { type: "text", placeholder: "kosongkan jika bukan kolom formula", value: col.formula || "" });
-    formulaInput.addEventListener("input", () => { col.formula = formulaInput.value.trim() || null; });
 
-    const formulaLiveCheck = el("input", { type: "checkbox", checked: col.formulaIsLive !== false ? "true" : undefined });
+    const formulaLiveCheck = el("input", {
+      type: "checkbox",
+      checked: (col.formula && col.formulaIsLive !== false) ? "true" : undefined,
+      disabled: col.formula ? undefined : "true",
+    });
     formulaLiveCheck.addEventListener("change", () => { col.formulaIsLive = formulaLiveCheck.checked; });
+
+    formulaInput.addEventListener("input", () => {
+      const wasEmpty = !col.formula;
+      col.formula = formulaInput.value.trim() || null;
+
+      if (!col.formula) {
+        // Tidak ada formula -> checkbox "Formula aktif" WAJIB tidak tercentang & terkunci,
+        // tidak masuk akal ada formula "aktif" tanpa formulanya.
+        formulaLiveCheck.checked = false;
+        formulaLiveCheck.disabled = true;
+        col.formulaIsLive = false;
+      } else {
+        formulaLiveCheck.disabled = false;
+        if (wasEmpty) {
+          // Formula baru saja diisi (dari kosong) -> otomatis dicentang aktif
+          formulaLiveCheck.checked = true;
+          col.formulaIsLive = true;
+        }
+      }
+    });
+
     const formulaLiveLabel = el("label", {
       class: "formula-live-toggle",
-      title: "Dicentang: formula sungguhan ditulis (nilai ikut berubah otomatis). Tidak dicentang: hasil hitungannya saja yang disimpan sebagai nilai tetap.",
+      title: "Dicentang: formula sungguhan ditulis (nilai ikut berubah otomatis). Tidak dicentang: hasil hitungannya saja yang disimpan sebagai nilai tetap. Tidak bisa dicentang kalau belum ada formula.",
     }, [
       formulaLiveCheck,
       el("span", {}, "Formula aktif"),
@@ -222,7 +291,9 @@ export async function renderSchemaEditorPage(navigate) {
       el("td", { "data-label": "Tipe" }, typeSelect),
       el("td", { class: "cell-center", "data-label": "PK" }, pkWrap),
       el("td", { class: "fk-cell", "data-label": "FK" }, [el("div", { class: "cell-stack" }, [fkWrap, fkSelectsWrap])]),
-      el("td", { class: "cell-center", "data-label": "Wajib" }, requiredWrap),
+      el("td", { class: "tri-cell", "data-label": "Required" }, requiredField),
+      el("td", { class: "tri-cell", "data-label": "Editable" }, editableField),
+      el("td", { class: "tri-cell", "data-label": "Show" }, showField),
       el("td", { class: "formula-cell", "data-label": "Formula" }, [el("div", { class: "cell-stack" }, [formulaInput, formulaLiveLabel])]),
       el("td", { class: "validation-cell", "data-label": "Validasi" }, [el("div", { class: "cell-stack" }, [validationTypeSelect, validationExtra])]),
       el("td", { class: "cell-actions", "data-label": "" }, [
@@ -396,10 +467,10 @@ export async function renderSchemaEditorPage(navigate) {
         el("span", { class: "schema-section-heading__icon", html: icon("table", { size: 14 }) }),
         el("h4", {}, "Kolom"),
       ]),
-      el("p", { class: "field__hint schema-column-hint" }, "Geser ikon ⠿ untuk mengurutkan ulang kolom, atau pakai tombol ↑/↓."),
+      el("p", { class: "field__hint schema-column-hint" }, "Geser ikon ⠿ untuk mengurutkan ulang kolom, atau pakai tombol ↑/↓. Required/Editable/Show: pilih \"Unknown\" supaya AI yang menyimpulkan sendiri, atau tentukan manual + keterangan opsional (mis. \"Wajib jika kondisi A = TRUE\")."),
       el("div", { class: "schema-column-table-wrap" }, [
         el("table", { class: "data-table schema-column-table" }, [
-          el("thead", {}, el("tr", {}, ["Nama", "Tipe", "PK", "FK", "Wajib", "Formula", "Validasi", ""].map((h) => el("th", {}, h)))),
+          el("thead", {}, el("tr", {}, ["Nama", "Tipe", "PK", "FK", "Required", "Editable", "Show", "Formula", "Validasi", ""].map((h) => el("th", {}, h)))),
           colTbody,
         ]),
       ]),
@@ -455,7 +526,15 @@ export async function renderSchemaEditorPage(navigate) {
   function renderEditor() {
     clear(bodyHost);
 
-    function onStructuralChange() { renderEditor(); }
+    // #7: setiap perubahan struktural (tambah/hapus sheet/kolom, dll) me-render ulang
+    // seluruh halaman — tanpa ini, browser cenderung scroll balik ke atas karena DOM-nya
+    // dibangun ulang dari nol. Simpan & kembalikan posisi scroll supaya pengguna tetap
+    // di tempat yang sama, tidak perlu scroll ulang tiap kali menambah/menghapus sesuatu.
+    function onStructuralChange() {
+      const scrollY = window.scrollY;
+      renderEditor();
+      window.scrollTo(0, scrollY);
+    }
 
     const openSheetBtn = el("a", {
       class: "btn btn--ghost", href: `https://docs.google.com/spreadsheets/d/${state.activeSpreadsheet.id}/edit`,
@@ -525,13 +604,16 @@ export async function renderSchemaEditorPage(navigate) {
 
     bodyHost.appendChild(renderNamedRangesSection(onStructuralChange));
 
-    applyBtn.addEventListener("click", () => runApply(resultHost));
+    applyBtn.addEventListener("click", () => runApply(resultHost, applyBtn));
   }
 
-  async function runApply(resultHost) {
+  function runApply(resultHost, applyBtn) {
     const diff = schemaDiffService.compute(original, edited);
 
-    const proceed = () => doApply(resultHost);
+    const proceed = (confirmBtn) => {
+      confirmBtn.disabled = true;
+      doApply(resultHost, applyBtn);
+    };
 
     if (diff.hasDestructive) {
       clear(resultHost);
@@ -544,7 +626,7 @@ export async function renderSchemaEditorPage(navigate) {
       const confirmCheck = el("input", { type: "checkbox", id: "confirm-destructive" });
       const confirmApplyBtn = el("button", { class: "btn btn--primary", disabled: "true" }, "Ya, Terapkan Sekarang");
       confirmCheck.addEventListener("change", () => { confirmApplyBtn.disabled = !confirmCheck.checked; });
-      confirmApplyBtn.addEventListener("click", proceed);
+      confirmApplyBtn.addEventListener("click", () => proceed(confirmApplyBtn));
 
       resultHost.appendChild(
         el("div", { class: "card warning-panel" }, [
@@ -555,11 +637,18 @@ export async function renderSchemaEditorPage(navigate) {
         ])
       );
     } else {
-      doApply(resultHost);
+      doApply(resultHost, applyBtn);
     }
   }
 
-  async function doApply(resultHost) {
+  async function doApply(resultHost, applyBtn) {
+    // #1: kunci tombol Apply + tampilkan loading selagi proses berjalan, supaya
+    // tidak bisa diklik dua kali sebelum selesai menyimpan perubahan.
+    applyBtn.disabled = true;
+    const applyBtnOriginalHtml = applyBtn.innerHTML;
+    clear(applyBtn);
+    applyBtn.append(el("span", { class: "spinner" }), el("span", {}, "Menerapkan..."));
+
     clear(resultHost);
     const progressLabel = el("span", {}, "Menerapkan perubahan...");
     resultHost.appendChild(el("div", { class: "card progress-panel" }, [el("span", { class: "spinner" }), progressLabel]));
@@ -574,10 +663,12 @@ export async function renderSchemaEditorPage(navigate) {
       resultHost.appendChild(
         el("div", { class: "card error-state-panel" }, [
           el("p", { class: "error-state" }, `Gagal menerapkan perubahan: ${err?.message || String(err) || "Error tidak diketahui (lihat Console browser untuk detail)."}`),
-          el("button", { class: "btn btn--ghost", onClick: () => runApply(resultHost) }, "Coba Lagi"),
+          el("button", { class: "btn btn--ghost", onClick: () => runApply(resultHost, applyBtn) }, "Coba Lagi"),
         ])
       );
       showToast("Gagal menerapkan perubahan struktur", "error");
+      applyBtn.disabled = false;
+      applyBtn.innerHTML = applyBtnOriginalHtml;
       return;
     }
 
@@ -590,12 +681,16 @@ export async function renderSchemaEditorPage(navigate) {
       clear(resultHost);
       resultHost.appendChild(el("p", { class: "error-state" }, "Perubahan mungkin sudah tersimpan, tapi terjadi kesalahan internal saat memuat hasilnya. Silakan klik \"Muat Ulang dari Google Sheets\"."));
       showToast("Gagal memuat ulang struktur setelah menyimpan", "error");
+      applyBtn.disabled = false;
+      applyBtn.innerHTML = applyBtnOriginalHtml;
       return;
     }
 
     // Perubahan sudah TERSIMPAN di Google Sheets di titik ini. Re-render halaman
     // dipisah ke try/catch sendiri supaya kalau ada bug saat menampilkan ulang,
     // pesan errornya tidak "hilang" ke elemen yang sudah tidak ada di halaman.
+    // (renderEditor() akan membuat instance applyBtn yang baru & fresh, jadi tombol
+    // lama yang sedang loading ini tidak perlu direset manual lagi di jalur sukses.)
     try {
       original = refreshed;
       edited = deepClone(refreshed);

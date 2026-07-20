@@ -55,8 +55,8 @@ export const AI_PROVIDERS = {
   gemini: {
     id: "gemini",
     label: "Google Gemini",
-    defaultModel: "gemini-3.5-flash",
-    models: ["gemini-3.5-flash", "gemini-2.0-pro", "gemini-1.5-pro"],
+    defaultModel: "gemini-2.0-flash",
+    models: ["gemini-3.5-flash", "gemini-3.0-pro", "gemini-1.5-pro"],
     endpoint: "https://generativelanguage.googleapis.com/v1beta/models",
     pricePer1kInputUsd: 0.0001,
     pricePer1kOutputUsd: 0.0004,

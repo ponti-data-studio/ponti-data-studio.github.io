@@ -19,23 +19,46 @@ export function generateKey(prefix = "k") {
   return `${prefix}_${Date.now().toString(36)}_${keyCounter}`;
 }
 
+/** Normalisasi field tri-state + keterangan kondisional: dipakai untuk "Required",
+ *  "Editable", dan "Show" — defaultnya "unknown" (AI yang menyimpulkan sendiri kalau
+ *  belum diisi manual). Kalau "true" dan ada teks keterangan, berarti TRUE bersyarat
+ *  (mis. "Wajib jika kondisi A = TRUE"); kalau keterangan kosong, berarti TRUE mutlak.
+ */
+export function normalizeTriStateField(raw) {
+  if (raw && typeof raw === "object") {
+    const value = raw.value === true || raw.value === "true" ? "true" : raw.value === false || raw.value === "false" ? "false" : "unknown";
+    return { value, condition: value === "true" ? (raw.condition || null) : null };
+  }
+  if (raw === true || raw === "true") return { value: "true", condition: null };
+  if (raw === false || raw === "false") return { value: "false", condition: null };
+  return { value: "unknown", condition: null };
+}
+
 function normalizeColumn(raw, idx) {
+  const formula = raw?.formula || null;
   return {
     _key: raw?._key || generateKey("col"),
     name: raw?.name || `Kolom${idx + 1}`,
     label: raw?.label || raw?.name || `Kolom${idx + 1}`,
     description: raw?.description || "",
     type: raw?.type || "text",
-    required: !!raw?.required,
+    // "Required", "Editable", "Show" — tri-state ("true"/"false"/"unknown", default
+    // "unknown") + keterangan kondisional opsional kalau "true". Kalau "unknown", AI
+    // yang menyimpulkan sendiri berdasarkan konteks data saat membangun aplikasi.
+    required: normalizeTriStateField(raw?.required),
+    editable: normalizeTriStateField(raw?.editable),
+    show: normalizeTriStateField(raw?.show),
     isPrimaryKey: !!raw?.isPrimaryKey || !!raw?.is_primary_key,
     isForeignKey: !!raw?.isForeignKey || !!raw?.is_foreign_key,
     referencesSheet: raw?.referencesSheet || raw?.references_sheet || null,
     referencesColumn: raw?.referencesColumn || raw?.references_column || null,
     defaultValue: raw?.defaultValue ?? raw?.default_value ?? null,
-    formula: raw?.formula || null,
+    formula,
     // formulaIsLive: true = tulis sebagai formula aktif (nilai ikut berubah otomatis);
     // false = "bekukan" jadi nilai hasil hitungannya saat ini (statis, formula tidak ditulis).
-    formulaIsLive: raw?.formulaIsLive !== undefined ? !!raw.formulaIsLive : true,
+    // Kalau kolom ini tidak punya formula sama sekali, formulaIsLive selalu false —
+    // tidak masuk akal formula "aktif" tanpa ada formulanya.
+    formulaIsLive: formula ? (raw?.formulaIsLive !== undefined ? !!raw.formulaIsLive : true) : false,
     validation: raw?.validation || null,
     sampleData: Array.isArray(raw?.sampleData) ? raw.sampleData : Array.isArray(raw?.sample_data) ? raw.sample_data : [],
   };

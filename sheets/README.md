@@ -256,6 +256,8 @@ Sejak versi ini, **login Google WAJIB dilakukan sebelum halaman apa pun bisa dia
 
 > ⚠️ Karena ini murni aplikasi client-side (tanpa server sendiri), "akun" di sini sepenuhnya mengandalkan akun Google Anda sebagai identitas — tidak ada sistem username/password terpisah. Data setiap akun tersimpan di `localStorage` browser yang sama, dipisah lewat namespace per akun; ini bukan enkripsi/keamanan tingkat server, jadi cocok untuk pemakaian tim kecil/keluarga pada device bersama, bukan untuk memisahkan data secara aman dari orang yang punya akses admin ke browser tersebut.
 
+> 📄 **Butuh lebih dari 100 pengguna, atau ingin menghilangkan peringatan "Unverified App"?** Lihat panduan terpisah **[PANDUAN_VERIFIKASI_GOOGLE.md](./PANDUAN_VERIFIKASI_GOOGLE.md)** — mencakup persiapan, langkah submit, video demo, dan penjelasan penting soal scope `drive.readonly` yang dipakai Ponti Sheets (masuk kategori *Restricted*, bukan cuma *Sensitive* — ada rekomendasi cara menghindarinya di situ).
+
 ### Langkah membuat Google OAuth Client ID:
 
 1. Buka [Google Cloud Console](https://console.cloud.google.com/).
@@ -393,7 +395,8 @@ Buka menu **Database Context** untuk melihat hasil akhir analisis dalam bentuk `
       "name": "Produk",
       "columns": [
         { "name": "id_produk", "type": "text", "isPrimaryKey": true, "confidence": 0.98 },
-        { "name": "subtotal", "type": "currency", "formula": "=B2*C2", "formulaIsLive": true, "confidence": 1 }
+        { "name": "subtotal", "type": "currency", "formula": "=B2*C2", "formulaIsLive": true, "confidence": 1 },
+        { "name": "email", "type": "email", "required": { "value": "true", "condition": null }, "editable": { "value": "unknown", "condition": null }, "show": { "value": "true", "condition": "Tampilkan hanya jika role = admin" } }
       ],
       "formulas": [ { "cell": "Produk!E2", "formula": "=B2*C2", "name": "CUSTOM" } ],
       "sampleData": [ ["P001", "Kopi Susu", 18000] ],
@@ -401,6 +404,7 @@ Buka menu **Database Context** untuk melihat hasil akhir analisis dalam bentuk `
     }
   ],
   "relationships": [ { "from": "Transaksi.id_produk", "to": "Produk.id_produk" } ],
+  "namedRanges": [ { "name": "DaftarProduk", "sheet": "Produk", "range": "A2:A100" } ],
   "businessRules": [ "Setiap baris pada \"Produk\" harus memiliki nilai unik pada kolom \"id_produk\"." ],
   "statistics": { "totalSheets": 3, "totalColumns": 18, "totalFormulas": 6 },
   "recommendations": [ "..." ]
@@ -447,8 +451,13 @@ Ini berbeda dari **Database Builder** (yang membuat spreadsheet **baru** dari no
 Setiap sheet ditampilkan sebagai kartu berisi tabel kolom yang bisa diedit langsung:
 
 - **Nama Sheet, Warna Tab, Freeze Row, Filter, Protect Header** — diedit di bagian atas kartu.
-- **Kolom** — setiap baris tabel adalah satu kolom: ubah nama, tipe data, centang **PK** (Primary Key) atau **FK** (Foreign Key, lalu pilih sheet & kolom yang direferensikan — ini akan membuat dropdown FK yang benar-benar berfungsi di Google Sheets), centang **Wajib**, isi **Formula**, dan atur **Validasi** (dropdown list/number/date/checkbox/email/phone).
-- **Formula aktif vs hasil statis** — di kolom Formula ada centang "Formula aktif". Kalau **dicentang** (default), formula-nya ditulis sebagai formula sungguhan di Google Sheets (nilai ikut berubah otomatis kalau data lain berubah). Kalau **tidak dicentang**, Ponti Sheets akan menghitung hasil formula itu lebih dulu lalu menyimpan HASIL akhirnya saja sebagai nilai tetap (statis) — formula-nya sendiri tidak ikut ditulis, cocok untuk kolom yang nilainya ingin "dibekukan" di titik waktu tertentu.
+- **Kolom** — setiap baris tabel adalah satu kolom: ubah nama, tipe data, centang **PK** (Primary Key) atau **FK** (Foreign Key, lalu pilih sheet & kolom yang direferensikan — ini akan membuat dropdown FK yang benar-benar berfungsi di Google Sheets), atur **Required/Editable/Show**, isi **Formula**, dan atur **Validasi** (dropdown list/number/date/checkbox/email/phone).
+- **Required / Editable / Show** — tiga field tri-state yang jadi PETUNJUK UNTUK AI saat membangun aplikasi dari struktur ini (bukan validasi di Google Sheets itu sendiri):
+  - **Required** — apakah kolom ini wajib diisi di form aplikasi yang dibuat AI.
+  - **Editable** — apakah kolom ini boleh diisi/diubah manual oleh pengguna aplikasi (bukan dihitung otomatis).
+  - **Show** — apakah kolom ini perlu ditampilkan di UI aplikasi.
+  - Ketiganya punya 3 pilihan: **Unknown** (default — AI yang menyimpulkan sendiri berdasarkan konteks kolom), **TRUE**, atau **FALSE**. Kalau pilih **TRUE**, muncul kolom **keterangan opsional** (mis. *"Wajib jika kondisi A = TRUE"*) — kalau keterangan dikosongkan, berarti TRUE berlaku mutlak tanpa syarat; kalau diisi, AI akan menerapkannya secara kondisional sesuai keterangan itu.
+- **Formula aktif vs hasil statis** — di kolom Formula ada centang "Formula aktif". Kalau **dicentang** (default begitu Anda isi Formula), formula-nya ditulis sebagai formula sungguhan di Google Sheets (nilai ikut berubah otomatis kalau data lain berubah). Kalau **tidak dicentang**, Ponti Sheets akan menghitung hasil formula itu lebih dulu lalu menyimpan HASIL akhirnya saja sebagai nilai tetap (statis). Centang ini **otomatis nonaktif & tidak bisa dicentang** kalau kolom Formula-nya kosong — tidak masuk akal ada formula "aktif" tanpa formulanya.
 - **Mengurutkan ulang kolom** — geser ikon **⠿** di sebelah kanan setiap baris ke atas/bawah untuk memindah urutan kolom secara langsung (bisa pakai jari di HP atau mouse di desktop), atau pakai tombol **↑ / ↓** kalau lebih suka klik.
 - Ikon tempat sampah menghapus kolom tersebut.
 - **"+ Tambah Kolom"** menambah kolom baru di akhir tabel (bisa dipindah urutannya setelahnya).
@@ -456,9 +465,11 @@ Setiap sheet ditampilkan sebagai kartu berisi tabel kolom yang bisa diedit langs
 - **"+ Tambah Sheet Baru"** diletakkan di **bagian bawah halaman** (setelah semua kartu sheet) supaya Anda tidak perlu scroll bolak-balik ke atas saat sedang bekerja dengan banyak sheet — menambah sheet kosong baru (dengan 1 kolom `id` sebagai Primary Key).
 - Bagian **Named Ranges** di paling bawah halaman mengatur named range untuk seluruh spreadsheet. *(Belum tahu apa itu named range? Lihat [penjelasan sederhananya di sini](#12-istilah-penting-apa-itu-named-range).)*
 
+> 💡 Menambah/menghapus sheet, kolom, atau conditional format **tidak lagi membuat halaman lompat ke atas** — posisi scroll Anda dipertahankan supaya tidak perlu cari lokasi kerja lagi setiap kali menekan tombol tambah.
+
 ### Cara menerapkan perubahan
 
-Klik **"Terapkan Perubahan ke Google Sheets"** di toolbar atas. Kalau perubahan Anda mencakup **penghapusan sheet atau kolom**, Ponti Sheets akan menampilkan **layar konfirmasi** berisi daftar persis apa yang akan hilang, dan Anda harus mencentang "Saya paham data terkait akan hilang permanen" sebelum tombol konfirmasi aktif. Ini untuk mencegah kehilangan data tidak sengaja.
+Klik **"Terapkan Perubahan ke Google Sheets"** di toolbar atas — tombol ini akan menampilkan status loading dan terkunci (tidak bisa diklik dua kali) selama proses penyimpanan berlangsung. Kalau perubahan Anda mencakup **penghapusan sheet atau kolom**, Ponti Sheets akan menampilkan **layar konfirmasi** berisi daftar persis apa yang akan hilang, dan Anda harus mencentang "Saya paham data terkait akan hilang permanen" sebelum tombol konfirmasi aktif. Ini untuk mencegah kehilangan data tidak sengaja.
 
 Setelah berhasil, klik **"Analisis Ulang Sekarang"** (toast konfirmasi) untuk langsung memperbarui Analysis/Database Context/ERD sesuai struktur terbaru.
 
@@ -517,7 +528,7 @@ Badge **PK** berarti kolom tersebut terdeteksi sebagai Primary Key. Badge **FK �
 
 ### Supaya AI tidak salah paham: Legend Field
 
-Karena Database Context di-JSON-kan dalam bentuk singkat/minified untuk hemat token (mis. `pk`, `fk`, `ref`, `live`), Prompt Builder otomatis menyertakan **bagian "Legend Field"** di awal prompt yang menjelaskan arti tiap singkatan itu ke AI — termasuk penjelasan field `formula`/`live` (formula aktif vs sudah dibekukan jadi nilai statis, lihat [Cara Menggunakan Schema Editor](#112-cara-menggunakan-schema-editor-edit-struktur-database-yang-sudah-ada)) dan daftar kemungkinan nilai `type`. Anda tidak perlu menjelaskan istilah-istilah ini sendiri ke AI — Ponti Sheets sudah melakukannya secara otomatis di setiap prompt yang dibuat.
+Karena Database Context di-JSON-kan dalam bentuk singkat/minified untuk hemat token (mis. `pk`, `fk`, `ref`, `live`, `req`, `edit`, `show`), Prompt Builder otomatis menyertakan **bagian "Legend Field"** di awal prompt yang menjelaskan arti tiap singkatan itu ke AI — termasuk penjelasan field `formula`/`live` (formula aktif vs sudah dibekukan jadi nilai statis) dan `req`/`edit`/`show` (petunjuk Required/Editable/Show untuk AI saat membangun form aplikasi, lihat [Cara Menggunakan Schema Editor](#112-cara-menggunakan-schema-editor-edit-struktur-database-yang-sudah-ada)), serta daftar kemungkinan nilai `type`. Anda tidak perlu menjelaskan istilah-istilah ini sendiri ke AI — Ponti Sheets sudah melakukannya secara otomatis di setiap prompt yang dibuat.
 
 ---
 

@@ -76,6 +76,9 @@ export const databaseContextService = {
           sampleValues: c.sampleValues,
           formula: c.formula,
           formulaIsLive: c.formulaIsLive,
+          required: c.required,
+          editable: c.editable,
+          show: c.show,
         })),
         formulas: sheet.formulas.map((f) => ({
           cell: f.cell, formula: f.formula, name: f.name,
@@ -89,6 +92,9 @@ export const databaseContextService = {
         to: `${r.toSheet}.${r.toColumn}`,
         type: r.type,
         confidence: r.confidence,
+      })),
+      namedRanges: (model.namedRanges || []).map((nr) => ({
+        name: nr.name, sheet: nr.sheet, range: nr.range,
       })),
       businessRules: buildBusinessRules(model.sheets, relationships),
       statistics: buildStatistics(model.sheets),
