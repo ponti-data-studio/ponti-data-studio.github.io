@@ -2,7 +2,7 @@
 
 **"Transform Your Spreadsheet into an AI-Ready Database."**
 
-Ponti Sheets adalah **AI Development Workspace** yang membaca struktur Google Sheets Anda, memahaminya secara mendalam (tipe kolom, primary key, foreign key, formula, aturan bisnis), lalu mengubahnya menjadi **konteks siap-AI** sehingga AI (ChatGPT/OpenAI, Gemini, atau Qwen) bisa membangunkan Anda aplikasi yang **benar-benar sesuai dengan struktur data Anda** — bukan tebakan generik.
+Ponti Sheets adalah **AI Development Workspace** yang membaca struktur Google Sheets Anda, memahaminya secara mendalam (tipe kolom, primary key, foreign key, formula, aturan bisnis), lalu mengubahnya menjadi **konteks siap-AI** sehingga AI (ChatGPT/OpenAI, Gemini, Qwen, atau Claude) bisa membangunkan Anda aplikasi yang **benar-benar sesuai dengan struktur data Anda** — bukan tebakan generik.
 
 > Ponti Sheets bukan sekadar "spreadsheet analyzer". Ponti Sheets adalah **jembatan antara Google Sheets dan AI**.
 
@@ -49,7 +49,7 @@ Bayangkan Anda punya Google Sheets berisi data toko, pelanggan, atau stok barang
 1. Membaca struktur Google Sheets Anda secara menyeluruh (kolom, tipe data, formula, relasi).
 2. Membangun sebuah "peta data" bernama **`database_context.json`**.
 3. Menyusun **prompt AI** otomatis dari peta data tersebut.
-4. Mengirim prompt itu ke AI pilihan Anda (OpenAI, Gemini, atau Qwen) untuk menghasilkan aplikasi nyata.
+4. Mengirim prompt itu ke AI pilihan Anda (OpenAI, Gemini, Qwen, atau Claude) untuk menghasilkan aplikasi nyata.
 
 Semua ini dilakukan **100% di browser Anda** (Versi 1 / Personal Mode) — tidak ada server database pihak ketiga yang menyimpan data Anda.
 
@@ -146,11 +146,12 @@ Meskipun saat ini baru Versi 1, seluruh arsitektur aplikasi (Presentation, Busin
 | **🛠️ Schema Editor** | Edit struktur database yang sudah ada langsung dari Ponti Sheets — tambah/hapus/rename kolom & sheet, formula, validasi, relasi, dan lainnya, tersinkron ke Google Sheets asli |
 | **ERD** | Visualisasi diagram relasi antar sheet (kotak tabel + garis relasi FK → PK), bisa di-zoom & di-export sebagai SVG |
 | **Prompt Builder** | Menyusun prompt AI otomatis dari Database Context + aturan bisnis |
-| **AI Studio** | Mengirim prompt ke OpenAI / Gemini / Qwen dan melihat hasilnya |
+| **AI Studio** | Mengirim prompt ke OpenAI / Gemini / Qwen / Claude dan melihat hasilnya |
 | **Documentation** | Data dictionary, ERD teks, business rules, feature list otomatis |
 | **History** | Riwayat prompt & response yang pernah dibuat |
 | **Export** | Unduh hasil dalam format Markdown, JSON, TXT, atau PDF |
-| **Settings** | Tema (gelap/terang), bahasa, provider AI, API key, kelola storage |
+| **Settings** | Tema (gelap/terang), provider AI, API key, kelola storage |
+| **❓ Panduan Penggunaan** | Halaman bantuan bahasa sederhana untuk pengguna awam — alur pemakaian singkat, kamus istilah teknis yang bisa dicari, dan FAQ dasar |
 
 **Kemampuan analisis mencakup:**
 
@@ -174,13 +175,13 @@ Ponti Sheets adalah aplikasi web statis (HTML + CSS + JavaScript murni) — **ti
 ### Yang Anda butuhkan:
 - Browser modern (Chrome, Edge, atau Firefox versi terbaru).
 - Akun Google (untuk login & akses Google Sheets).
-- (Opsional) API Key dari OpenAI, Google AI Studio (Gemini), atau Alibaba Cloud (Qwen) — hanya diperlukan saat Anda ingin memakai fitur AI Studio.
+- (Opsional) API Key dari OpenAI, Google AI Studio (Gemini), Alibaba Cloud (Qwen), atau Anthropic (Claude) — hanya diperlukan saat Anda ingin memakai fitur AI Studio.
 
 ### Langkah instalasi:
 
 1. Unduh/salin seluruh folder `PontiSheets/` ke komputer Anda.
 2. Jalankan aplikasi lewat local web server (lihat bagian berikutnya) — **jangan** membuka `index.html` langsung dengan cara *double click* karena browser akan memblokir fitur ES Module & Service Worker jika diakses lewat `file://`.
-3. Buka aplikasi, masuk ke menu **Settings**, lalu isi **Google OAuth Client ID** Anda (lihat [Cara Login Google](#8-cara-login-google)).
+3. Buka aplikasi — layar **Login Gate** akan otomatis menampilkan form untuk mengisi **Google Client ID** kalau belum pernah diisi (lihat [Cara Login Google](#8-cara-login-google)).
 
 ---
 
@@ -270,9 +271,9 @@ Sejak versi ini, **login Google WAJIB dilakukan sebelum halaman apa pun bisa dia
 7. Buka Ponti Sheets — kalau ini pemakaian pertama kali, layar **Login Gate** akan langsung menampilkan kolom untuk mengisi Google Client ID (tidak perlu masuk ke Settings dulu, karena Settings sendiri ada di balik gerbang login). Tempel Client ID Anda di situ, klik **"Simpan & Lanjutkan"**.
 8. Klik **"Login dengan Google"** dan ikuti alur consent Google.
 
-> 💡 **Google Client ID bersifat GLOBAL** — satu Client ID berlaku untuk SEMUA akun Google yang login di instalasi Ponti Sheets ini (bukan per-orang), dan disimpan terpisah dari Settings pribadi masing-masing akun. Bisa diubah kapan saja lewat menu **Settings → Google OAuth** (setelah login).
+> 💡 **Google Client ID bersifat GLOBAL** — satu Client ID berlaku untuk SEMUA akun Google yang login di instalasi Ponti Sheets ini (bukan per-orang), dan disimpan terpisah dari Settings pribadi masing-masing akun. Diisi sekali lewat form di **Login Gate** (muncul otomatis kalau belum dikonfigurasi) — untuk MENGGANTINYA nanti (mis. pindah ke Google Cloud Project lain), hapus key `ponti_sheets.google_client_id` di DevTools browser (F12 → Application → Local Storage), lalu reload — form pengisian Client ID akan muncul lagi di Login Gate.
 >
-> Jika Anda tetap ingin men-hardcode Client ID langsung di source code (misalnya untuk deployment permanen/tim), Anda masih bisa mengisi `GOOGLE_CONFIG.clientId` di `assets/js/config/app.config.js` sebagai fallback — nilai yang disimpan lewat Login Gate/Settings akan selalu diprioritaskan jika keduanya terisi.
+> Jika Anda tetap ingin men-hardcode Client ID langsung di source code (misalnya untuk deployment permanen/tim), Anda masih bisa mengisi `GOOGLE_CONFIG.clientId` di `assets/js/config/app.config.js` sebagai fallback — nilai yang disimpan lewat Login Gate akan selalu diprioritaskan jika keduanya terisi.
 
 > 🔒 Izin OAuth yang diminta bersifat **read-write** ke Google Sheets (dibutuhkan Database Builder & Schema Editor untuk membuat/mengedit spreadsheet). Namun secara perilaku, Ponti Sheets **hanya benar-benar menulis** ke spreadsheet saat Anda menekan tombol "Generate Google Sheets" atau "Terapkan Perubahan" — fitur Analyze, Database Context, ERD, dan Prompt Builder tetap murni membaca data Anda.
 
@@ -391,7 +392,8 @@ Buka menu **Database Context** untuk melihat hasil akhir analisis dalam bentuk `
     {
       "name": "Produk",
       "columns": [
-        { "name": "id_produk", "type": "text", "isPrimaryKey": true, "confidence": 0.98 }
+        { "name": "id_produk", "type": "text", "isPrimaryKey": true, "confidence": 0.98 },
+        { "name": "subtotal", "type": "currency", "formula": "=B2*C2", "formulaIsLive": true, "confidence": 1 }
       ],
       "formulas": [ { "cell": "Produk!E2", "formula": "=B2*C2", "name": "CUSTOM" } ],
       "sampleData": [ ["P001", "Kopi Susu", 18000] ],
@@ -406,6 +408,8 @@ Buka menu **Database Context** untuk melihat hasil akhir analisis dalam bentuk `
 ```
 
 Setiap kolom punya field `confidence` (0–1) yang menunjukkan seberapa yakin Ponti Sheets terhadap deteksi tipe/PK/FK tersebut — semakin mendekati 1, semakin yakin.
+
+Kolom yang berformula juga menyertakan `formula` (teks rumusnya) dan `formulaIsLive` — `true` kalau formula-nya aktif sungguhan di Google Sheets (nilai ikut berubah otomatis), `false` kalau sudah "dibekukan" jadi nilai statis lewat centang **Formula Aktif** di Schema Editor (lihat [Cara Menggunakan Schema Editor](#112-cara-menggunakan-schema-editor-edit-struktur-database-yang-sudah-ada)).
 
 Anda bisa **Copy JSON**, **Export JSON**, atau **Export Markdown** langsung dari halaman ini.
 
@@ -503,14 +507,17 @@ Badge **PK** berarti kolom tersebut terdeteksi sebagai Primary Key. Badge **FK �
 2. Buka menu **Prompt Builder**.
 3. Isi konfigurasi di panel kiri:
    - **Template** — jenis aplikasi yang ingin dibangun (Web App Google Apps Script, Android APK, Windows EXE, dst).
-   - **AI Provider** — OpenAI / Gemini / Qwen.
-   - **Development Mode** — web-app, mobile-app, desktop-app, atau api-only.
+   - **AI Provider** — OpenAI / Gemini / Qwen / Claude.
    - **Programming Style** — clean-architecture, MVC, minimal-script, atau microservices.
    - **Requirement Tambahan** — kebutuhan teknis spesifik (contoh: "pakai Bootstrap 5").
    - **Instruksi Anda** — permintaan bebas (contoh: "buatkan aplikasi kasir dari struktur ini").
-4. Panel kanan menampilkan **preview prompt** secara real-time, lengkap dengan estimasi jumlah karakter, token, biaya, dan waktu respon (**Token Estimator**).
+4. Panel kanan menampilkan **preview prompt** secara real-time, lengkap dengan estimasi jumlah karakter, token, biaya, dan waktu respon (**Token Estimator**). Prompt-nya bisa Anda edit langsung di situ sebelum dikirim, dan tombol **Reset** mengembalikannya ke versi hasil generate otomatis.
 5. Prompt yang ditampilkan sudah melewati **Smart Prompt Optimizer** (context compression, JSON minifying, penghapusan duplikasi) agar hemat token tanpa kehilangan informasi penting.
 6. Klik **"Kirim ke AI Studio"** untuk melanjutkan.
+
+### Supaya AI tidak salah paham: Legend Field
+
+Karena Database Context di-JSON-kan dalam bentuk singkat/minified untuk hemat token (mis. `pk`, `fk`, `ref`, `live`), Prompt Builder otomatis menyertakan **bagian "Legend Field"** di awal prompt yang menjelaskan arti tiap singkatan itu ke AI — termasuk penjelasan field `formula`/`live` (formula aktif vs sudah dibekukan jadi nilai statis, lihat [Cara Menggunakan Schema Editor](#112-cara-menggunakan-schema-editor-edit-struktur-database-yang-sudah-ada)) dan daftar kemungkinan nilai `type`. Anda tidak perlu menjelaskan istilah-istilah ini sendiri ke AI — Ponti Sheets sudah melakukannya secara otomatis di setiap prompt yang dibuat.
 
 ---
 
@@ -528,6 +535,9 @@ Badge **PK** berarti kolom tersebut terdeteksi sebagai Primary Key. Badge **FK �
 | OpenAI | `gpt-4o-mini` | Butuh API Key dari platform.openai.com |
 | Google Gemini | `gemini-2.0-flash` | Butuh API Key dari Google AI Studio |
 | Qwen | `qwen-max` | Butuh API Key dari Alibaba Cloud DashScope |
+| Claude (Anthropic) | `claude-sonnet-5` | Butuh API Key dari console.anthropic.com |
+
+> 💡 **Kolom Model di Settings bukan dropdown terkunci** — sekarang berupa kotak isian teks biasa dengan **saran autofill** (mirip Google Search) yang muncul saat Anda mulai mengetik. Anda tetap bebas mengetik nama model apa pun (termasuk model baru yang baru dirilis provider setelah Ponti Sheets di-build), tidak terbatas cuma pada saran yang muncul.
 
 > 🔑 API Key Anda **hanya disimpan di localStorage browser Anda sendiri** (Personal Mode) — tidak pernah dikirim ke server Ponti Sheets, karena memang tidak ada server-nya.
 
@@ -550,9 +560,13 @@ Anda juga bisa export langsung dari halaman **Database Context** dan **Documenta
 Ponti Sheets **sudah PWA secara default** — Anda tidak perlu build tambahan apa pun.
 
 1. Deploy aplikasi ke hosting HTTPS (Netlify, Vercel, GitHub Pages, dll) — PWA butuh koneksi HTTPS (kecuali `localhost`).
-2. Buka aplikasi lewat browser (Chrome/Edge).
-3. Klik ikon **"Install"** di address bar (atau menu ⋮ → "Install Ponti Sheets").
-4. Aplikasi akan terpasang seperti aplikasi native, bisa dibuka tanpa browser, dan tetap berfungsi offline untuk halaman yang sudah pernah dibuka (berkat `sw.js`).
+2. Buka aplikasi lewat browser (Chrome/Edge/Safari).
+3. **Di HP (Android/Chrome)**: akan muncul **banner "Install" otomatis di dalam aplikasi** begitu kriteria instalasi terpenuhi — cukup ketuk tombol **"Install"**. Kalau banner-nya tidak muncul/sudah ditutup, tetap bisa lewat menu ⋮ browser → "Add to Home Screen" / "Install App".
+4. **Di iPhone (Safari)**: Apple sengaja tidak menyediakan prompt otomatis untuk PWA — Ponti Sheets akan menampilkan banner berisi instruksi manual: ketuk ikon **Share**, lalu pilih **"Add to Home Screen"**.
+5. **Di desktop (Chrome/Edge)**: klik ikon **"Install"** di address bar (atau menu ⋮ → "Install Ponti Sheets").
+6. Aplikasi akan terpasang seperti aplikasi native, bisa dibuka tanpa browser, dan tetap berfungsi offline untuk halaman yang sudah pernah dibuka (berkat `sw.js`).
+
+> 💡 Ikon aplikasi sudah disediakan dalam format PNG di beberapa ukuran (`icon-192.png`, `icon-512.png`, `icon-maskable-512.png` untuk Android adaptive icon, dan `icon-apple-touch-180.png` untuk iOS) — semuanya sudah terdaftar di `manifest.json`, jadi tidak ada langkah tambahan yang perlu Anda lakukan supaya aplikasi bisa di-install.
 
 ---
 
@@ -573,7 +587,7 @@ Hasilnya berupa file `.apk` (atau `.aab` untuk Play Store) yang siap dipasang di
 2. Pilih platform **Android**.
 3. Unduh paket APK yang dihasilkan.
 
-> Pastikan `manifest.json` dan ikon aplikasi (`assets/icons/`) sudah lengkap sebelum build — ganti `icon.svg` dengan ikon final beresolusi tinggi (disarankan menyediakan versi PNG 192×192 dan 512×512) agar tampilan di Android lebih baik.
+> Ikon PNG (192×192, 512×512, dan versi maskable) sudah disediakan di `assets/icons/` dan terdaftar di `manifest.json` — tidak perlu digenerate manual lagi. Kalau Anda ingin mengganti dengan branding sendiri, cukup timpa file-file PNG tersebut dengan ukuran yang sama.
 
 ---
 
@@ -597,6 +611,9 @@ Kedua opsi ini **tidak mengubah source code utama** — mereka hanya membungkus 
 
 ## 19. FAQ
 
+**Q: Saya orang awam & bingung dengan istilah teknis di aplikasi ini, harus mulai dari mana?**
+A: Buka menu **📖 Panduan Penggunaan** di sidebar (posisinya persis di bawah Dashboard) — halaman itu ditulis khusus untuk pengguna yang belum familiar dengan istilah teknis, lengkap dengan alur pemakaian singkat dan kamus istilah yang bisa dicari langsung dari dalam aplikasi.
+
 **Q: Apakah data spreadsheet saya dikirim ke server Ponti Sheets?**
 A: Tidak. Ponti Sheets tidak memiliki server sama sekali. Semua komunikasi hanya terjadi antara browser Anda dan Google API / API AI Provider yang Anda pilih sendiri.
 
@@ -606,7 +623,7 @@ A: Sejak fitur multi-user (Login Gate) ditambahkan, login Google berfungsi ganda
 **Q: Apakah data saya benar-benar terpisah dari orang lain yang login di device yang sama?**
 A: Ya, secara penyimpanan (localStorage) datanya dipisah per akun Google. Tapi ini bukan enkripsi/keamanan tingkat server — siapa pun yang punya akses ke browser/device yang sama (mis. lewat DevTools) secara teknis bisa melihat data akun lain yang tersimpan di situ. Cocok untuk pemakaian tim kecil/keluarga yang saling percaya, bukan untuk memisahkan data secara aman dari pihak yang tidak dipercaya.
 
-**Q: Apakah saya wajib mengisi semua API Key (OpenAI, Gemini, Qwen)?**
+**Q: Apakah saya wajib mengisi semua API Key (OpenAI, Gemini, Qwen, Claude)?**
 A: Tidak. Isi hanya provider yang ingin Anda pakai. Anda bisa mengganti provider aktif kapan saja di menu Settings atau Prompt Builder.
 
 **Q: Kenapa beberapa kolom terdeteksi dengan confidence rendah?**
@@ -632,14 +649,17 @@ A: Untuk saat ini (V1) didesain untuk pemakaian pribadi. Dukungan multi-user dir
 |---|---|
 | Halaman putih / blank saat dibuka | Pastikan Anda membuka lewat web server (`http://localhost:...`), bukan lewat `file://`. ES Module tidak berjalan di `file://`. |
 | Tidak bisa masuk sama sekali, selalu diminta login lagi | Sejak update Login Gate, semua halaman wajib login. Kalau layar login terus muncul walau sudah klik "Login dengan Google", cek Console browser (F12) untuk pesan error dari Google (biasanya soal origin/Client ID yang belum cocok). |
-| Tombol "Login dengan Google" tidak berfungsi / error Client ID | Kalau Client ID belum diisi, Login Gate akan otomatis menampilkan form untuk mengisinya langsung — isi sesuai panduan di [Cara Login Google](#8-cara-login-google), dan pastikan origin Anda sudah ditambahkan di Google Cloud Console. Kalau sudah pernah diisi tapi errornya tentang izin, buka menu **Settings → Google OAuth** (setelah login) untuk memeriksa/menggantinya. |
+| Tombol "Login dengan Google" tidak berfungsi / error Client ID | Kalau Client ID belum diisi, Login Gate akan otomatis menampilkan form untuk mengisinya langsung — isi sesuai panduan di [Cara Login Google](#8-cara-login-google), dan pastikan origin Anda sudah ditambahkan di Google Cloud Console. Kalau sudah pernah diisi tapi errornya tentang izin/salah Client ID, hapus key `ponti_sheets.google_client_id` di DevTools (F12 → Application → Local Storage) lalu reload untuk mengisi ulang dari Login Gate. |
 | Client ID hilang setelah update aplikasi | Client ID disimpan sebagai pengaturan **global** terpisah dari file kode maupun Settings per-akun — seharusnya tidak hilang lagi saat update. Jika Anda upgrade dari versi yang jauh lebih lama, Client ID lama Anda akan otomatis terdeteksi & dipindahkan saat pertama kali login. |
 | Login sebagai akun A, tapi Settings/History yang muncul kosong/beda | Ini justru berperilaku benar — sejak fitur multi-user, setiap akun Google punya ruang data sendiri. Pastikan Anda login dengan akun Google yang sama seperti sebelumnya (cek nama/avatar di pojok kanan atas topbar). |
 | Daftar spreadsheet kosong padahal ada banyak file di Drive | Pastikan Google Sheets API & Google Drive API sudah diaktifkan di Google Cloud Console project Anda. |
 | Error "API Key belum diisi" di AI Studio | Buka menu Settings, isi API Key untuk provider yang dipilih, lalu klik Simpan. |
-| Error dari OpenAI/Gemini/Qwen (401/403) | API Key salah, kadaluarsa, atau kuota habis. Periksa dashboard provider terkait. |
+| Error dari OpenAI/Gemini/Qwen/Claude (401/403) | API Key salah, kadaluarsa, atau kuota habis. Periksa dashboard provider terkait. |
+| Error dari Claude soal CORS / browser access | Ponti Sheets sudah menyertakan header `anthropic-dangerous-direct-browser-access` supaya API Claude bisa dipanggil langsung dari browser tanpa server perantara — kalau tetap gagal, kemungkinan API Key Anda dibatasi organisasi/policy tertentu di akun Anthropic Anda. |
 | Deteksi tipe kolom / PK-FK kurang akurat | Analisis memakai *sample data* (maksimum 50 baris pertama). Pastikan baris awal data representatif dan header kolom jelas. |
-| PWA tidak bisa di-install | PWA membutuhkan HTTPS (kecuali di `localhost`). Deploy ke hosting dengan HTTPS aktif. |
+| PWA tidak bisa di-install | PWA membutuhkan HTTPS (kecuali di `localhost`). Deploy ke hosting dengan HTTPS aktif, dan pastikan `manifest.json` + service worker (`sw.js`) berhasil dimuat (cek tab Application di DevTools). |
+| Banner "Install" tidak muncul di HP Android | Browser (Chrome) baru memicu prompt instalasi setelah kriteria tertentu terpenuhi (kadang butuh kunjungan berulang) — kalau banner tidak muncul, tetap bisa install manual lewat menu ⋮ browser → "Add to Home Screen"/"Install App". Pastikan juga banner belum pernah Anda tutup (tersimpan selama 14 hari sejak ditutup). |
+| Tidak ada prompt instalasi otomatis di iPhone | Ini normal — Safari/iOS sengaja tidak menyediakan prompt otomatis untuk PWA apa pun (bukan cuma Ponti Sheets). Install manual lewat ikon Share → "Add to Home Screen", atau ikuti instruksi di banner dalam aplikasi. |
 | Data hilang setelah membersihkan cache browser | Seluruh data (history, settings, API key) tersimpan di `localStorage` browser, per akun Google — membersihkan data situs akan menghapus data SEMUA akun di device tersebut. Gunakan fitur Export secara berkala untuk mencadangkan hasil kerja Anda. |
 
 ---

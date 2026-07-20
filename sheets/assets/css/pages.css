@@ -69,6 +69,32 @@
 .sheet-card__section h4 { font-size: 12.5px; text-transform: uppercase; color: var(--text-tertiary); letter-spacing: 0.03em; margin-bottom: 8px; }
 .formula-list, .quality-list, .recommendation-list { margin: 0; padding-left: 18px; font-size: 12.5px; }
 .formula-item code { font-family: var(--font-mono); background: var(--bg-hover); padding: 1px 5px; border-radius: 4px; }
+.column-formula-cell { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.column-formula-cell code { font-family: var(--font-mono); font-size: 11px; background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; }
+
+/* ---------- Panduan Penggunaan (Guide) ---------- */
+.guide-steps { display: flex; flex-direction: column; gap: 14px; }
+.guide-step { display: flex; flex-direction: column; gap: 3px; padding-left: 14px; border-left: 3px solid var(--accent); }
+.guide-step__title { font-weight: 600; font-size: 13.5px; }
+.guide-step__desc { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+
+.guide-search {
+  margin: 12px 0 18px; width: 100%; max-width: 420px;
+}
+.guide-glossary__group { margin-bottom: 22px; }
+.guide-glossary__group:last-child { margin-bottom: 0; }
+.guide-glossary__group h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); margin-bottom: 10px; }
+.guide-term-list { margin: 0; }
+.guide-term-list dt { font-weight: 700; font-size: 13.5px; margin-top: 12px; }
+.guide-term-list dt:first-child { margin-top: 0; }
+.guide-term-list dd { margin: 4px 0 0; font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
+
+.guide-faq { display: flex; flex-direction: column; gap: 16px; }
+.guide-faq__item { padding-bottom: 14px; border-bottom: 1px solid var(--border-soft); }
+.guide-faq__item:last-child { border-bottom: none; padding-bottom: 0; }
+.guide-faq__q { display: flex; align-items: flex-start; gap: 8px; font-weight: 600; font-size: 13.5px; margin-bottom: 6px; color: var(--text-primary); }
+.guide-faq__q .icon { color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+.guide-faq__a { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; padding-left: 22px; }
 .formula-item__meta { color: var(--text-tertiary); }
 .quality-item { margin-bottom: 4px; }
 .quality-item--error { color: var(--danger); }
@@ -238,6 +264,24 @@
 .icon-btn--danger-text { color: var(--danger); }
 .icon-btn--danger-text:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--danger); }
 
+/* ---------- Install Prompt Banner ---------- */
+.banner-host:empty { display: none; }
+.install-banner {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; margin: 12px 24px 0;
+  background: var(--accent-soft, rgba(99, 102, 241, 0.12));
+  border: 1px solid var(--accent); border-radius: var(--radius-md);
+}
+.install-banner__icon { color: var(--accent); flex-shrink: 0; display: inline-flex; }
+.install-banner__text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.install-banner__text strong { font-size: 13px; }
+.install-banner__text span { font-size: 12px; color: var(--text-secondary); }
+.install-banner__close {
+  background: none; border: none; color: var(--text-tertiary); cursor: pointer;
+  font-size: 14px; padding: 4px 8px; flex-shrink: 0;
+}
+.install-banner__close:hover { color: var(--text-primary); }
+
 /* Sticky toolbar — tetap terlihat saat scroll di antara banyak sheet */
 .schema-editor-toolbar {
   position: sticky; top: var(--topbar-height); z-index: 8;
@@ -363,6 +407,8 @@
   .schema-sheet-card__title-row { align-items: flex-start; }
   .sheet-name-input { font-size: 14px; }
   .schema-sheet-card__order-actions .btn span:last-child { display: none; } /* ikon saja di tombol Hapus Sheet, hemat ruang */
+  .install-banner { margin: 10px 14px 0; flex-wrap: wrap; }
+  .install-banner__text { min-width: 160px; }
 }
 
 @media (max-width: 480px) {

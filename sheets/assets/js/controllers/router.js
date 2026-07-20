@@ -5,7 +5,7 @@
 
 const VALID_ROUTES = new Set([
   "dashboard", "database-builder", "spreadsheet", "analysis", "database-context", "schema-editor", "erd",
-  "prompt-builder", "ai-studio", "documentation", "history", "export", "settings",
+  "prompt-builder", "ai-studio", "documentation", "history", "export", "settings", "guide",
 ]);
 
 const routeListeners = [];

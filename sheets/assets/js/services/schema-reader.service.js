@@ -127,6 +127,23 @@ export const schemaReaderService = {
             const isFormula = typeof sampleValue === "string" && sampleValue.startsWith("=");
             const saved = savedColumns[name];
 
+            // PENTING: kalau formula sudah "dibekukan" (formulaIsLive:false), sel di Google
+            // Sheets TIDAK lagi berisi formula (cuma nilai hasil hitungannya) — jadi formula
+            // aslinya HANYA bisa diketahui dari metadata tersimpan, tidak bisa dideteksi lagi
+            // dari isi sel. Kalau belum pernah di-set lewat Schema Editor, jatuh ke deteksi biasa.
+            let formula = null;
+            let formulaIsLive = true;
+            if (saved?.formulaIsLive === false) {
+              formula = saved.formula || null;
+              formulaIsLive = false;
+            } else if (isFormula) {
+              formula = sampleValue;
+              formulaIsLive = true;
+            } else if (saved?.formula) {
+              formula = saved.formula;
+              formulaIsLive = saved.formulaIsLive !== false;
+            }
+
             return {
               _key: generateKey("col"),
               name,
@@ -142,7 +159,8 @@ export const schemaReaderService = {
               referencesSheet: saved?.referencesSheet || null,
               referencesColumn: saved?.referencesColumn || null,
               defaultValue: null,
-              formula: isFormula ? sampleValue : null,
+              formula,
+              formulaIsLive,
               validation,
               sampleData: [],
             };

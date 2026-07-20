@@ -30,6 +30,12 @@ export function buildSchemaMetadataSnapshot(blueprint) {
         isForeignKey: !!c.isForeignKey,
         referencesSheet: c.referencesSheet || null,
         referencesColumn: c.referencesColumn || null,
+        formula: c.formula || null,
+        // formulaIsLive: true = formula aktif (nilai ikut berubah otomatis di Google Sheets);
+        // false = sudah "dibekukan" jadi nilai statis — formula-nya sendiri sudah tidak ada
+        // lagi di sel manapun, jadi HARUS diingat lewat metadata ini, tidak bisa ditebak
+        // ulang dari isi sel (yang cuma berupa nilai biasa, tidak ada tanda ia bekas formula).
+        formulaIsLive: c.formulaIsLive !== false,
       };
     });
     sheets[sheet.name] = { columns };

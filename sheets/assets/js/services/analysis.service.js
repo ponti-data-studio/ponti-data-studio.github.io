@@ -24,10 +24,29 @@ const SAMPLE_ROW_LIMIT = 50;
  * -----------------------------------------------------------------------
  */
 
-function buildColumnsFromGrid(headerRow, dataRows, savedColumns = {}) {
+function buildColumnsFromGrid(headerRow, dataRows, savedColumns = {}, formulaSampleRow = []) {
   return headerRow.map((headerName, colIdx) => {
     const columnValues = dataRows.map((row) => row[colIdx]);
     const saved = savedColumns[headerName || `col_${colIdx}`];
+
+    const sampleFormulaCell = formulaSampleRow[colIdx];
+    const isLiveFormula = typeof sampleFormulaCell === "string" && sampleFormulaCell.startsWith("=");
+
+    // PENTING: kalau formula sudah "dibekukan" (formulaIsLive:false) lewat Schema Editor,
+    // sel di Google Sheets TIDAK lagi berisi formula — formula aslinya hanya bisa diketahui
+    // dari metadata tersimpan, tidak bisa dideteksi lagi dari isi sel yang sekarang.
+    let formula = null;
+    let formulaIsLive = true;
+    if (saved?.formulaIsLive === false) {
+      formula = saved.formula || null;
+      formulaIsLive = false;
+    } else if (isLiveFormula) {
+      formula = sampleFormulaCell;
+      formulaIsLive = true;
+    } else if (saved?.formula) {
+      formula = saved.formula;
+      formulaIsLive = saved.formulaIsLive !== false;
+    }
 
     if (saved) {
       // Ikuti persis apa yang sudah diatur user di Schema Editor — jangan tebak ulang.
@@ -43,6 +62,8 @@ function buildColumnsFromGrid(headerRow, dataRows, savedColumns = {}) {
         nullable: !saved.required,
         sampleValues: [...new Set(columnValues.filter((v) => v !== null && v !== ""))].slice(0, 5),
         warnings: [],
+        formula,
+        formulaIsLive,
       });
     }
 
@@ -60,6 +81,8 @@ function buildColumnsFromGrid(headerRow, dataRows, savedColumns = {}) {
       nullable,
       sampleValues: [...new Set(columnValues.filter((v) => v !== null && v !== ""))].slice(0, 5),
       warnings: [],
+      formula,
+      formulaIsLive,
     });
   });
 }
@@ -159,7 +182,8 @@ export const analysisService = {
       const dataRows = valueGrid.slice(1);
 
       const savedColumns = savedSnapshot?.sheets?.[title]?.columns || {};
-      const columns = buildColumnsFromGrid(headerRow, dataRows, savedColumns);
+      const formulaSampleRow = formulaGrid[1] || [];
+      const columns = buildColumnsFromGrid(headerRow, dataRows, savedColumns, formulaSampleRow);
 
       const formulas = analyzeFormulas(title, formulaGrid);
 

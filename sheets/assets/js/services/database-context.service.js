@@ -74,6 +74,8 @@ export const databaseContextService = {
           confidence: c.confidence,
           nullable: c.nullable,
           sampleValues: c.sampleValues,
+          formula: c.formula,
+          formulaIsLive: c.formulaIsLive,
         })),
         formulas: sheet.formulas.map((f) => ({
           cell: f.cell, formula: f.formula, name: f.name,

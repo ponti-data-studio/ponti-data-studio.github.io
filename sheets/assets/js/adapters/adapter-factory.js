@@ -1,6 +1,7 @@
 import { OpenAIAdapter } from "./openai.adapter.js";
 import { GeminiAdapter } from "./gemini.adapter.js";
 import { QwenAdapter } from "./qwen.adapter.js";
+import { ClaudeAdapter } from "./claude.adapter.js";
 
 /**
  * adapter-factory.js
@@ -11,6 +12,7 @@ const registry = {
   openai: OpenAIAdapter,
   gemini: GeminiAdapter,
   qwen: QwenAdapter,
+  claude: ClaudeAdapter,
 };
 
 export function createAIAdapter(providerId, { apiKey, model } = {}) {

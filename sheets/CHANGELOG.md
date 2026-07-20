@@ -41,6 +41,14 @@ mengikuti [Semantic Versioning](https://semver.org/).
 
 Lihat bagian [Roadmap](./README.md#21-roadmap) di README untuk rencana lengkap V2–V4.
 
+### Ditambahkan (1.5.8) — Panduan Penggunaan untuk Orang Awam
+- **Menu baru "📖 Panduan Penggunaan"** — halaman bantuan berbahasa sederhana, ditempatkan tepat di bawah Dashboard (dan sebagai quick action pertama di Dashboard) supaya mudah ditemukan pengguna baru. Berisi:
+  - Penjelasan singkat "Apa itu Ponti Sheets" tanpa jargon teknis.
+  - Alur pemakaian 5 langkah dari login sampai generate aplikasi.
+  - **Kamus istilah yang bisa dicari** — mencakup istilah umum (Spreadsheet, Sheet, Database), istilah login (OAuth, Google Client ID, API Key), istilah struktur database (PK, FK, Formula Aktif/Statis, Named Range, Data Validation, Conditional Formatting, ERD, Schema, Metadata), dan istilah AI (Prompt, Token, Blueprint) — semua dijelaskan dengan analogi sehari-hari.
+  - Pertanyaan Umum dasar untuk pengguna yang benar-benar baru.
+- Dikonfirmasi: input Google Client ID sudah tidak ada lagi di menu Settings (hanya bisa diisi/diganti lewat Login Gate) — README diperbarui menghapus sisa referensi lama soal ini.
+
 ### Ditambahkan (1.5.3) — Schema Editor: Desktop UX
 - **Toolbar melekat (sticky)** di bagian atas — tombol "Terapkan Perubahan" tetap terlihat walau sedang scroll jauh ke bawah di antara banyak sheet.
 - **Sheet bisa diciutkan (collapse)** — klik ikon ▾ di header kartu sheet untuk menyembunyikan detail kolomnya sementara, tampil ringkasan (jumlah kolom & conditional format) saja. Ada juga tombol "Ciutkan Semua" / "Perluas Semua" untuk fokus ke satu sheet dengan cepat.
@@ -98,12 +106,27 @@ Lihat bagian [Roadmap](./README.md#21-roadmap) di README untuk rencana lengkap V
 - **Template Bisnis** (POS/CRM/HRIS/Inventory Management/Restoran/Sekolah/Custom) di Database Builder — dihapus. Sekarang cukup tulis instruksi bebas di kolom teks; AI tetap bisa memahami jenis bisnis dari instruksi Anda tanpa perlu memilih template.
 
 ### Ditambahkan (post-1.0.0)
+- **PWA benar-benar installable di HP** — sebelumnya `manifest.json` cuma mendaftarkan ikon SVG, yang tidak memenuhi kriteria instalasi Chrome/Android (butuh PNG 192px & 512px) dan sama sekali tidak didukung iOS Safari untuk ikon Home Screen. Sekarang disediakan ikon PNG lengkap (192px, 512px, versi maskable untuk adaptive icon Android, dan versi khusus iOS) yang digambar ulang mengikuti desain asli.
+- **Banner "Install App" di dalam aplikasi** — muncul otomatis begitu kriteria instalasi terpenuhi di Android/Chrome (tombol Install beneran memicu dialog instal native), atau instruksi manual "Tap Share → Add to Home Screen" di iOS Safari (Apple sengaja tidak menyediakan prompt otomatis di iOS). Bisa ditutup dan tidak akan muncul lagi selama 14 hari.
+- **Claude (Anthropic) sebagai AI Provider baru** — bisa dipilih di Settings/Prompt Builder/AI Studio/Database Builder seperti provider lain, lewat Adapter Pattern yang sudah ada (tinggal 1 file baru + 1 baris registry, tidak menyentuh kode lain).
+- **Input Model jadi autocomplete, bukan dropdown terkunci** — kolom Model di Settings sekarang kotak isian teks biasa dengan saran autofill (mirip Google Search) yang muncul saat mengetik, tapi tetap bisa diisi nama model apa pun (termasuk model baru yang belum ada di daftar saran).
+
+### Dihapus (post-1.0.0)
+- **Pengaturan Bahasa di Settings** — dihapus, aplikasi sepenuhnya berbahasa Indonesia.
+- **❓ Menu "Panduan Penggunaan"** (baru) — halaman bantuan dalam bahasa sederhana untuk pengguna awam: alur pemakaian singkat, kamus istilah teknis yang bisa dicari (PK, FK, Formula, Named Range, OAuth, API Key, AI Provider, dll, dijelaskan pakai analogi sehari-hari), dan pertanyaan umum versi sederhana.
+
+### Dihapus (post-1.0.0)
+- **Input Google Client ID di menu Settings** — dihapus karena sudah tersedia di layar **Login Gate** (muncul otomatis kalau belum dikonfigurasi), menghindari duplikasi. Untuk mengganti Client ID yang sudah tersimpan, hapus key `ponti_sheets.google_client_id` lewat DevTools browser lalu reload.
 - **Loading skeleton setelah login Google**: tombol "Login dengan Google" sekarang menampilkan spinner + status "Menghubungkan ke Google..." selama proses OAuth berlangsung, dan daftar spreadsheet menampilkan placeholder shimmer (bukan teks "Memuat..." polos) selagi diambil dari Google Drive.
 - **Schema Editor**: tombol **"Buka Google Sheets"** di toolbar untuk langsung membuka spreadsheet aslinya di tab baru.
 - **Schema Editor — Persistensi Tipe Kolom (perbaikan mendasar)**: tipe data, Primary Key, Foreign Key, label, dan deskripsi kolom kini disimpan sebagai **Developer Metadata** tersembunyi di spreadsheet-nya sendiri, bukan ditebak ulang dari data setiap kali dibuka. Sebelumnya, tipe seperti Currency/URL/UUID/Percentage/JSON/Array selalu "kembali" jadi tipe generik (Number/Text) setelah reload karena Google Sheets tidak punya konsep tipe kolom asli — sekarang apa pun yang di-set akan selalu diingat persis oleh Ponti Sheets.
 - **Schema Editor**: mengubah **tipe data** atau **formula** sebuah kolom sekarang selalu memicu penulisan ulang data (sebelumnya, ubah tipe data saja tanpa tambah/hapus kolom tidak memicu apa-apa). Data yang sudah ada juga otomatis **dikonversi ke tipe barunya** — contoh: teks "15.000" jadi angka 15000 kalau diubah ke Number, "Ya"/"Tidak" jadi TRUE/FALSE kalau diubah ke Checkbox, tanggal berbagai format dinormalisasi ke YYYY-MM-DD. Kalau sebuah nilai tidak bisa dikonversi (format tidak dikenali), nilai aslinya dipertahankan apa adanya supaya tidak ada data hilang.
 
 ### Diperbaiki (post-1.0.0)
+- **Prompt Builder tidak konsisten dengan Database Context**: field `formula`/`formulaIsLive` yang baru ditambahkan ke Database Context ternyata ikut terhapus lagi saat Prompt Builder mengompres context untuk prompt (fungsi `compressContext` membangun objek kolom baru tanpa field itu). Sekarang ikut terbawa.
+- **Prompt Builder — AI berpotensi salah paham field singkatan**: JSON Database Context yang dikirim ke AI memakai singkatan (`pk`, `fk`, `ref`, `live`) tanpa penjelasan sama sekali. Sekarang Prompt Builder otomatis menyertakan bagian "Legend Field" di setiap prompt yang menjelaskan arti tiap singkatan itu ke AI, termasuk daftar kemungkinan nilai `type` dan cara memperlakukan kolom formula aktif vs statis.
+- **README**: menghapus referensi field "Development Mode" di bagian Cara Menggunakan Prompt Builder — field itu sudah dihapus dari UI sejak beberapa update lalu tapi dokumentasinya belum ikut diperbarui.
+- **Formula aktif/statis belum muncul di Database Context**: centang "Formula Aktif" di Schema Editor sudah tersimpan, tapi belum ikut terbaca oleh Analysis Engine & Database Context (keduanya punya jalur baca terpisah dari Schema Editor). Sekarang info `formula` & `formulaIsLive` disimpan lengkap di metadata, dibaca oleh Analysis Engine, dan ikut muncul di `database_context.json` serta tabel kolom di halaman Analysis (dengan badge "Aktif"/"Statis").
 - **Schema Editor (akar masalah kolom Validasi/FK/Formula/Aksi tampak kosong)**: `display: flex` sempat dipasang LANGSUNG di elemen `<td>` supaya beberapa kontrol (dropdown validasi, checkbox FK, dll) tersusun rapi — tapi ini bikin browser salah menghitung lebar kolom tabel (`table-layout: auto` tidak tahu cara mengukur konten flex dengan benar), sehingga kolom itu bisa mengempis nyaris nol lebar dan tampak kosong. Sekarang flex-nya dipindah ke elemen `<div>` pembungkus di DALAM sel, bukan di sel itu sendiri — sel tabel tetap `table-cell` biasa yang diukur dengan benar oleh browser.
 - **Schema Editor (bug tampilan)**: tabel Kolom sempat pakai `table-layout: fixed` dengan lebar kolom dipatok persentase — begitu banyak kontrol baru ditambahkan (chip toggle, checkbox formula, dll), beberapa kolom (termasuk Validasi) jadi keremuk nyaris tak terlihat. Diganti dengan strategi lebar minimum per kolom + kontainer scroll horizontal khusus untuk tabelnya saja, supaya tetap rapi di berbagai lebar layar tanpa ada kolom yang "hilang".
 - **Dark mode**: teks nama spreadsheet di menu Spreadsheet, teks di kartu quick-action Dashboard, dan ikon tombol hamburger menu di HP sempat tampil **hitam** di mode gelap (elemen `<button>` tanpa warna teks eksplisit ikut memakai warna default browser, bukan warna tema aplikasi). Sekarang semuanya eksplisit mengikuti tema aktif.

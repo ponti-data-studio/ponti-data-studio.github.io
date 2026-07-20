@@ -15,12 +15,11 @@ function field(label, inputNode, hint) {
 
 export async function renderSettingsPage(applyTheme) {
   const settings = await settingsService.get();
-  const googleClientId = await settingsService.getGoogleClientId();
   const container = el("div", { class: "page page--settings" });
 
   container.appendChild(el("div", { class: "page__header" }, [
     el("h2", {}, "Settings"),
-    el("p", { class: "muted" }, "Kelola tema, bahasa, provider AI, API key, dan storage lokal Anda."),
+    el("p", { class: "muted" }, "Kelola tema, provider AI, API key, dan storage lokal Anda."),
   ]));
 
   // --- Tampilan ---
@@ -32,33 +31,9 @@ export async function renderSettingsPage(applyTheme) {
     applyTheme(updated.theme);
   });
 
-  const langSelect = el("select", {}, ["id", "en"].map((l) => el("option", { value: l }, l === "id" ? "Bahasa Indonesia" : "English")));
-  langSelect.value = settings.language;
-  langSelect.addEventListener("change", async () => {
-    await settingsService.update({ language: langSelect.value });
-    showToast("Bahasa disimpan. (Catatan: multi-bahasa penuh direncanakan di versi mendatang)", "info");
-  });
-
   container.appendChild(el("div", { class: "card" }, [
     el("h3", {}, "Tampilan"),
     field("Tema", themeSelect),
-    field("Bahasa", langSelect),
-  ]));
-
-  // --- Google OAuth ---
-  const clientIdInput = el("input", { type: "text", placeholder: "xxxxxxxx.apps.googleusercontent.com", value: googleClientId || "" });
-  const clientIdSaveBtn = el("button", { class: "btn btn--ghost btn--sm", onClick: async () => {
-    await settingsService.setGoogleClientId(clientIdInput.value.trim());
-    showToast("Google Client ID disimpan", "success");
-  }}, "Simpan");
-
-  container.appendChild(el("div", { class: "card" }, [
-    el("h3", {}, "Google OAuth"),
-    field(
-      "Google Client ID",
-      el("div", { class: "input-with-button" }, [clientIdInput, clientIdSaveBtn]),
-      "Berlaku untuk SEMUA akun yang login di instalasi ini (bukan per-akun) — disimpan lokal di browser, tidak akan hilang saat Anda mengganti/update file aplikasi. Panduan membuatnya ada di README.md bagian \"Cara Login Google\"."
-    ),
   ]));
 
   // --- AI Provider ---
@@ -75,12 +50,21 @@ export async function renderSettingsPage(applyTheme) {
 
   Object.values(AI_PROVIDERS).forEach((provider) => {
     const keyInput = el("input", { type: "password", placeholder: provider.keyPlaceholder, value: settings.apiKeys[provider.id] || "" });
-    const modelSelect = el("select", {}, provider.models.map((m) => el("option", { value: m }, m)));
-    modelSelect.value = settings.models[provider.id] || provider.defaultModel;
+
+    // Model: input teks biasa + saran autofill (mirip Google Search) lewat <datalist> —
+    // bukan dropdown terkunci, supaya pengguna tetap bisa mengetik model baru yang belum
+    // ada di daftar saran kalau provider merilis model baru setelah Ponti Sheets di-build.
+    const datalistId = `models-${provider.id}`;
+    const modelDatalist = el("datalist", { id: datalistId }, provider.models.map((m) => el("option", { value: m })));
+    const modelInput = el("input", {
+      type: "text", list: datalistId,
+      placeholder: provider.defaultModel,
+      value: settings.models[provider.id] || provider.defaultModel,
+    });
 
     const saveBtn = el("button", { class: "btn btn--ghost btn--sm", onClick: async () => {
       await settingsService.setApiKey(provider.id, keyInput.value);
-      await settingsService.update({ models: { ...settings.models, [provider.id]: modelSelect.value } });
+      await settingsService.update({ models: { ...settings.models, [provider.id]: modelInput.value.trim() || provider.defaultModel } });
       showToast(`API Key ${provider.label} disimpan (lokal, di perangkat Anda)`, "success");
     }}, "Simpan");
 
@@ -88,7 +72,7 @@ export async function renderSettingsPage(applyTheme) {
       el("div", { class: "provider-row" }, [
         el("div", { class: "provider-row__label" }, provider.label),
         field("API Key", keyInput, "Disimpan hanya di perangkat Anda (localStorage), tidak dikirim ke server manapun."),
-        field("Model", modelSelect),
+        field("Model", el("div", {}, [modelInput, modelDatalist]), "Ketik nama model, atau pilih dari saran yang muncul."),
         saveBtn,
       ])
     );

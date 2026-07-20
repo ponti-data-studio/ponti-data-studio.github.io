@@ -9,6 +9,7 @@ export class ColumnModel {
     name, index, type = "unknown", isPrimaryKey = false,
     isForeignKey = false, referencesSheet = null, referencesColumn = null,
     confidence = 0, nullable = true, sampleValues = [], warnings = [],
+    formula = null, formulaIsLive = true,
   } = {}) {
     this.name = name;
     this.index = index;
@@ -21,6 +22,12 @@ export class ColumnModel {
     this.nullable = nullable;
     this.sampleValues = sampleValues;
     this.warnings = warnings;
+    // formula: formula asli kolom ini (kalau ada) — mis. "=B2*C2".
+    // formulaIsLive: true = formula aktif (nilai ikut berubah otomatis di Google Sheets);
+    // false = sudah "dibekukan" jadi nilai statis lewat Schema Editor (formula-nya sendiri
+    // sudah tidak ada lagi di sel, cuma hasil hitungannya).
+    this.formula = formula;
+    this.formulaIsLive = formulaIsLive;
   }
 }
 

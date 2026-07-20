@@ -4,7 +4,7 @@
  * untuk panggilan API Google/AI (karena data harus selalu up-to-date).
  */
 
-const CACHE_NAME = "ponti-sheets-v1.5.5";
+const CACHE_NAME = "ponti-sheets-v1.8.0";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -14,6 +14,11 @@ const APP_SHELL = [
   "./assets/css/components.css",
   "./assets/css/pages.css",
   "./assets/js/app.js",
+  "./assets/icons/icon.svg",
+  "./assets/icons/icon-192.png",
+  "./assets/icons/icon-512.png",
+  "./assets/icons/icon-maskable-512.png",
+  "./assets/icons/icon-apple-touch-180.png",
 ];
 
 self.addEventListener("install", (event) => {

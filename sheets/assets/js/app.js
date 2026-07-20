@@ -21,6 +21,7 @@ import { renderDocumentationPage } from "./pages/documentation.page.js";
 import { renderHistoryPage } from "./pages/history.page.js";
 import { renderExportPage } from "./pages/export.page.js";
 import { renderSettingsPage } from "./pages/settings.page.js";
+import { renderGuidePage } from "./pages/guide.page.js";
 
 const PAGE_RENDERERS = {
   dashboard: (nav) => renderDashboardPage(nav),
@@ -36,6 +37,7 @@ const PAGE_RENDERERS = {
   history: () => renderHistoryPage(),
   export: () => renderExportPage(),
   settings: (nav, applyTheme) => renderSettingsPage(applyTheme),
+  guide: () => renderGuidePage(),
 };
 
 let refreshTopbar = () => {};

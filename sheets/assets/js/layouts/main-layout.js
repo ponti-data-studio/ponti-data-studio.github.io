@@ -2,6 +2,7 @@ import { el, clear } from "../utils/dom.util.js";
 import { renderSidebar } from "../components/sidebar.component.js";
 import { renderTopbar } from "../components/topbar.component.js";
 import { openCommandPalette } from "../components/command-palette.component.js";
+import { mountInstallPrompt } from "../components/install-prompt.component.js";
 import { MENU_ITEMS } from "../config/app.config.js";
 import { googleAuthService } from "../services/google-auth.service.js";
 import { appState } from "../controllers/app-state.js";
@@ -14,6 +15,7 @@ export function buildMainLayout({ navigate, applyTheme, onSessionEnded = () => {
   const sidebarHost = el("div", { class: "sidebar-host" });
   const mainHost = el("div", { class: "main-host" });
   const topbarHost = el("div", { class: "topbar-host" });
+  const bannerHost = el("div", { class: "banner-host" });
   const contentHost = el("main", { class: "content-host", id: "content-host" });
 
   function closeMobileSidebar() {
@@ -22,8 +24,12 @@ export function buildMainLayout({ navigate, applyTheme, onSessionEnded = () => {
 
   const sidebarBackdrop = el("div", { class: "sidebar-backdrop", onClick: closeMobileSidebar });
 
-  mainHost.append(topbarHost, contentHost);
+  mainHost.append(topbarHost, bannerHost, contentHost);
   root.append(sidebarHost, sidebarBackdrop, mainHost);
+
+  // Dipasang SEKALI saja saat shell dibangun (bukan per-route) — supaya banner
+  // "Install App" tidak sempat hilang-muncul lagi setiap pindah halaman.
+  mountInstallPrompt(bannerHost);
 
   // Navigasi lewat sidebar/command palette otomatis menutup drawer di layar HP,
   // supaya pengguna tidak perlu tap dua kali (buka menu -> pilih -> harus tutup manual).

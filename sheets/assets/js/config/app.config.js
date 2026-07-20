@@ -13,7 +13,6 @@ export const APP_CONFIG = {
   version: "1.0.0",
   mode: "personal", // personal | cloud | multi-user | saas (roadmap v1-v4)
   storageDriver: "local", // local (v1) -> remote (v2+) tanpa mengubah interface
-  defaultLanguage: "id",
   defaultTheme: "dark",
   supportedLanguages: ["id", "en"],
   supportedThemes: ["dark", "light"],
@@ -56,7 +55,7 @@ export const AI_PROVIDERS = {
   gemini: {
     id: "gemini",
     label: "Google Gemini",
-    defaultModel: "gemini-2.0-flash",
+    defaultModel: "gemini-3.5-flash",
     models: ["gemini-3.5-flash", "gemini-2.0-pro", "gemini-1.5-pro"],
     endpoint: "https://generativelanguage.googleapis.com/v1beta/models",
     pricePer1kInputUsd: 0.0001,
@@ -74,10 +73,21 @@ export const AI_PROVIDERS = {
     pricePer1kOutputUsd: 0.0064,
     keyPlaceholder: "sk-...",
   },
+  claude: {
+    id: "claude",
+    label: "Claude (Anthropic)",
+    defaultModel: "claude-sonnet-5",
+    models: ["claude-sonnet-5", "claude-opus-4-8", "claude-haiku-4-5-20251001"],
+    endpoint: "https://api.anthropic.com/v1/messages",
+    pricePer1kInputUsd: 0.003,
+    pricePer1kOutputUsd: 0.015,
+    keyPlaceholder: "sk-ant-...",
+  },
 };
 
 export const MENU_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: "layout-dashboard" },
+  { id: "guide", label: "Panduan Penggunaan", icon: "help-circle" },
   { id: "database-builder", label: "Database Builder", icon: "cube" },
   { id: "spreadsheet", label: "Spreadsheet", icon: "table" },
   { id: "analysis", label: "Analysis", icon: "search-check" },

@@ -6,10 +6,9 @@ const GOOGLE_CLIENT_ID_KEY = "google_client_id"; // key GLOBAL (tidak per-user),
 
 const DEFAULTS = {
   theme: APP_CONFIG.defaultTheme,
-  language: APP_CONFIG.defaultLanguage,
   activeProvider: "openai",
-  apiKeys: { openai: "", gemini: "", qwen: "" },
-  models: { openai: "", gemini: "", qwen: "" },
+  apiKeys: { openai: "", gemini: "", qwen: "", claude: "" },
+  models: { openai: "", gemini: "", qwen: "", claude: "" },
 };
 
 export const settingsService = {

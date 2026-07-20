@@ -11,12 +11,21 @@ function columnBadge(col) {
   return badges;
 }
 
+function formulaCell(col) {
+  if (!col.formula) return el("span", { class: "muted" }, "-");
+  return el("div", { class: "column-formula-cell" }, [
+    el("code", {}, col.formula.length > 28 ? `${col.formula.slice(0, 28)}…` : col.formula),
+    el("span", { class: `badge ${col.formulaIsLive ? "badge--fk" : "badge--type"}` }, col.formulaIsLive ? "Aktif" : "Statis"),
+  ]);
+}
+
 function renderSheetCard(sheet) {
   const rows = sheet.columns.map((c) =>
     el("tr", {}, [
       el("td", {}, c.name),
       el("td", {}, el("span", { class: "badge badge--type" }, c.type)),
       el("td", {}, columnBadge(c)),
+      el("td", {}, formulaCell(c)),
       el("td", {}, `${Math.round(c.confidence * 100)}%`),
       el("td", {}, c.nullable ? "Ya" : "Tidak"),
     ])
@@ -39,7 +48,7 @@ function renderSheetCard(sheet) {
       el("span", { class: "muted" }, `${sheet.rowCount} baris × ${sheet.columnCount} kolom`),
     ]),
     el("table", { class: "data-table" }, [
-      el("thead", {}, el("tr", {}, ["Kolom", "Tipe", "Key", "Confidence", "Nullable"].map((h) => el("th", {}, h)))),
+      el("thead", {}, el("tr", {}, ["Kolom", "Tipe", "Key", "Formula", "Confidence", "Nullable"].map((h) => el("th", {}, h)))),
       el("tbody", {}, rows),
     ]),
     formulas.length ? el("div", { class: "sheet-card__section" }, [

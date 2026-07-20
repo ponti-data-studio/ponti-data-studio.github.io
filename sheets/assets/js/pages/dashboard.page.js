@@ -48,6 +48,7 @@ export async function renderDashboardPage(navigate) {
     el("section", { class: "section" }, [
       el("h3", { class: "section__title" }, "Alur Kerja Cepat"),
       el("div", { class: "quick-action-grid" }, [
+        quickAction("📖 Panduan Penggunaan", "Baru pertama kali? Mulai dari sini", "help-circle", "guide"),
         quickAction("✨ Database Builder", "Bikin database baru dari AI (opsional)", "cube", "database-builder"),
         quickAction("🛠️ Schema Editor", "Edit struktur database yang sudah ada", "pencil", "schema-editor"),
         quickAction("1. Pilih Spreadsheet", "Login Google & pilih sumber data", "table", "spreadsheet"),
