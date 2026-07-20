@@ -58,7 +58,7 @@ export const promptBuilderService = {
       ``,
       `# TARGET OUTPUT`,
       `Template: ${template.label}`,
-      `Gaya pemrograman: ${request.programmingStyle}`,
+      `Visual Design: ${request.programmingStyle}`,
       `Output yang diharapkan: ${template.outputs.join(", ") || "-"}`,
       ``,
       `# LEGEND FIELD DATABASE CONTEXT (WAJIB DIPAHAMI SEBELUM MEMBACA JSON DI BAWAH)`,
