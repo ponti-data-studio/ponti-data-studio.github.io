@@ -4,7 +4,7 @@ import { AI_PROVIDERS } from "../config/app.config.js";
 const ANTHROPIC_API_VERSION = "2023-06-01";
 
 export class ClaudeAdapter extends AIProviderAdapter {
-  async complete(prompt) {
+  async complete(promptOrMessages) {
     this.validateApiKey();
     const cfg = AI_PROVIDERS.claude;
 
@@ -22,7 +22,7 @@ export class ClaudeAdapter extends AIProviderAdapter {
       body: JSON.stringify({
         model: this.model || cfg.defaultModel,
         max_tokens: 8192,
-        messages: [{ role: "user", content: prompt }],
+        messages: this.normalizeMessages(promptOrMessages),
       }),
     });
 

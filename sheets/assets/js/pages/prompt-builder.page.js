@@ -8,8 +8,25 @@ import { PromptRequestModel } from "../models/prompt.model.js";
 import { settingsService } from "../services/settings.service.js";
 import { showToast } from "../components/toast.component.js";
 
-function field(label, inputNode) {
-  return el("label", { class: "field" }, [el("span", { class: "field__label" }, label), inputNode]);
+const VISUAL_STYLE_OPTIONS = [
+  "Professional - Bersih, rapi, formal, fokus pada fungsi", "Modern - Minimalis, rounded, animasi halus",
+  "Corporate - Formal, warna konservatif, terpercaya", "Elegant - Premium, banyak whitespace, tipografi kuat",
+  "Luxury - Warna gelap, emas, eksklusif", "Minimalist - Sedikit elemen, fokus pada konten",
+  "Clean - Sangat rapi dan mudah dibaca", "Friendly - Warna cerah, ikon membulat",
+  "Playful - Ilustrasi, warna ceria", "Creative - Layout unik, banyak visual",
+  "Futuristic - Neon, glow, AI, cyber", "High-Tech - Banyak data, grafik, nuansa teknologi",
+  "Industrial - Tegas, sederhana, fokus efisiensi", "Financial - Biru, hijau, penuh grafik",
+  "Medical - Putih, biru muda, steril", "Government - Formal, aksesibilitas tinggi",
+  "Educational - Mudah dipahami, ikon informatif", "E-Commerce - Fokus produk dan CTA",
+  "Gaming - Dinamis, kontras tinggi", "Dark Theme - Dominan warna gelap", "Light Theme - Cerah, bersih",
+];
+
+function field(label, inputNode, hint) {
+  return el("label", { class: "field" }, [
+    el("span", { class: "field__label" }, label),
+    inputNode,
+    hint ? el("span", { class: "field__hint" }, hint) : null,
+  ]);
 }
 
 function flashButton(btn, tempLabel) {
@@ -56,7 +73,31 @@ export async function renderPromptBuilderPage(navigate) {
   ));
   const providerSelect = el("select", {}, Object.values(AI_PROVIDERS).map((p) => el("option", { value: p.id }, p.label)));
   providerSelect.value = settings.activeProvider;
-  const styleSelect = el("select", {}, ["Professional - Bersih, rapi, formal, fokus pada fungsi", "Modern - Minimalis, rounded, animasi halus", "Corporate - Formal, warna konservatif, terpercaya", "Elegant - Premium, banyak whitespace, tipografi kuat", "Luxury - Warna gelap, emas, eksklusif", "Minimalist - Sedikit elemen, fokus pada konten", "Clean - Sangat rapi dan mudah dibaca", "Friendly - Warna cerah, ikon membulat", "Playful - Ilustrasi, warna ceria", "Creative - Layout unik, banyak visual", "Futuristic - Neon, glow, AI, cyber", "High-Tech - Banyak data, grafik, nuansa teknologi", "Industrial - Tegas, sederhana, fokus efisiensi", "Financial - Biru, hijau, penuh grafik", "Medical - Putih, biru muda, steril", "Government - Formal, aksesibilitas tinggi", "Educational - Mudah dipahami, ikon informatif", "E-Commerce - Fokus produk dan CTA", "Gaming - Dinamis, kontras tinggi", "Dark Theme - Dominan warna gelap", "Light Theme - Cerah, bersih"].map((s) => el("option", { value: s }, s)));
+
+  // ---- Visual Style: multi-select berbentuk chip (boleh pilih lebih dari satu) ----
+  let selectedStyles = [];
+  const styleChipGroup = el("div", { class: "style-chip-group" });
+
+  function renderStyleChips() {
+    clear(styleChipGroup);
+    VISUAL_STYLE_OPTIONS.forEach((opt) => {
+      const shortLabel = opt.split(" - ")[0];
+      const isActive = selectedStyles.includes(opt);
+      const chip = el("button", {
+        type: "button",
+        class: `style-chip${isActive ? " style-chip--active" : ""}`,
+        title: opt,
+      }, shortLabel);
+      chip.addEventListener("click", () => {
+        selectedStyles = isActive ? selectedStyles.filter((s) => s !== opt) : [...selectedStyles, opt];
+        renderStyleChips();
+        rebuild();
+      });
+      styleChipGroup.appendChild(chip);
+    });
+  }
+  renderStyleChips();
+
   const additionalReq = el("textarea", { rows: 3, placeholder: "Contoh: gunakan Bootstrap 5, sertakan validasi form..." });
   const userInstruction = el("textarea", { rows: 4, placeholder: "Contoh: buatkan aplikasi kasir sederhana dari struktur ini..." });
 
@@ -64,7 +105,7 @@ export async function renderPromptBuilderPage(navigate) {
     el("h3", {}, "Konfigurasi"),
     field("Template", templateSelect),
     field("AI Provider", providerSelect),
-    field("Visual Style", styleSelect),
+    field("Visual Style", styleChipGroup, "Klik untuk memilih — bisa pilih lebih dari satu gaya sekaligus, AI akan menggabungkannya."),
     field("Requirement Tambahan", additionalReq),
     field("Instruksi Anda", userInstruction),
   );
@@ -108,7 +149,7 @@ export async function renderPromptBuilderPage(navigate) {
     currentRequest = new PromptRequestModel({
       templateId: templateSelect.value,
       provider: providerSelect.value,
-      programmingStyle: styleSelect.value,
+      visualStyle: selectedStyles,
       additionalRequirement: additionalReq.value,
       userInstruction: userInstruction.value,
       databaseContext: state.databaseContext,
@@ -120,7 +161,7 @@ export async function renderPromptBuilderPage(navigate) {
     updateTokenInfo(generatedPrompt);
   }
 
-  [templateSelect, providerSelect, styleSelect, additionalReq, userInstruction].forEach((elm) => {
+  [templateSelect, providerSelect, additionalReq, userInstruction].forEach((elm) => {
     elm.addEventListener("input", rebuild);
     elm.addEventListener("change", rebuild);
   });

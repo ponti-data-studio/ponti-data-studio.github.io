@@ -4,12 +4,14 @@
 
 export class PromptRequestModel {
   constructor({
-    templateId, provider, programmingStyle = "clean-architecture",
+    templateId, provider, visualStyle = [],
     additionalRequirement = "", userInstruction = "", databaseContext = null,
   } = {}) {
     this.templateId = templateId;
     this.provider = provider;
-    this.programmingStyle = programmingStyle;
+    // visualStyle: array — pengguna bisa memilih lebih dari satu gaya visual sekaligus
+    // (mis. "Modern" + "Dark Theme"), AI akan menggabungkan kombinasinya.
+    this.visualStyle = Array.isArray(visualStyle) ? visualStyle : [visualStyle].filter(Boolean);
     this.additionalRequirement = additionalRequirement;
     this.userInstruction = userInstruction;
     this.databaseContext = databaseContext;

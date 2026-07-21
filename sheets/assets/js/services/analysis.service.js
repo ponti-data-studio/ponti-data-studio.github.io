@@ -80,9 +80,6 @@ function buildColumnsFromGrid(headerRow, dataRows, savedColumns = {}, formulaSam
         referencesSheet: saved.referencesSheet || null,
         referencesColumn: saved.referencesColumn || null,
         confidence: 1,
-        // nullable murni untuk tampilan cepat (kebalikan dari Required kalau sudah
-        // ditentukan eksplisit "true"/"false"; tetap true/tidak pasti kalau "unknown").
-        nullable: requiredField.value !== "true",
         sampleValues: [...new Set(columnValues.filter((v) => v !== null && v !== ""))].slice(0, 5),
         warnings: [],
         formula,
@@ -93,7 +90,7 @@ function buildColumnsFromGrid(headerRow, dataRows, savedColumns = {}, formulaSam
       });
     }
 
-    const { type, confidence: typeConfidence, nullable } = detectColumnType(columnValues);
+    const { type, confidence: typeConfidence } = detectColumnType(columnValues);
     const pk = detectPrimaryKey(headerName || `col_${colIdx}`, columnValues);
     const fkCandidate = detectForeignKeyCandidate(headerName || "");
 
@@ -104,7 +101,6 @@ function buildColumnsFromGrid(headerRow, dataRows, savedColumns = {}, formulaSam
       isPrimaryKey: pk.isPrimaryKey,
       isForeignKey: fkCandidate,
       confidence: Math.max(typeConfidence, pk.confidence),
-      nullable,
       sampleValues: [...new Set(columnValues.filter((v) => v !== null && v !== ""))].slice(0, 5),
       warnings: [],
       formula,

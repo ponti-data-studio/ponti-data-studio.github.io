@@ -19,6 +19,13 @@ function formulaCell(col) {
   ]);
 }
 
+function requiredCell(col) {
+  const req = col.required;
+  if (!req || req.value === "unknown") return el("span", { class: "muted" }, "Unknown");
+  if (req.value === "true") return el("span", {}, req.condition ? `Ya (${req.condition})` : "Ya");
+  return el("span", {}, "Tidak");
+}
+
 function renderSheetCard(sheet) {
   const rows = sheet.columns.map((c) =>
     el("tr", {}, [
@@ -27,7 +34,7 @@ function renderSheetCard(sheet) {
       el("td", {}, columnBadge(c)),
       el("td", {}, formulaCell(c)),
       el("td", {}, `${Math.round(c.confidence * 100)}%`),
-      el("td", {}, c.nullable ? "Ya" : "Tidak"),
+      el("td", {}, requiredCell(c)),
     ])
   );
 
@@ -48,7 +55,7 @@ function renderSheetCard(sheet) {
       el("span", { class: "muted" }, `${sheet.rowCount} baris × ${sheet.columnCount} kolom`),
     ]),
     el("table", { class: "data-table" }, [
-      el("thead", {}, el("tr", {}, ["Kolom", "Tipe", "Key", "Formula", "Confidence", "Nullable"].map((h) => el("th", {}, h)))),
+      el("thead", {}, el("tr", {}, ["Kolom", "Tipe", "Key", "Formula", "Confidence", "Required"].map((h) => el("th", {}, h)))),
       el("tbody", {}, rows),
     ]),
     formulas.length ? el("div", { class: "sheet-card__section" }, [

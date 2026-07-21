@@ -42,12 +42,7 @@ mengikuti [Semantic Versioning](https://semver.org/).
 Lihat bagian [Roadmap](./README.md#21-roadmap) di README untuk rencana lengkap V2–V4.
 
 ### Ditambahkan (1.5.8) — Panduan Penggunaan untuk Orang Awam
-- **Menu baru "📖 Panduan Penggunaan"** — halaman bantuan berbahasa sederhana, ditempatkan tepat di bawah Dashboard (dan sebagai quick action pertama di Dashboard) supaya mudah ditemukan pengguna baru. Berisi:
-  - Penjelasan singkat "Apa itu Ponti Sheets" tanpa jargon teknis.
-  - Alur pemakaian 5 langkah dari login sampai generate aplikasi.
-  - **Kamus istilah yang bisa dicari** — mencakup istilah umum (Spreadsheet, Sheet, Database), istilah login (OAuth, Google Client ID, API Key), istilah struktur database (PK, FK, Formula Aktif/Statis, Named Range, Data Validation, Conditional Formatting, ERD, Schema, Metadata), dan istilah AI (Prompt, Token, Blueprint) — semua dijelaskan dengan analogi sehari-hari.
-  - Pertanyaan Umum dasar untuk pengguna yang benar-benar baru.
-- Dikonfirmasi: input Google Client ID sudah tidak ada lagi di menu Settings (hanya bisa diisi/diganti lewat Login Gate) — README diperbarui menghapus sisa referensi lama soal ini.
+- Lihat detail lengkap di bagian "Ditambahkan (post-1.0.0)" di bawah (menu ❓ Panduan Penggunaan).
 
 ### Ditambahkan (1.5.3) — Schema Editor: Desktop UX
 - **Toolbar melekat (sticky)** di bagian atas — tombol "Terapkan Perubahan" tetap terlihat walau sedang scroll jauh ke bawah di antara banyak sheet.
@@ -62,7 +57,7 @@ Lihat bagian [Roadmap](./README.md#21-roadmap) di README untuk rencana lengkap V
 - Toolbar atas diberi latar kartu supaya terasa sebagai control bar yang persisten, bukan menyatu dengan konten.
 
 ### Ditambahkan (1.5.1) — Schema Editor: Mobile & Interaksi
-- **Mobile-friendly**: tabel kolom di Schema Editor otomatis berubah jadi daftar kartu bertumpuk di layar HP (bukan tabel lebar yang di-scroll horizontal).
+- **Mobile-friendly**: tabel kolom di Schema Editor otomatis berubah jadi daftar kartu bertumpuk di layar HP, bukan tabel lebar yang harus di-scroll horizontal.
 - **Formula aktif vs statis**: tambah centang di kolom Formula — dicentang = formula sungguhan (nilai ikut berubah otomatis), tidak dicentang = simpan HASIL hitungannya saja sebagai nilai tetap, formula-nya sendiri tidak ditulis.
 - **Drag-to-reorder kolom**: geser ikon ⠿ untuk mengurutkan ulang kolom secara langsung (mouse & sentuhan), selain tombol ↑/↓ yang sudah ada.
 - Tombol **"Tambah Sheet Baru"** dipindah ke bagian bawah halaman (setelah semua kartu sheet) supaya tidak perlu scroll bolak-balik ke atas.
@@ -79,7 +74,14 @@ Lihat bagian [Roadmap](./README.md#21-roadmap) di README untuk rencana lengkap V
 - **README**: memperbaiki klaim usang "izin read-only" di bagian Cara Login Google yang sebenarnya sudah berubah jadi read-write sejak Database Builder ditambahkan.
 
 ### Ditambahkan (1.2.0)
-- **🛠️ Schema Editor (baru)** — edit struktur database Google Sheets yang **sudah ada** langsung dari Ponti Sheets:
+- **Database Builder** — modul AI untuk merancang & membuat struktur database Google Sheets/Excel dari nol berdasarkan instruksi pengguna:
+  - **Blueprint Engine**: prompt AI strict-JSON-only + parser/normalizer (`database_blueprint.json`) yang toleran terhadap format respons AI yang tidak sempurna.
+  - **Preview Blueprint**: ringkasan statistik, kartu per sheet (kolom, tipe data, PK/FK, formula, validasi), business rules, dan rekomendasi.
+  - **Google Sheets Generator**: membuat spreadsheet baru nyata lewat Google Sheets API — header, formula asli, dummy data berelasi, freeze row, filter, tab color, data validation, conditional formatting, protected range, dan named range.
+  - **Excel Generator**: membuat file `.xlsx` (via ExcelJS, dimuat dari CDN saat dibutuhkan) dengan fitur setara — multi-sheet, formula, freeze pane, filter, data validation, conditional formatting, auto width kolom.
+  - 6 template bawaan (POS, CRM, HRIS, Inventory Management, Restoran, Sekolah) + mode Custom bebas (dihapus di update selanjutnya, lihat bagian Dihapus).
+  - Terintegrasi penuh dengan fitur lama — hasil "Generate Google Sheets" bisa langsung dianalisis lewat tombol "Analisis Sekarang" tanpa upload ulang.
+- **Schema Editor** — edit struktur database Google Sheets yang **sudah ada** langsung dari Ponti Sheets:
   - **Schema Reader**: membaca struktur live spreadsheet (header, tipe kolom, data validation, formula contoh, conditional formatting, protected range, named range, tab color, freeze row, filter) menjadi model yang bisa diedit.
   - **Editor tabel per-kolom**: tambah/hapus/rename/reorder kolom & sheet, ubah tipe data, formula, validasi (list/number/date/checkbox/email/phone), relasi Foreign Key (dengan dropdown FK asli via data validation ONE_OF_RANGE), conditional formatting, named range, tab color, freeze row, filter, dan protect header — semua inline-editable dalam satu halaman.
   - **Sync Engine**: menulis perubahan balik ke Google Sheets asli sambil mempertahankan data yang tidak berubah; sheet yang strukturnya berubah ditulis ulang penuh (aman dari kesalahan index), sheet yang tidak berubah tidak disentuh.
@@ -88,22 +90,33 @@ Lihat bagian [Roadmap](./README.md#21-roadmap) di README untuk rencana lengkap V
 
 ### Diubah (1.2.0)
 - Refactor internal: helper Sheets API (validasi, conditional format, named range, penggeseran formula) dipindah ke modul bersama (`sheets-format.util.js`, `formula-shift.util.js`) supaya dipakai bersama oleh Database Builder & Schema Editor (DRY).
-
-### Ditambahkan (1.1.0)
-- **✨ Database Builder (baru)** — modul AI untuk merancang & membuat struktur database Google Sheets/Excel dari nol berdasarkan instruksi pengguna:
-  - **Blueprint Engine**: prompt AI strict-JSON-only + parser/normalizer (`database_blueprint.json`) yang toleran terhadap format respons AI yang tidak sempurna.
-  - **Preview Blueprint**: ringkasan statistik, kartu per sheet (kolom, tipe data, PK/FK, formula, validasi), business rules, dan rekomendasi.
-  - **Google Sheets Generator**: membuat spreadsheet baru nyata lewat Google Sheets API — header, formula asli, dummy data berelasi, freeze row, filter, tab color, data validation, conditional formatting, protected range, dan named range.
-  - **Excel Generator**: membuat file `.xlsx` (via ExcelJS, dimuat dari CDN saat dibutuhkan) dengan fitur setara — multi-sheet, formula, freeze pane, filter, data validation, conditional formatting, auto width kolom.
-  - 6 template bawaan (POS, CRM, HRIS, Inventory Management, Restoran, Sekolah) + mode Custom bebas.
-  - Terintegrasi penuh dengan fitur lama — hasil "Generate Google Sheets" bisa langsung dianalisis lewat tombol "Analisis Sekarang" tanpa upload ulang.
-
-### Diubah (1.1.0)
 - **Izin OAuth Google diperluas** dari read-only menjadi read-write (`spreadsheets` scope) — dibutuhkan agar Database Builder bisa membuat spreadsheet baru. Fitur lain tetap berperilaku read-only.
 
-### Dihapus (post-1.0.0)
-- **Deteksi Jenis Bisnis otomatis** (di Analysis, Database Context, Documentation) — dihapus karena dianggap tidak terlalu penting/akurat. `business-detector.service.js` dihapus, field `businessType` tidak lagi ada di `database_context.json`.
-- **Template Bisnis** (POS/CRM/HRIS/Inventory Management/Restoran/Sekolah/Custom) di Database Builder — dihapus. Sekarang cukup tulis instruksi bebas di kolom teks; AI tetap bisa memahami jenis bisnis dari instruksi Anda tanpa perlu memilih template.
+### Diubah (post-1.0.0) — Minta Saran AI: Jendela Mengambang & Alur Baru
+- **Minimize dibedakan dari Close** — "Minimalkan" cuma menyembunyikan jendela sementara (state & progres tetap utuh, tombol tetap "Buka Kotak Saran" untuk membukanya lagi persis dari kondisi terakhir); "Tutup" (✕) dan auto-close (setelah kedua tombol Terapkan & Selesai diklik) dianggap sesi selesai — tombol kembali jadi "Minta Saran AI" untuk sesi baru.
+- **Tombol "Selesai (Manual)" tidak lagi mewajibkan semua kotak centang manual dicentang dulu** — bisa diklik kapan saja untuk menandai sesi ditindaklanjuti, walau belum semua item manual dikerjakan.
+- **Tombol "Terapkan (Otomatis)" & "Selesai (Manual)" terkunci setelah diklik sekali** — mencegah klik ganda tidak sengaja, label berubah jadi "✓ Sudah Diterapkan"/"✓ Sudah Ditandai Selesai".
+- **Jendela mengambang (bukan panel inline lagi)** — bisa digeser, diperbesar/diperkecil, dan diminimalkan (di desktop); otomatis jadi layar-penuh di HP. Isinya di-scroll, tidak pernah melebihi ukuran layar.
+- **Hanya satu jendela dalam satu waktu** — tombol "Minta Saran AI" berubah jadi "Buka Kotak Saran" setelah pernah diminta sekali; klik lagi saat jendela masih terbuka cuma membuat jendelanya berkedip (bukan membuka baru).
+- **Dipisah jelas jadi "Bisa Diperbaiki Otomatis" dan "Perlu Anda Perbaiki Manual"**, diurutkan dari Prioritas Tinggi ke Rendah.
+- **Checklist untuk saran manual** — centang setelah dikerjakan sendiri, tulisannya otomatis dicoret (strikethrough) sebagai penanda visual sudah selesai.
+- **Dua tombol jelas**: "Terapkan (Otomatis)" untuk saran yang bisa dikerjakan sistem, "Selesai (Manual)" untuk menandai saran manual sudah ditindaklanjuti (baru bisa diklik kalau semua checklist manual sudah dicentang).
+- **Tidak bisa tertutup tidak sengaja** — jendela hanya tertutup lewat tombol ✕ (kapan saja), atau otomatis tertutup begitu KEDUA tombol "Terapkan"/"Selesai" sudah pernah diklik.
+
+### Ditambahkan (post-1.0.0)
+- **Provider & Model bebas dipilih langsung di AI Studio** — tidak lagi terkunci ke pilihan Prompt Builder. Bisa diganti kapan saja, termasuk di TENGAH percakapan multi-turn (mis. pakai model besar untuk generate pertama yang kompleks, lalu model yang lebih murah untuk revisi-revisi kecil) supaya lebih hemat token. Setiap turn response menunjukkan provider & model yang dipakai untuk turn itu.
+- **Percakapan multi-turn di AI Studio** — setelah response pertama, muncul kotak untuk mengirim permintaan revisi (mis. "ubah warna tombol jadi biru") tanpa perlu menyusun ulang prompt dari nol; AI tetap mengingat seluruh konteks percakapan sebelumnya. Tombol "Generate" berubah jadi "Mulai Percakapan Baru" untuk reset total kalau dibutuhkan.
+- **Syntax highlighting untuk blok kode di response AI Studio** — memakai Prism.js yang dimuat dinamis dari CDN (konsisten dengan pola ExcelJS di Database Builder, bukan dependency npm), otomatis mengenali bahasa dari label blok kode markdown-nya tanpa perlu didaftarkan manual satu-satu.
+- **✨ "Minta Saran AI" (Redesign Advisor) di Schema Editor** — AI mereview struktur database yang SUDAH ADA (bukan generate dari nol seperti Database Builder) dan memberi saran perbaikan konkret: PK/FK yang hilang, tipe data yang tidak sesuai, penamaan tidak konsisten, normalisasi (split sheet — memindahkan data asli yang berulang ke sheet baru dengan relasi FK), dan rekomendasi struktur umum. Saran biasa bisa dicentang & diterapkan sekaligus ke editan (baru tersimpan ke Sheets setelah "Terapkan Perubahan" seperti biasa); saran Split Sheet langsung menulis ke Google Sheets karena memindahkan data sungguhan, bukan cuma metadata.
+- **PWA benar-benar installable di HP** — sebelumnya `manifest.json` cuma mendaftarkan ikon SVG, yang tidak memenuhi kriteria instalasi Chrome/Android (butuh PNG 192px & 512px) dan sama sekali tidak didukung iOS Safari untuk ikon Home Screen. Sekarang disediakan ikon PNG lengkap (192px, 512px, versi maskable untuk adaptive icon Android, dan versi khusus iOS) yang digambar ulang mengikuti desain asli.
+- **Banner "Install App" di dalam aplikasi** — muncul otomatis begitu kriteria instalasi terpenuhi di Android/Chrome (tombol Install beneran memicu dialog instal native), atau instruksi manual "Tap Share → Add to Home Screen" di iOS Safari (Apple sengaja tidak menyediakan prompt otomatis di iOS). Bisa ditutup dan tidak akan muncul lagi selama 14 hari.
+- **Claude (Anthropic) sebagai AI Provider baru** — bisa dipilih di Settings/Prompt Builder/AI Studio/Database Builder seperti provider lain, lewat Adapter Pattern yang sudah ada (tinggal 1 file baru + 1 baris registry, tidak menyentuh kode lain).
+- **Input Model jadi autocomplete, bukan dropdown terkunci** — kolom Model di Settings sekarang kotak isian teks biasa dengan saran autofill (mirip Google Search) yang muncul saat mengetik, tapi tetap bisa diisi nama model apa pun (termasuk model baru yang belum ada di daftar saran).
+- **❓ Menu "Panduan Penggunaan"** — halaman bantuan dalam bahasa sederhana untuk pengguna awam: alur pemakaian singkat, kamus istilah teknis yang bisa dicari (PK, FK, Formula, Named Range, OAuth, API Key, AI Provider, dll, dijelaskan pakai analogi sehari-hari), dan pertanyaan umum versi sederhana.
+- **Loading skeleton setelah login Google**: tombol "Login dengan Google" menampilkan spinner + status "Menghubungkan ke Google..." selama proses OAuth berlangsung, dan daftar spreadsheet menampilkan placeholder shimmer (bukan teks "Memuat..." polos) selagi diambil dari Google Drive.
+- **Schema Editor**: tombol **"Buka Google Sheets"** di toolbar untuk langsung membuka spreadsheet aslinya di tab baru.
+- **Schema Editor**: mengubah **tipe data** atau **formula** sebuah kolom sekarang selalu memicu penulisan ulang data (sebelumnya, ubah tipe data saja tanpa tambah/hapus kolom tidak memicu apa-apa). Data yang sudah ada juga otomatis **dikonversi ke tipe barunya** — contoh: teks "15.000" jadi angka 15000 kalau diubah ke Number, "Ya"/"Tidak" jadi TRUE/FALSE kalau diubah ke Checkbox, tanggal berbagai format dinormalisasi ke YYYY-MM-DD. Kalau sebuah nilai tidak bisa dikonversi (format tidak dikenali), nilai aslinya dipertahankan apa adanya supaya tidak ada data hilang.
+- **Menu ERD**: visualisasi diagram relasi antar sheet (Entity Relationship Diagram) berbasis SVG, lengkap dengan kontrol zoom, legenda PK/FK, dan export ke file `.svg`. Dapat diakses dari sidebar maupun tautan cepat di halaman Database Context & Documentation.
 
 ### Ditambahkan (post-1.0.0) — Schema Editor: 7 Revisi
 1. **Loading state di tombol "Terapkan Perubahan"** — tombol terkunci & menampilkan spinner selama proses berlangsung, mencegah klik ganda sebelum penyimpanan selesai.
@@ -115,23 +128,25 @@ Lihat bagian [Roadmap](./README.md#21-roadmap) di README untuk rencana lengkap V
 7. **Posisi scroll dipertahankan** saat menambah/menghapus sheet, kolom, atau conditional format — halaman tidak lagi lompat ke atas setiap kali tombol ditekan.
 
 Field Required/Editable/Show yang bernilai "Unknown" (default) memberi sinyal eksplisit ke AI untuk menyimpulkan sendiri berdasarkan konteks — sudah dijelaskan lengkap lewat bagian "Legend Field" di Prompt Builder.
-- **PWA benar-benar installable di HP** — sebelumnya `manifest.json` cuma mendaftarkan ikon SVG, yang tidak memenuhi kriteria instalasi Chrome/Android (butuh PNG 192px & 512px) dan sama sekali tidak didukung iOS Safari untuk ikon Home Screen. Sekarang disediakan ikon PNG lengkap (192px, 512px, versi maskable untuk adaptive icon Android, dan versi khusus iOS) yang digambar ulang mengikuti desain asli.
-- **Banner "Install App" di dalam aplikasi** — muncul otomatis begitu kriteria instalasi terpenuhi di Android/Chrome (tombol Install beneran memicu dialog instal native), atau instruksi manual "Tap Share → Add to Home Screen" di iOS Safari (Apple sengaja tidak menyediakan prompt otomatis di iOS). Bisa ditutup dan tidak akan muncul lagi selama 14 hari.
-- **Claude (Anthropic) sebagai AI Provider baru** — bisa dipilih di Settings/Prompt Builder/AI Studio/Database Builder seperti provider lain, lewat Adapter Pattern yang sudah ada (tinggal 1 file baru + 1 baris registry, tidak menyentuh kode lain).
-- **Input Model jadi autocomplete, bukan dropdown terkunci** — kolom Model di Settings sekarang kotak isian teks biasa dengan saran autofill (mirip Google Search) yang muncul saat mengetik, tapi tetap bisa diisi nama model apa pun (termasuk model baru yang belum ada di daftar saran).
 
-### Dihapus (post-1.0.0)
-- **Pengaturan Bahasa di Settings** — dihapus, aplikasi sepenuhnya berbahasa Indonesia.
-- **❓ Menu "Panduan Penggunaan"** (baru) — halaman bantuan dalam bahasa sederhana untuk pengguna awam: alur pemakaian singkat, kamus istilah teknis yang bisa dicari (PK, FK, Formula, Named Range, OAuth, API Key, AI Provider, dll, dijelaskan pakai analogi sehari-hari), dan pertanyaan umum versi sederhana.
-
-### Dihapus (post-1.0.0)
-- **Input Google Client ID di menu Settings** — dihapus karena sudah tersedia di layar **Login Gate** (muncul otomatis kalau belum dikonfigurasi), menghindari duplikasi. Untuk mengganti Client ID yang sudah tersimpan, hapus key `ponti_sheets.google_client_id` lewat DevTools browser lalu reload.
-- **Loading skeleton setelah login Google**: tombol "Login dengan Google" sekarang menampilkan spinner + status "Menghubungkan ke Google..." selama proses OAuth berlangsung, dan daftar spreadsheet menampilkan placeholder shimmer (bukan teks "Memuat..." polos) selagi diambil dari Google Drive.
-- **Schema Editor**: tombol **"Buka Google Sheets"** di toolbar untuk langsung membuka spreadsheet aslinya di tab baru.
+### Diubah (post-1.0.0)
+- **Kolom Model kembali jadi dropdown** (di Settings maupun AI Studio) — sebelumnya sempat diubah jadi input teks bebas + saran autofill, sekarang dikembalikan ke pilihan dropdown biasa dari daftar model bawaan tiap provider.
+- **Prompt Builder — "Programming Style" diganti jadi "Visual Style"**, dan sekarang bisa memilih **lebih dari satu gaya sekaligus** lewat chip (bukan dropdown single-select) — mis. kombinasikan "Modern" + "Dark Theme". AI diinstruksikan menggabungkan semua gaya yang dipilih secara koheren.
 - **Schema Editor — Persistensi Tipe Kolom (perbaikan mendasar)**: tipe data, Primary Key, Foreign Key, label, dan deskripsi kolom kini disimpan sebagai **Developer Metadata** tersembunyi di spreadsheet-nya sendiri, bukan ditebak ulang dari data setiap kali dibuka. Sebelumnya, tipe seperti Currency/URL/UUID/Percentage/JSON/Array selalu "kembali" jadi tipe generik (Number/Text) setelah reload karena Google Sheets tidak punya konsep tipe kolom asli — sekarang apa pun yang di-set akan selalu diingat persis oleh Ponti Sheets.
-- **Schema Editor**: mengubah **tipe data** atau **formula** sebuah kolom sekarang selalu memicu penulisan ulang data (sebelumnya, ubah tipe data saja tanpa tambah/hapus kolom tidak memicu apa-apa). Data yang sudah ada juga otomatis **dikonversi ke tipe barunya** — contoh: teks "15.000" jadi angka 15000 kalau diubah ke Number, "Ya"/"Tidak" jadi TRUE/FALSE kalau diubah ke Checkbox, tanggal berbagai format dinormalisasi ke YYYY-MM-DD. Kalau sebuah nilai tidak bisa dikonversi (format tidak dikenali), nilai aslinya dipertahankan apa adanya supaya tidak ada data hilang.
+- **Mobile UX dirombak**: drawer sidebar kini punya backdrop gelap (tap di luar untuk menutup) dan otomatis menutup setelah memilih menu; target sentuh tombol/ikon diperbesar (~40px); input tidak lagi memicu auto-zoom di Safari iOS; tabel lebar bisa di-scroll horizontal alih-alih memaksa kolom mengecil; toast & command palette menyesuaikan lebar layar; padding memperhitungkan safe-area notch/home-indicator; warna address bar (theme-color) ikut berubah sesuai tema.
+- **Google Client ID** sempat disimpan lewat menu Settings (localStorage) sebelum akhirnya dipindah ke Login Gate (lihat bagian Dihapus) — perubahan ini mencegah Client ID hilang setiap kali file aplikasi diganti/update.
+- **Prompt Builder**: menghapus field "Development Mode" (disederhanakan), tombol Copy Prompt kini memberi feedback visual.
+- **AI Studio**: layout dirapikan — prompt terkirim kini collapsible/ringkas (default tersembunyi), Response AI jadi fokus utama halaman, ditambahkan tombol Copy Response & indikator provider/model aktif.
+
+### Dihapus (post-1.0.0)
+- **Deteksi Jenis Bisnis otomatis** (di Analysis, Database Context, Documentation) — dihapus karena dianggap tidak terlalu penting/akurat. `business-detector.service.js` dihapus, field `businessType` tidak lagi ada di `database_context.json`.
+- **Template Bisnis** (POS/CRM/HRIS/Inventory Management/Restoran/Sekolah/Custom) di Database Builder — dihapus. Sekarang cukup tulis instruksi bebas di kolom teks; AI tetap bisa memahami jenis bisnis dari instruksi Anda tanpa perlu memilih template.
+- **Pengaturan Bahasa di Settings** — dihapus, aplikasi sepenuhnya berbahasa Indonesia.
+- **Input Google Client ID di menu Settings** — dihapus karena sudah tersedia di layar **Login Gate** (muncul otomatis kalau belum dikonfigurasi), menghindari duplikasi. Untuk mengganti Client ID yang sudah tersimpan, hapus key `ponti_sheets.google_client_id` lewat DevTools browser lalu reload.
+- **Field `nullable`** — dihapus dari `ColumnModel`, `database_context.json`, dan Prompt Builder karena sudah redundan dengan field **Required** (tri-state) yang lebih kaya informasinya. Tabel kolom di halaman Analysis dan file Export sekarang menampilkan status **Required** (Ya/Tidak/Unknown) sebagai gantinya. Aturan bisnis otomatis "kolom X wajib diisi" sekarang dihasilkan dari `required.value === "true"` (eksplisit lewat Schema Editor), bukan lagi dari tebakan heuristik berdasarkan ada-tidaknya sel kosong di data sample.
 
 ### Diperbaiki (post-1.0.0)
+- **Redesign Advisor memaksa AI selalu kasih minimal 3 saran** — bahkan untuk struktur yang sudah baik, berpotensi membuat AI mengarang saran yang tidak perlu (parser bahkan sempat menganggap 0 saran sebagai error). Sekarang AI boleh jujur memberi saran sedikit atau kosong sama sekali kalau memang tidak ada yang perlu diperbaiki, dan UI menampilkan pesan yang sesuai alih-alih error.
 - **Named Range belum sampai ke Database Context & Prompt Builder**: datanya sebenarnya sudah diambil dari Google Sheets API sejak lama, tapi terputus sebelum masuk ke `database_context.json` (tersimpan mentah & terduplikasi di tiap sheet, tidak pernah benar-benar dipakai). Sekarang dikonversi ke bentuk siap-pakai `{name, sheet, range}` (notasi A1) di level spreadsheet, ikut masuk ke Database Context, dan dijelaskan ke AI lewat Prompt Builder supaya AI bisa memanfaatkan named range yang sudah ada saat menulis kode/formula.
 - **Prompt Builder tidak konsisten dengan Database Context**: field `formula`/`formulaIsLive` yang baru ditambahkan ke Database Context ternyata ikut terhapus lagi saat Prompt Builder mengompres context untuk prompt (fungsi `compressContext` membangun objek kolom baru tanpa field itu). Sekarang ikut terbawa.
 - **Prompt Builder — AI berpotensi salah paham field singkatan**: JSON Database Context yang dikirim ke AI memakai singkatan (`pk`, `fk`, `ref`, `live`) tanpa penjelasan sama sekali. Sekarang Prompt Builder otomatis menyertakan bagian "Legend Field" di setiap prompt yang menjelaskan arti tiap singkatan itu ke AI, termasuk daftar kemungkinan nilai `type` dan cara memperlakukan kolom formula aktif vs statis.
@@ -150,8 +165,3 @@ Field Required/Editable/Show yang bernilai "Unknown" (default) memberi sinyal ek
 - **Schema Editor & Database Builder (kritis)**: memperbaiki bug yang membuat "Terapkan Perubahan" SELALU gagal untuk sheet yang tidak punya warna tab kustom (kasus paling umum) — field mask sempat menyebut "tabColor" padahal nilainya kosong, yang ditolak Google API. Sekarang field mask dibangun dinamis, hanya menyebut field yang benar-benar punya nilai.
 - **Schema Editor**: memperbaiki 3 bug pada Sync Engine — (1) rename sheet + perubahan kolom sekaligus sempat gagal karena kode masih mencoba membaca data dari nama sheet lama yang sudah tidak ada; (2) menghapus filter pada sheet yang memang belum pernah punya filter sempat ditolak Google API; (3) dropdown Foreign Key sempat selalu mengasumsikan Primary Key berada di kolom A, sekarang mencari posisi kolom PK yang sebenarnya.
 - **Database Builder**: memperbaiki error "Unsupported locale: id_ID" saat membuat spreadsheet baru — Google Sheets API tidak menerima locale tersebut lewat endpoint `create`, jadi properti locale dihapus dan dibiarkan mengikuti default akun Google pengguna (timezone Asia/Jakarta tetap diterapkan).
-- **Mobile UX dirombak**: drawer sidebar kini punya backdrop gelap (tap di luar untuk menutup) dan otomatis menutup setelah memilih menu; target sentuh tombol/ikon diperbesar (~40px); input tidak lagi memicu auto-zoom di Safari iOS; tabel lebar bisa di-scroll horizontal alih-alih memaksa kolom mengecil; toast & command palette menyesuaikan lebar layar; padding memperhitungkan safe-area notch/home-indicator; warna address bar (theme-color) ikut berubah sesuai tema.
-- **Google Client ID** kini disimpan lewat menu **Settings → Google OAuth** (localStorage), bukan lagi di-hardcode di `app.config.js`. Ini mencegah Client ID hilang setiap kali Anda mengganti/update file aplikasi. `app.config.js` tetap didukung sebagai fallback opsional untuk deployment permanen.
-- **Prompt Builder**: menghapus field "Development Mode" (disederhanakan), tombol Copy Prompt kini memberi feedback visual.
-- **AI Studio**: layout dirapikan — prompt terkirim kini collapsible/ringkas (default tersembunyi), Response AI jadi fokus utama halaman, ditambahkan tombol Copy Response & indikator provider/model aktif.
-- **Menu ERD (baru)**: visualisasi diagram relasi antar sheet (Entity Relationship Diagram) berbasis SVG, lengkap dengan kontrol zoom, legenda PK/FK, dan export ke file `.svg`. Dapat diakses dari sidebar maupun tautan cepat di halaman Database Context & Documentation.

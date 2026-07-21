@@ -8,7 +8,7 @@ export class ColumnModel {
   constructor({
     name, index, type = "unknown", isPrimaryKey = false,
     isForeignKey = false, referencesSheet = null, referencesColumn = null,
-    confidence = 0, nullable = true, sampleValues = [], warnings = [],
+    confidence = 0, sampleValues = [], warnings = [],
     formula = null, formulaIsLive = true,
     required = null, editable = null, show = null,
   } = {}) {
@@ -20,7 +20,6 @@ export class ColumnModel {
     this.referencesSheet = referencesSheet;
     this.referencesColumn = referencesColumn;
     this.confidence = confidence;
-    this.nullable = nullable;
     this.sampleValues = sampleValues;
     this.warnings = warnings;
     // formula: formula asli kolom ini (kalau ada) — mis. "=B2*C2".

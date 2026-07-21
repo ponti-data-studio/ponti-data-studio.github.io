@@ -143,10 +143,10 @@ Meskipun saat ini baru Versi 1, seluruh arsitektur aplikasi (Presentation, Busin
 | **Spreadsheet** | Memilih spreadsheet sumber data dari Google Drive Anda |
 | **Analysis** | Deteksi tipe kolom, primary/foreign key, formula, kualitas data |
 | **Database Context** | Melihat & mengunduh `database_context.json` |
-| **🛠️ Schema Editor** | Edit struktur database yang sudah ada langsung dari Ponti Sheets — tambah/hapus/rename kolom & sheet, formula, validasi, relasi, dan lainnya, tersinkron ke Google Sheets asli |
+| **🛠️ Schema Editor** | Edit struktur database yang sudah ada langsung dari Ponti Sheets — tambah/hapus/rename kolom & sheet, formula, validasi, relasi, dan lainnya, tersinkron ke Google Sheets asli. Ada juga **"Minta Saran AI"** untuk mereview & menyarankan perbaikan struktur (PK/FK, tipe data, penamaan, split sheet). |
 | **ERD** | Visualisasi diagram relasi antar sheet (kotak tabel + garis relasi FK → PK), bisa di-zoom & di-export sebagai SVG |
 | **Prompt Builder** | Menyusun prompt AI otomatis dari Database Context + aturan bisnis |
-| **AI Studio** | Mengirim prompt ke OpenAI / Gemini / Qwen / Claude dan melihat hasilnya |
+| **AI Studio** | Provider & Model bebas dipilih (bahkan di tengah percakapan), percakapan multi-turn untuk revisi, syntax highlighting pada kode hasil |
 | **Documentation** | Data dictionary, ERD teks, business rules, feature list otomatis |
 | **History** | Riwayat prompt & response yang pernah dibuat |
 | **Export** | Unduh hasil dalam format Markdown, JSON, TXT, atau PDF |
@@ -467,6 +467,50 @@ Setiap sheet ditampilkan sebagai kartu berisi tabel kolom yang bisa diedit langs
 
 > 💡 Menambah/menghapus sheet, kolom, atau conditional format **tidak lagi membuat halaman lompat ke atas** — posisi scroll Anda dipertahankan supaya tidak perlu cari lokasi kerja lagi setiap kali menekan tombol tambah.
 
+### ✨ Minta Saran AI (Redesign Struktur)
+
+Selain mengedit manual, Anda bisa klik tombol **"Minta Saran AI"** di toolbar atas untuk meminta AI mereview struktur database Anda yang sudah ada dan memberi saran perbaikan konkret, mencakup:
+
+- **Primary Key / Foreign Key** yang hilang atau salah arah.
+- **Tipe Data** yang tidak sesuai dengan isi kolomnya (mis. tanggal disimpan sebagai teks).
+- **Penamaan** kolom/sheet yang tidak konsisten.
+- **Normalisasi (Split Sheet)** — data yang berulang di banyak baris (mis. nama & alamat pelanggan diulang di setiap baris pesanan) yang sebaiknya dipisah jadi sheet baru dengan relasi FK.
+- **Struktur Umum** — termasuk rekomendasi penggabungan sheet yang mirip (ini SELALU berupa saran tertulis saja, tidak bisa diterapkan otomatis — perlu Anda tindak lanjuti manual karena berisiko tinggi kalau salah).
+
+#### Jendela Saran (bisa digeser, diperbesar, diminimalkan)
+
+Saran muncul dalam **jendela mengambang** terpisah dari halaman utama — supaya Anda tetap bisa melihat/mengerjakan tabel kolom sambil jendela sarannya tetap terbuka:
+
+- **Geser** jendelanya dengan menyeret bagian judul (title bar) di atas.
+- **Perbesar/perkecil** dengan menyeret pojok kanan-bawah (di desktop).
+- **Sembunyikan/Minimalkan** (ikon ─) — menyembunyikan jendela dari layar, tapi progres Anda tetap tersimpan. Tombol di toolbar tetap **"Buka Kotak Saran"** — buka lagi kapan saja, persis dari kondisi terakhir.
+- **Tutup** (ikon ✕) untuk menutup sepenuhnya — kapan saja, tidak ada syarat. Ini menandakan sesi perbaikan selesai, tombol di toolbar kembali jadi "Minta Saran AI".
+- Isinya bisa di-scroll kalau sarannya banyak, dan jendelanya tidak akan pernah melebihi ukuran layar Anda.
+- Di HP, jendela ini otomatis jadi layar penuh (geser/perbesar tidak relevan di layar kecil).
+- **Hanya ada satu jendela saran dalam satu waktu** — kalau Anda klik tombolnya lagi padahal jendela sudah terbuka, jendelanya cuma akan berkedip sebentar (menandakan sudah ada), bukan membuka jendela baru. Setelah diminta, tombolnya berubah jadi **"Buka Kotak Saran"** — klik ini untuk membuka lagi jendela yang sama tanpa perlu menunggu proses AI ulang.
+  - **Minimalkan (─)** — cuma menyembunyikan sementara, state & progres Anda TETAP UTUH. Tombol tetap **"Buka Kotak Saran"**, klik untuk membuka lagi persis dari kondisi terakhir.
+  - **Tutup (✕)**, atau otomatis tertutup setelah kedua tombol "Terapkan"/"Selesai" diklik — dianggap sesi perbaikan **selesai**. Tombolnya kembali jadi **"Minta Saran AI"**, dan klik berikutnya akan meminta saran yang benar-benar baru dari AI.
+
+#### Dua bagian: yang bisa otomatis, dan yang harus manual
+
+Saran-sarannya dipisah jelas jadi dua bagian, **diurutkan dari yang paling penting (Prioritas Tinggi) ke yang paling ringan (Prioritas Rendah)**:
+
+1. **✅ Bisa Diperbaiki Otomatis** — PK/FK, Tipe Data, Penamaan, dan Split Sheet. Untuk saran biasa (bukan Split Sheet): centang yang Anda mau (semua tercentang secara default). Split Sheet berbeda sendiri karena benar-benar memindahkan **data** (bukan cuma struktur) — sheet baru dibuat, data yang berulang dideduplikasi jadi baris unik, sheet asal diperbarui dengan Foreign Key baru — punya tombol sendiri **"Terapkan Split Ini Sekarang"** yang **langsung menulis ke Google Sheets saat itu juga** begitu diklik (bukan ditahan sebagai editan biasa), jadi pastikan editan lain sudah Anda simpan dulu sebelum melakukan ini.
+2. **⚠️ Perlu Anda Perbaiki Manual** — hal-hal yang terlalu berisiko untuk diotomatisasi (mis. rekomendasi menggabungkan dua sheet). Kerjakan sendiri (biasanya langsung di Google Sheets), lalu **centang kotaknya satu per satu** sebagai tanda sudah selesai — tulisannya akan **dicoret** begitu dicentang, jadi gampang lihat mana yang masih tersisa.
+
+#### Dua tombol di bagian bawah
+
+- **"Terapkan (Otomatis)"** — menerapkan semua saran otomatis yang tercentang ke editan Anda saat ini. Perubahan langsung muncul di tabel kolom — **belum tersimpan ke Google Sheets** sampai Anda klik "Terapkan Perubahan ke Google Sheets" seperti biasa di halaman utama.
+- **"Selesai (Manual)"** — menandai bahwa Anda sudah menindaklanjuti saran manual. Bisa diklik kapan saja, **tidak wajib mencentang semua kotak manual dulu** — kalau Anda merasa cukup dengan sebagian saja, tinggal klik.
+
+Kedua tombol ini **terkunci (disabled) setelah diklik sekali** — mencegah klik ganda tidak sengaja, dan label berubah jadi "✓ Sudah Diterapkan"/"✓ Sudah Ditandai Selesai" sebagai penanda jelas bagian mana yang sudah Anda tindak lanjuti.
+
+**Jendela saran tidak akan tertutup sendiri secara tidak sengaja** — hanya tertutup kalau Anda klik tombol ✕ atau ─ (kapan saja), ATAU setelah Anda klik **kedua** tombol "Terapkan (Otomatis)" dan "Selesai (Manual)" (jendelanya otomatis tertutup begitu keduanya sudah ditekan, sebagai tanda semuanya sudah ditindaklanjuti).
+
+> Kalau struktur Anda memang sudah cukup baik, AI boleh saja mengembalikan sedikit saran atau bahkan tidak ada sama sekali — ini bukan error, cuma pertanda strukturnya sudah rapi, tidak perlu dipaksa mencari-cari masalah yang tidak ada.
+
+> ⚠️ Fitur ini membutuhkan API Key AI Provider yang sudah diisi di menu Settings — sama seperti Database Builder & Prompt Builder.
+
 ### Cara menerapkan perubahan
 
 Klik **"Terapkan Perubahan ke Google Sheets"** di toolbar atas — tombol ini akan menampilkan status loading dan terkunci (tidak bisa diklik dua kali) selama proses penyimpanan berlangsung. Kalau perubahan Anda mencakup **penghapusan sheet atau kolom**, Ponti Sheets akan menampilkan **layar konfirmasi** berisi daftar persis apa yang akan hilang, dan Anda harus mencentang "Saya paham data terkait akan hilang permanen" sebelum tombol konfirmasi aktif. Ini untuk mencegah kehilangan data tidak sengaja.
@@ -504,7 +548,7 @@ Setelah berhasil, klik **"Analisis Ulang Sekarang"** (toast konfirmasi) untuk la
 
 Di halaman **Analysis**, setiap sheet ditampilkan sebagai kartu terpisah berisi:
 
-- **Tabel kolom** — nama, tipe terdeteksi, badge `PK`/`FK`, confidence, dan apakah boleh kosong (nullable).
+- **Tabel kolom** — nama, tipe terdeteksi, badge `PK`/`FK`, confidence, dan status **Required** (tri-state Unknown/TRUE/FALSE — sama seperti di Schema Editor).
 - **Formula Terdeteksi** — daftar formula asli beserta lokasi sel dan penjelasan singkat fungsinya.
 - **Data Quality** — daftar peringatan (❗ error, ⚠️ warning, ℹ️ info) bila ditemukan masalah pada sample data.
 
@@ -519,7 +563,7 @@ Badge **PK** berarti kolom tersebut terdeteksi sebagai Primary Key. Badge **FK �
 3. Isi konfigurasi di panel kiri:
    - **Template** — jenis aplikasi yang ingin dibangun (Web App Google Apps Script, Android APK, Windows EXE, dst).
    - **AI Provider** — OpenAI / Gemini / Qwen / Claude.
-   - **Programming Style** — clean-architecture, MVC, minimal-script, atau microservices.
+   - **Visual Style** — pilih gaya visual aplikasi (Modern, Corporate, Dark Theme, dst) lewat chip — **bisa pilih lebih dari satu sekaligus**, AI akan menggabungkan kombinasinya secara koheren.
    - **Requirement Tambahan** — kebutuhan teknis spesifik (contoh: "pakai Bootstrap 5").
    - **Instruksi Anda** — permintaan bebas (contoh: "buatkan aplikasi kasir dari struktur ini").
 4. Panel kanan menampilkan **preview prompt** secara real-time, lengkap dengan estimasi jumlah karakter, token, biaya, dan waktu respon (**Token Estimator**). Prompt-nya bisa Anda edit langsung di situ sebelum dikirim, dan tombol **Reset** mengembalikannya ke versi hasil generate otomatis.
@@ -535,9 +579,14 @@ Karena Database Context di-JSON-kan dalam bentuk singkat/minified untuk hemat to
 ## 14. Cara Menggunakan AI Studio
 
 1. Pastikan API Key untuk provider yang dipilih sudah diisi di menu **Settings**.
-2. Di halaman **AI Studio**, Anda akan melihat prompt yang akan dikirim di panel kiri.
-3. Klik **"Generate"** — Ponti Sheets akan memanggil API AI Provider pilihan Anda secara langsung dari browser.
-4. Hasil response akan muncul di panel kanan, dan otomatis tersimpan ke **History**.
+2. **Provider & Model bisa diganti langsung di halaman ini** — tidak terkunci ke pilihan yang dibuat di Prompt Builder. Ganti kapan saja, **termasuk di tengah percakapan**: mis. pakai model besar (GPT-4o, Claude Opus) untuk generate pertama yang kompleks, lalu pindah ke model yang lebih murah (GPT-4o-mini, Claude Haiku) untuk revisi-revisi kecil berikutnya — jauh lebih hemat token tanpa perlu kualitas model besar terus-menerus.
+3. Di halaman **AI Studio**, prompt yang akan dikirim tersembunyi secara default (klik **"Lihat Prompt Terkirim"** untuk membukanya) — supaya fokus utama halaman langsung ke response AI.
+4. Klik **"Generate"** — Ponti Sheets akan memanggil API AI Provider & Model yang sedang dipilih secara langsung dari browser. Hasilnya otomatis tersimpan ke **History**.
+5. **Blok kode di response otomatis diberi syntax highlighting** (lewat Prism.js, dimuat dari CDN saat dibutuhkan) — jauh lebih mudah dibaca dibanding teks polos, dan otomatis mengenali bahasa pemrogramannya dari label di blok kode markdown-nya (```` ```js ````, ```` ```html ````, dst).
+6. **Minta revisi tanpa mengulang dari awal (percakapan multi-turn)** — setelah response pertama muncul, kotak "Kirim" muncul di bawahnya. Ketik permintaan revisi (mis. *"ubah warna tombol jadi biru"* atau *"tambahkan validasi email di form login"*) dan klik **Kirim** (atau `Ctrl/Cmd+Enter`) — AI akan menjawab dengan tetap mengingat seluruh konteks percakapan sebelumnya, tidak perlu menjelaskan ulang struktur database dari nol.
+7. Setiap turn response menunjukkan **provider & model yang dipakai untuk turn itu** (mis. "AI · Claude · claude-haiku-4-5-20251001") — berguna untuk melacak kombinasi mana yang dipakai di percakapan yang sama kalau Anda gonta-ganti model.
+8. Tombol **"Generate"** berubah jadi **"Mulai Percakapan Baru"** setelah turn pertama — klik ini kalau Anda ingin reset total dan mulai dari prompt awal lagi (akan diminta konfirmasi dulu; riwayat yang sudah tersimpan di menu History tidak ikut terhapus).
+9. Setiap response AI punya tombol **Copy** sendiri-sendiri untuk menyalin teks response turn tersebut.
 
 **Provider yang didukung** (dengan Adapter Pattern, sehingga mudah ditambah provider baru di kemudian hari):
 
@@ -548,7 +597,7 @@ Karena Database Context di-JSON-kan dalam bentuk singkat/minified untuk hemat to
 | Qwen | `qwen-max` | Butuh API Key dari Alibaba Cloud DashScope |
 | Claude (Anthropic) | `claude-sonnet-5` | Butuh API Key dari console.anthropic.com |
 
-> 💡 **Kolom Model di Settings bukan dropdown terkunci** — sekarang berupa kotak isian teks biasa dengan **saran autofill** (mirip Google Search) yang muncul saat Anda mulai mengetik. Anda tetap bebas mengetik nama model apa pun (termasuk model baru yang baru dirilis provider setelah Ponti Sheets di-build), tidak terbatas cuma pada saran yang muncul.
+> 💡 **Kolom Model** di Settings & AI Studio berupa dropdown berisi daftar model bawaan tiap provider — pilih salah satu dari daftarnya.
 
 > 🔑 API Key Anda **hanya disimpan di localStorage browser Anda sendiri** (Personal Mode) — tidak pernah dikirim ke server Ponti Sheets, karena memang tidak ada server-nya.
 

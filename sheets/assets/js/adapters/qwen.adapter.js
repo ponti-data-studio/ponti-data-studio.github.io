@@ -2,7 +2,7 @@ import { AIProviderAdapter } from "./ai-provider.adapter.js";
 import { AI_PROVIDERS } from "../config/app.config.js";
 
 export class QwenAdapter extends AIProviderAdapter {
-  async complete(prompt) {
+  async complete(promptOrMessages) {
     this.validateApiKey();
     const cfg = AI_PROVIDERS.qwen;
     const res = await fetch(cfg.endpoint, {
@@ -13,7 +13,7 @@ export class QwenAdapter extends AIProviderAdapter {
       },
       body: JSON.stringify({
         model: this.model || cfg.defaultModel,
-        messages: [{ role: "user", content: prompt }],
+        messages: this.normalizeMessages(promptOrMessages),
       }),
     });
 

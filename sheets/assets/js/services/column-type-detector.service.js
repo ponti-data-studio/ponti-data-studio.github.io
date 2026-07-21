@@ -50,14 +50,13 @@ function classifyValue(raw) {
 /**
  * Deteksi tipe dominan sebuah kolom dari kumpulan sample value.
  * @param {Array<any>} values - nilai mentah 1 kolom (tanpa header)
- * @returns {{ type: string, confidence: number, nullable: boolean }}
+ * @returns {{ type: string, confidence: number }}
  */
 export function detectColumnType(values = []) {
   const nonEmpty = values.filter((v) => v !== null && v !== undefined && String(v).trim() !== "");
-  const nullable = nonEmpty.length < values.length;
 
   if (nonEmpty.length === 0) {
-    return { type: "unknown", confidence: 0, nullable: true };
+    return { type: "unknown", confidence: 0 };
   }
 
   const counts = {};
@@ -69,7 +68,7 @@ export function detectColumnType(values = []) {
   const [topType, topCount] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
   const confidence = Math.round((topCount / nonEmpty.length) * 100) / 100;
 
-  return { type: topType === "formula" ? "text" : topType, confidence, nullable };
+  return { type: topType === "formula" ? "text" : topType, confidence };
 }
 
 export function detectPrimaryKey(columnName, values = []) {

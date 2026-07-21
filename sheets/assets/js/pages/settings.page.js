@@ -51,20 +51,15 @@ export async function renderSettingsPage(applyTheme) {
   Object.values(AI_PROVIDERS).forEach((provider) => {
     const keyInput = el("input", { type: "password", placeholder: provider.keyPlaceholder, value: settings.apiKeys[provider.id] || "" });
 
-    // Model: input teks biasa + saran autofill (mirip Google Search) lewat <datalist> —
-    // bukan dropdown terkunci, supaya pengguna tetap bisa mengetik model baru yang belum
-    // ada di daftar saran kalau provider merilis model baru setelah Ponti Sheets di-build.
-    const datalistId = `models-${provider.id}`;
-    const modelDatalist = el("datalist", { id: datalistId }, provider.models.map((m) => el("option", { value: m })));
-    const modelInput = el("input", {
-      type: "text", list: datalistId,
-      placeholder: provider.defaultModel,
-      value: settings.models[provider.id] || provider.defaultModel,
-    });
+    // Model: dropdown dari daftar model bawaan tiap provider.
+    const currentModel = settings.models[provider.id] || provider.defaultModel;
+    const modelSelect = el("select", {}, provider.models.map((m) =>
+      el("option", { value: m, selected: m === currentModel ? "true" : undefined }, m)
+    ));
 
     const saveBtn = el("button", { class: "btn btn--ghost btn--sm", onClick: async () => {
       await settingsService.setApiKey(provider.id, keyInput.value);
-      await settingsService.update({ models: { ...settings.models, [provider.id]: modelInput.value.trim() || provider.defaultModel } });
+      await settingsService.update({ models: { ...settings.models, [provider.id]: modelSelect.value || provider.defaultModel } });
       showToast(`API Key ${provider.label} disimpan (lokal, di perangkat Anda)`, "success");
     }}, "Simpan");
 
@@ -72,7 +67,7 @@ export async function renderSettingsPage(applyTheme) {
       el("div", { class: "provider-row" }, [
         el("div", { class: "provider-row__label" }, provider.label),
         field("API Key", keyInput, "Disimpan hanya di perangkat Anda (localStorage), tidak dikirim ke server manapun."),
-        field("Model", el("div", {}, [modelInput, modelDatalist]), "Ketik nama model, atau pilih dari saran yang muncul."),
+        field("Model", modelSelect),
         saveBtn,
       ])
     );

@@ -21,9 +21,10 @@ function jsonToMarkdown(obj, title = "Database Context") {
   }
   (obj.sheets || []).forEach((sheet) => {
     md += `## Sheet: ${sheet.name}\n\n`;
-    md += `| Kolom | Tipe | PK | FK | Nullable |\n|---|---|---|---|---|\n`;
+    md += `| Kolom | Tipe | PK | FK | Required |\n|---|---|---|---|---|\n`;
     sheet.columns.forEach((c) => {
-      md += `| ${c.name} | ${c.type} | ${c.isPrimaryKey ? "✔" : ""} | ${c.isForeignKey ? "✔" : ""} | ${c.nullable ? "✔" : ""} |\n`;
+      const requiredLabel = c.required?.value === "true" ? "TRUE" : c.required?.value === "false" ? "FALSE" : "Unknown";
+      md += `| ${c.name} | ${c.type} | ${c.isPrimaryKey ? "✔" : ""} | ${c.isForeignKey ? "✔" : ""} | ${requiredLabel} |\n`;
     });
     md += `\n`;
     if (sheet.formulas?.length) {

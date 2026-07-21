@@ -17,7 +17,6 @@ function compressContext(databaseContext) {
       columns: s.columns.map((c) => ({
         name: c.name, type: c.type, pk: c.isPrimaryKey, fk: c.isForeignKey,
         ref: c.referencesSheet ? `${c.referencesSheet}.${c.referencesColumn}` : null,
-        nullable: c.nullable,
         // PENTING: field ini sempat "hilang" di sini walau sudah ada di Database
         // Context — jangan dihapus lagi kalau nanti context-nya diubah.
         formula: c.formula || null,
@@ -58,7 +57,7 @@ export const promptBuilderService = {
       ``,
       `# TARGET OUTPUT`,
       `Template: ${template.label}`,
-      `Visual Design: ${request.programmingStyle}`,
+      `Visual Style yang diinginkan: ${request.visualStyle && request.visualStyle.length ? request.visualStyle.join("; ") : "Tidak ditentukan — pilih gaya visual yang paling sesuai dengan konteks aplikasi."}`,
       `Output yang diharapkan: ${template.outputs.join(", ") || "-"}`,
       ``,
       `# LEGEND FIELD DATABASE CONTEXT (WAJIB DIPAHAMI SEBELUM MEMBACA JSON DI BAWAH)`,
@@ -66,7 +65,6 @@ export const promptBuilderService = {
       `- "pk": true = kolom ini Primary Key (ID unik, wajib berbeda & tidak kosong tiap baris).`,
       `- "fk": true = kolom ini Foreign Key (nilainya merujuk ke Primary Key sheet lain).`,
       `- "ref": kalau "fk":true, ini berisi "NamaSheet.NamaKolom" yang direferensikan kolom ini.`,
-      `- "nullable": true = kolom ini boleh kosong/tidak wajib diisi.`,
       `- "formula": rumus asli Google Sheets kolom ini kalau ada (mis. "=B2*C2"), null kalau bukan kolom formula.`,
       `- "live": true = formula AKTIF (Google Sheets menghitung ulang otomatis setiap data berubah) — kalau kamu membangun logika aplikasi, ANGGAP nilai kolom ini SELALU dihitung ulang dari kolom lain, jangan simpan sebagai input manual. false = formula sudah "dibekukan" jadi nilai statis — perlakukan seperti kolom data biasa (boleh jadi input manual), meski field "formula" masih menunjukkan rumus asal-usulnya untuk konteks. null = kolom ini memang bukan kolom formula sama sekali.`,
       `- "req", "edit", "show" masing-masing berisi objek {"v": ..., "c": ...} — INI KETENTUAN WAJIB PADA UI/FORM APLIKASI YANG KAMU BANGUN untuk kolom terkait:`,
@@ -99,6 +97,7 @@ export const promptBuilderService = {
       `- Jangan mengasumsikan kolom yang tidak ada dalam context.`,
       `- Untuk kolom dengan "live":true, jangan buat form input manual untuk kolom itu — hitung otomatis sesuai formula-nya.`,
       `- Ikuti ketentuan "req"/"edit"/"show" tiap kolom sesuai Legend Field di atas saat membangun form/UI aplikasi.`,
+      `- Kalau "Visual Style yang diinginkan" berisi lebih dari satu gaya, GABUNGKAN elemen-elemen dari semua gaya itu secara koheren (jangan pilih cuma salah satu) — kalau ada dua gaya yang kontradiktif, prioritaskan gaya yang disebut LEBIH DULU.`,
       `- Terapkan aturan bisnis yang tercantum.`,
       `- Sertakan penjelasan singkat di akhir mengenai keputusan arsitektur yang diambil.`,
     ];

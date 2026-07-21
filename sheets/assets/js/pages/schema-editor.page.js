@@ -1,12 +1,18 @@
 import { el, clear } from "../utils/dom.util.js";
 import { icon } from "../components/icons.component.js";
 import { appState } from "../controllers/app-state.js";
-import { BLUEPRINT_COLUMN_TYPES } from "../config/app.config.js";
+import { BLUEPRINT_COLUMN_TYPES, AI_PROVIDERS } from "../config/app.config.js";
 import { generateKey } from "../models/blueprint.model.js";
 import { schemaReaderService } from "../services/schema-reader.service.js";
 import { schemaDiffService } from "../services/schema-diff.service.js";
 import { schemaSyncService } from "../services/schema-sync.service.js";
 import { googleAuthService } from "../services/google-auth.service.js";
+import { settingsService } from "../services/settings.service.js";
+import { createAIAdapter } from "../adapters/adapter-factory.js";
+import { redesignPromptService } from "../services/redesign-prompt.service.js";
+import { redesignParserService } from "../services/redesign-parser.service.js";
+import { applySimpleSuggestion, applySplitSheetSuggestion } from "../services/redesign-apply.service.js";
+import { createFloatingWindow } from "../components/floating-window.component.js";
 import { showToast } from "../components/toast.component.js";
 
 function newTriState(value = "unknown", condition = null) {
@@ -122,6 +128,319 @@ export async function renderSchemaEditorPage(navigate) {
   // UI-only: sheet mana yang sedang diciutkan (collapsed). Tidak pernah dikirim ke
   // Google Sheets — murni state tampilan, supaya fokus ke satu sheet lebih mudah di desktop.
   const collapsedSheets = new Set();
+
+  // "Minta Saran AI" — state modal-nya sengaja disimpan DI SINI (bukan di dalam
+  // renderEditor()) supaya bertahan utuh lintas re-render halaman (mis. saat
+  // pengguna reorder kolom sementara modal saran masih terbuka).
+  let redesignState = null; // { suggestions, appliedIds, manualCheckedIds, terapkanClicked, selesaiClicked }
+  let redesignWindowCtrl = null;
+  // Referensi tombol toolbar "Minta Saran AI"/"Buka Kotak Saran" YANG SEDANG AKTIF —
+  // diperbarui setiap renderEditor() berjalan. Disimpan di sini (bukan lokal di dalam
+  // renderEditor()) supaya fungsi di luar (mis. setelah fetch AI selesai) tetap bisa
+  // memperbarui label tombol yang BENAR-BENAR sedang tampil di halaman saat itu, tanpa
+  // menunggu render ulang penuh lebih dulu.
+  let aiSuggestBtnRef = null;
+
+  function updateAiSuggestBtnLabel() {
+    if (!aiSuggestBtnRef) return;
+    clear(aiSuggestBtnRef);
+    aiSuggestBtnRef.append(
+      el("span", { html: icon("wand-sparkle", { size: 14 }) }),
+      document.createTextNode(redesignState ? " Buka Kotak Saran" : " Minta Saran AI")
+    );
+  }
+
+  /** Re-render seluruh halaman sambil mempertahankan posisi scroll — dipakai
+   *  sebagai satu-satunya sumber kebenaran untuk "onStructuralChange", supaya
+   *  kode di luar renderEditor() (mis. modal Saran AI) tetap bisa memicu
+   *  render ulang tanpa perlu closure yang berpotensi basi. */
+  function triggerRerender() {
+    const scrollY = window.scrollY;
+    renderEditor();
+    window.scrollTo(0, scrollY);
+  }
+
+  const IMPACT_WEIGHT = { high: 0, medium: 1, low: 2 };
+  const IMPACT_LABEL = { high: "Prioritas Tinggi", medium: "Prioritas Sedang", low: "Prioritas Rendah" };
+
+  /** Buka (atau bikin baru) jendela mengambang "Saran Perbaikan AI". Kalau
+   *  belum pernah ada saran sama sekali, langsung minta ke AI; kalau sudah
+   *  ada dari sebelumnya, tampilkan lagi tanpa perlu minta ulang. */
+  function openRedesignWindow() {
+    const ctrl = createFloatingWindow({
+      title: "Saran Perbaikan AI",
+      iconName: "wand-sparkle",
+      initialWidth: 640,
+      initialHeight: 640,
+      canClose: () => {
+        // Digerbang cuma untuk jalur "tidak sengaja" (Esc) — tombol X di titlebar
+        // SELALU bisa menutup terlepas dari status ini (lihat floating-window.component.js).
+        if (!redesignState) return true; // belum ada apa-apa yang perlu "dijaga"
+        const needsTerapkan = redesignState.suggestions.some((s) => s.action && s.action.type !== "split_sheet");
+        const needsSelesai = redesignState.suggestions.some((s) => !s.action);
+        const terapkanOk = !needsTerapkan || redesignState.terapkanClicked;
+        const selesaiOk = !needsSelesai || redesignState.selesaiClicked;
+        return terapkanOk && selesaiOk;
+      },
+      onClose: (reason) => {
+        redesignWindowCtrl = null;
+        // Minimize cuma menyembunyikan sementara — state HARUS tetap utuh supaya
+        // "Buka Kotak Saran" membukanya lagi persis dari kondisi terakhir. Hanya
+        // penutupan sungguhan (✕, atau auto-close setelah kedua tombol Terapkan
+        // & Selesai diklik) yang dianggap "sesi ini selesai" dan boleh direset.
+        if (reason === "minimize") return;
+        redesignState = null;
+        updateAiSuggestBtnLabel();
+      },
+    });
+    redesignWindowCtrl = ctrl;
+    document.body.appendChild(ctrl.root);
+
+    if (redesignState) {
+      renderRedesignContent(ctrl);
+    } else {
+      fetchAndRenderSuggestions(ctrl);
+    }
+  }
+
+  async function fetchAndRenderSuggestions(ctrl) {
+    clear(ctrl.bodyHost);
+    ctrl.bodyHost.appendChild(
+      el("div", { class: "progress-panel" }, [el("span", { class: "spinner" }), el("span", {}, "AI sedang menganalisis struktur database Anda...")])
+    );
+    try {
+      const settings = await settingsService.get();
+      const providerId = settings.activeProvider;
+      if (!settings.apiKeys[providerId]) {
+        throw new Error(`API Key untuk ${AI_PROVIDERS[providerId].label} belum diisi. Buka menu Settings terlebih dahulu.`);
+      }
+      const prompt = redesignPromptService.build(edited);
+      const adapter = createAIAdapter(providerId, {
+        apiKey: settings.apiKeys[providerId],
+        model: settings.models[providerId] || AI_PROVIDERS[providerId].defaultModel,
+      });
+      const result = await adapter.complete(prompt);
+      const suggestions = redesignParserService.parse(result.text);
+
+      redesignState = {
+        suggestions, appliedIds: new Set(), manualCheckedIds: new Set(),
+        terapkanClicked: false, selesaiClicked: false,
+      };
+      updateAiSuggestBtnLabel();
+      renderRedesignContent(ctrl);
+    } catch (err) {
+      clear(ctrl.bodyHost);
+      ctrl.bodyHost.appendChild(
+        el("div", { class: "error-state-panel" }, [
+          el("p", { class: "error-state" }, err.message),
+          el("button", { class: "btn btn--ghost", onClick: () => fetchAndRenderSuggestions(ctrl) }, "Coba Lagi"),
+        ])
+      );
+      showToast("Gagal mendapatkan saran AI", "error");
+    }
+  }
+
+  /** Render isi jendela saran: dipisah jelas jadi "Bisa Diperbaiki Otomatis"
+   *  dan "Perlu Anda Perbaiki Manual", diurutkan dari prioritas tertinggi,
+   *  dengan bahasa yang mudah dipahami orang awam. */
+  function renderRedesignContent(ctrl) {
+    clear(ctrl.bodyHost);
+
+    if (!redesignState.suggestions.length) {
+      ctrl.bodyHost.append(
+        el("p", {}, "AI tidak menemukan hal signifikan yang perlu diperbaiki — struktur database Anda sudah cukup baik. 👍"),
+        el("button", { class: "btn btn--ghost", onClick: () => fetchAndRenderSuggestions(ctrl) }, [el("span", { html: icon("wand-sparkle", { size: 13 }) }), "Minta Saran Ulang"])
+      );
+      return;
+    }
+
+    const sorted = [...redesignState.suggestions].sort((a, b) => IMPACT_WEIGHT[a.impact] - IMPACT_WEIGHT[b.impact]);
+    const automated = sorted.filter((s) => s.action && s.action.type !== "split_sheet");
+    const splits = sorted.filter((s) => s.action?.type === "split_sheet");
+    const manual = sorted.filter((s) => !s.action);
+
+    ctrl.bodyHost.appendChild(
+      el("div", { class: "redesign-intro" }, [
+        el("p", {}, `AI menemukan ${redesignState.suggestions.length} saran untuk struktur database Anda, sudah diurutkan dari yang paling penting.`),
+        el("p", { class: "muted" }, "Bagian \"Bisa Diperbaiki Otomatis\" akan langsung dikerjakan Ponti Sheets. Bagian \"Perlu Anda Perbaiki Manual\" perlu Anda kerjakan sendiri (biasanya langsung di Google Sheets) — centang kotaknya satu per satu setelah selesai mengerjakannya."),
+      ])
+    );
+
+    function suggestionCard({ s, right }) {
+      return el("div", { class: `redesign-card redesign-card--${s.impact}` }, [
+        el("div", { class: "redesign-card__top" }, [
+          el("span", { class: `badge ai-suggestion__impact ai-suggestion__impact--${s.impact}` }, IMPACT_LABEL[s.impact] || s.impact),
+          el("strong", {}, s.title),
+        ]),
+        el("p", { class: "redesign-card__reason" }, s.reason),
+        right,
+      ]);
+    }
+
+    // ---- Bagian Otomatis ----
+    const autoItemsCount = automated.length + splits.length;
+    if (autoItemsCount > 0) {
+      const autoSection = el("div", { class: "redesign-section" }, [
+        el("h4", { class: "redesign-section__title redesign-section__title--auto" }, [
+          el("span", { html: icon("check", { size: 13 }) }), `Bisa Diperbaiki Otomatis (${autoItemsCount})`,
+        ]),
+        el("p", { class: "field__hint" }, "Centang yang Anda mau, lalu klik tombol \"Terapkan\" di bawah — perubahan langsung masuk ke tabel kolom, dan baru benar-benar tersimpan ke Google Sheets setelah Anda klik \"Terapkan Perubahan ke Google Sheets\" seperti biasa."),
+      ]);
+
+      automated.forEach((s) => {
+        const isApplied = redesignState.appliedIds.has(s.id);
+        const checkbox = el("input", { type: "checkbox", checked: isApplied ? undefined : "true", disabled: isApplied ? "true" : undefined });
+        checkbox.dataset.suggestionId = s.id;
+        checkbox.classList.add("redesign-auto-checkbox");
+        const rightSide = isApplied
+          ? el("span", { class: "redesign-card__applied" }, [el("span", { html: icon("check", { size: 12 }) }), "Sudah diterapkan"])
+          : el("label", { class: "redesign-card__checklabel" }, [checkbox, "Terapkan saran ini"]);
+        autoSection.appendChild(suggestionCard({ s, right: rightSide }));
+      });
+
+      splits.forEach((s) => {
+        const isApplied = redesignState.appliedIds.has(s.id);
+        const splitBtn = el("button", { class: "btn btn--primary btn--sm", disabled: isApplied ? "true" : undefined }, isApplied ? "Sudah Diterapkan" : "Terapkan Split Ini Sekarang");
+        if (!isApplied) {
+          splitBtn.addEventListener("click", async () => {
+            if (!confirm(`Ini akan MEMBUAT SHEET BARU "${s.action.newSheetName}" dan MENULIS ULANG data di sheet "${s.action.sourceSheet}" secara LANGSUNG ke Google Sheets (bukan cuma editan lokal). Pastikan Anda sudah menerapkan/menyimpan editan lain sebelumnya. Lanjutkan?`)) return;
+            splitBtn.disabled = true;
+            splitBtn.textContent = "Memproses...";
+            try {
+              const sourceSheetMeta = edited.sheets.find((sh) => sh.name === s.action.sourceSheet);
+              if (!sourceSheetMeta) throw new Error(`Sheet "${s.action.sourceSheet}" tidak ditemukan.`);
+              const res = await applySplitSheetSuggestion(state.activeSpreadsheet.id, sourceSheetMeta, s.action);
+              redesignState.appliedIds.add(s.id);
+              showToast(`Sheet "${res.createdSheetName}" berhasil dibuat dengan ${res.rowCount} baris unik`, "success");
+              await loadSchema(); // ini me-render ulang halaman utama (toolbar, tabel kolom, dst)
+              renderRedesignContent(ctrl); // jendela saran yang SAMA cukup di-refresh isinya, bukan dibuka baru
+            } catch (err) {
+              showToast(`Gagal menerapkan split: ${err.message}`, "error");
+              splitBtn.disabled = false;
+              splitBtn.textContent = "Terapkan Split Ini Sekarang";
+            }
+          });
+        }
+        autoSection.appendChild(suggestionCard({
+          s,
+          right: el("div", {}, [
+            el("p", { class: "field__hint" }, `Pindahkan kolom: ${s.action.extractColumns.join(", ")} → sheet baru "${s.action.newSheetName}". Ini langsung menulis ke Google Sheets (tidak ditahan sebagai editan biasa).`),
+            splitBtn,
+          ]),
+        }));
+      });
+
+      ctrl.bodyHost.appendChild(autoSection);
+    }
+
+    // ---- Bagian Manual ----
+    if (manual.length > 0) {
+      const manualSection = el("div", { class: "redesign-section" }, [
+        el("h4", { class: "redesign-section__title redesign-section__title--manual" }, [
+          el("span", { html: icon("alert", { size: 13 }) }), `Perlu Anda Perbaiki Manual (${manual.length})`,
+        ]),
+        el("p", { class: "field__hint" }, "Ini tidak bisa dikerjakan otomatis karena berisiko kalau salah — perlu keputusan Anda. Kerjakan sendiri (biasanya langsung di Google Sheets), lalu centang kotaknya sebagai tanda sudah selesai."),
+      ]);
+
+      manual.forEach((s) => {
+        const isChecked = redesignState.manualCheckedIds.has(s.id);
+        const checkbox = el("input", { type: "checkbox", checked: isChecked ? "true" : undefined });
+        const textWrap = el("div", { class: `redesign-manual__text${isChecked ? " redesign-manual__text--done" : ""}` }, [
+          el("strong", {}, s.title),
+          el("p", { class: "redesign-card__reason" }, s.reason),
+        ]);
+        checkbox.addEventListener("change", () => {
+          if (checkbox.checked) redesignState.manualCheckedIds.add(s.id);
+          else redesignState.manualCheckedIds.delete(s.id);
+          textWrap.classList.toggle("redesign-manual__text--done", checkbox.checked);
+          updateSelesaiState();
+        });
+        manualSection.appendChild(
+          el("label", { class: `redesign-card redesign-card--${s.impact} redesign-card--manual` }, [
+            el("div", { class: "redesign-card__top" }, [
+              el("span", { class: `badge ai-suggestion__impact ai-suggestion__impact--${s.impact}` }, IMPACT_LABEL[s.impact] || s.impact),
+              checkbox,
+              el("span", { class: "field__hint" }, "Sudah saya kerjakan"),
+            ]),
+            textWrap,
+          ])
+        );
+      });
+
+      ctrl.bodyHost.appendChild(manualSection);
+    }
+
+    // ---- Footer: dua tombol (Terapkan & Selesai) ----
+    const terapkanBtn = el("button", {
+      class: "btn btn--primary",
+      disabled: (redesignState.terapkanClicked || autoItemsCount === 0) ? "true" : undefined,
+    }, redesignState.terapkanClicked ? [el("span", { html: icon("check", { size: 13 }) }), " Sudah Diterapkan"] : "Terapkan (Otomatis)");
+    const selesaiBtn = el("button", { class: "btn btn--ghost" }, redesignState.selesaiClicked ? [el("span", { html: icon("check", { size: 13 }) }), " Sudah Ditandai Selesai"] : "Selesai (Manual)");
+
+    function updateSelesaiState() {
+      // Sengaja TIDAK mensyaratkan semua kotak manual harus dicentang dulu —
+      // pengguna boleh menekan "Selesai" kapan saja untuk menandai sesi ini
+      // sudah ditindaklanjuti, walau belum semua item manual ia kerjakan.
+      selesaiBtn.disabled = redesignState.selesaiClicked;
+    }
+    updateSelesaiState();
+
+    function maybeAutoClose() {
+      const needsTerapkan = automated.length > 0;
+      const needsSelesai = manual.length > 0;
+      const terapkanOk = !needsTerapkan || redesignState.terapkanClicked;
+      const selesaiOk = !needsSelesai || redesignState.selesaiClicked;
+      if (terapkanOk && selesaiOk) {
+        showToast("Semua saran sudah ditindaklanjuti", "success");
+        ctrl.closeForce();
+      }
+    }
+
+    terapkanBtn.addEventListener("click", () => {
+      let count = 0;
+      ctrl.bodyHost.querySelectorAll(".redesign-auto-checkbox").forEach((checkbox) => {
+        if (!checkbox.checked) return;
+        const s = automated.find((x) => x.id === checkbox.dataset.suggestionId);
+        if (!s || redesignState.appliedIds.has(s.id)) return;
+        if (applySimpleSuggestion(edited, s.action)) {
+          redesignState.appliedIds.add(s.id);
+          count += 1;
+        }
+      });
+      // Sekali diklik, langsung dikunci — tidak bisa diklik ulang berkali-kali,
+      // menandakan dengan jelas "bagian ini sudah ditindaklanjuti".
+      redesignState.terapkanClicked = true;
+      terapkanBtn.disabled = true;
+      showToast(
+        count > 0
+          ? `${count} saran diterapkan ke editan — jangan lupa klik "Terapkan Perubahan ke Google Sheets" untuk menyimpannya`
+          : "Tidak ada saran yang dicentang untuk diterapkan",
+        count > 0 ? "success" : "info"
+      );
+      triggerRerender();
+      renderRedesignContent(ctrl);
+      maybeAutoClose();
+    });
+
+    selesaiBtn.addEventListener("click", () => {
+      if (manual.length === 0) {
+        showToast("Tidak ada saran manual untuk ditandai", "info");
+      } else {
+        showToast("Perbaikan manual ditandai selesai", "success");
+      }
+      // Sekali diklik, langsung dikunci — sama seperti tombol Terapkan.
+      redesignState.selesaiClicked = true;
+      selesaiBtn.disabled = true;
+      maybeAutoClose();
+    });
+
+    ctrl.bodyHost.appendChild(
+      el("div", { class: "redesign-footer" }, [
+        el("p", { class: "field__hint redesign-footer__hint" }, "Sudah selesai menerapkan yang otomatis dan mengerjakan yang manual? Klik kedua tombol di bawah ini — jendela ini akan tertutup sendiri kalau semuanya sudah beres."),
+        el("div", { class: "redesign-footer__actions" }, [terapkanBtn, selesaiBtn]),
+      ])
+    );
+  }
 
   async function loadSchema() {
     clear(bodyHost);
@@ -528,13 +847,9 @@ export async function renderSchemaEditorPage(navigate) {
 
     // #7: setiap perubahan struktural (tambah/hapus sheet/kolom, dll) me-render ulang
     // seluruh halaman — tanpa ini, browser cenderung scroll balik ke atas karena DOM-nya
-    // dibangun ulang dari nol. Simpan & kembalikan posisi scroll supaya pengguna tetap
-    // di tempat yang sama, tidak perlu scroll ulang tiap kali menambah/menghapus sesuatu.
-    function onStructuralChange() {
-      const scrollY = window.scrollY;
-      renderEditor();
-      window.scrollTo(0, scrollY);
-    }
+    // dibangun ulang dari nol. triggerRerender() (didefinisikan di luar) yang menangani
+    // simpan & kembalikan posisi scroll-nya.
+    const onStructuralChange = triggerRerender;
 
     const openSheetBtn = el("a", {
       class: "btn btn--ghost", href: `https://docs.google.com/spreadsheets/d/${state.activeSpreadsheet.id}/edit`,
@@ -546,9 +861,21 @@ export async function renderSchemaEditorPage(navigate) {
       loadSchema();
     });
     const applyBtn = el("button", { class: "btn btn--primary" }, [el("span", { html: icon("check", { size: 14 }) }), "Terapkan Perubahan ke Google Sheets"]);
+    const aiSuggestBtn = el("button", { class: "btn btn--ghost" });
+    aiSuggestBtnRef = aiSuggestBtn;
+    updateAiSuggestBtnLabel();
+    aiSuggestBtn.addEventListener("click", () => {
+      // "Modal saran hanya boleh satu" — kalau sudah ada yang terbuka, jangan buat
+      // baru; cukup beri highlight sekilas supaya pengguna sadar sudah ada.
+      if (redesignWindowCtrl && redesignWindowCtrl.isOpen()) {
+        redesignWindowCtrl.flash();
+        return;
+      }
+      openRedesignWindow();
+    });
 
     bodyHost.append(
-      el("div", { class: "toolbar schema-editor-toolbar card" }, [openSheetBtn, reloadBtn, el("div", { class: "toolbar__spacer" }), applyBtn])
+      el("div", { class: "toolbar schema-editor-toolbar card" }, [openSheetBtn, reloadBtn, aiSuggestBtn, el("div", { class: "toolbar__spacer" }), applyBtn])
     );
 
     // Navigasi cepat antar sheet + tombol ciutkan/perluas semua — berguna terutama

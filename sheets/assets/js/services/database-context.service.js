@@ -13,8 +13,11 @@ function buildBusinessRules(sheets, relationships) {
     const pk = sheet.columns.find((c) => c.isPrimaryKey);
     if (pk) rules.push(`Setiap baris pada "${sheet.name}" harus memiliki nilai unik pada kolom "${pk.name}".`);
     sheet.columns
-      .filter((c) => !c.nullable)
-      .forEach((c) => rules.push(`Kolom "${c.name}" pada sheet "${sheet.name}" wajib diisi (tidak boleh kosong).`));
+      .filter((c) => c.required?.value === "true")
+      .forEach((c) => {
+        const conditionNote = c.required.condition ? ` (bersyarat: ${c.required.condition})` : "";
+        rules.push(`Kolom "${c.name}" pada sheet "${sheet.name}" wajib diisi (tidak boleh kosong)${conditionNote}.`);
+      });
   });
   relationships.forEach((rel) => {
     rules.push(`Setiap "${rel.fromColumn}" pada "${rel.fromSheet}" harus merujuk ke "${rel.toColumn}" yang valid pada "${rel.toSheet}".`);
@@ -72,7 +75,6 @@ export const databaseContextService = {
           referencesSheet: c.referencesSheet,
           referencesColumn: c.referencesColumn,
           confidence: c.confidence,
-          nullable: c.nullable,
           sampleValues: c.sampleValues,
           formula: c.formula,
           formulaIsLive: c.formulaIsLive,
