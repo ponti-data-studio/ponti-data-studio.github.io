@@ -1,0 +1,22 @@
+{
+  "name": "Personal Finance Pro",
+  "short_name": "Finance Pro",
+  "description": "Aplikasi keuangan pribadi: transaksi, akun, anggaran, target, dan hutang-piutang — tersinkron langsung dengan Google Sheets.",
+  "id": "/",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
+  "background_color": "#071A33",
+  "theme_color": "#071A33",
+  "lang": "id",
+  "dir": "ltr",
+  "categories": ["finance", "productivity", "utilities"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
