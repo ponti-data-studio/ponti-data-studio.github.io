@@ -3,6 +3,7 @@ import { icon } from "../components/icons.component.js";
 import { historyService } from "../services/history.service.js";
 import { formatDate } from "../utils/format.util.js";
 import { showToast } from "../components/toast.component.js";
+import { confirmDialog } from "../utils/confirm-dialog.util.js";
 
 export async function renderHistoryPage() {
   const container = el("div", { class: "page page--history" });
@@ -14,7 +15,8 @@ export async function renderHistoryPage() {
   ]));
 
   const clearBtn = el("button", { class: "btn btn--ghost", onClick: async () => {
-    if (confirm("Hapus semua riwayat?")) {
+    const ok = await confirmDialog({ title: "Hapus semua riwayat?", danger: true });
+    if (ok) {
       await historyService.clear();
       showToast("Riwayat dihapus", "success");
       renderList();

@@ -120,6 +120,35 @@ textarea { resize: vertical; font-family: var(--font-ui); }
 
 /* ---------- Toast ---------- */
 .toast-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 200; }
+
+/* ---------- SweetAlert2 theming (pengganti window.confirm/alert bawaan) ---------- */
+.ponti-swal.swal2-popup {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md) !important;
+  font-family: var(--font-ui) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+.ponti-swal .swal2-title { color: var(--text-primary) !important; font-size: 16.5px !important; padding-top: 8px; }
+.ponti-swal .swal2-html-container { color: var(--text-secondary) !important; font-size: 13.5px !important; line-height: 1.55; }
+.ponti-swal .swal2-icon.swal2-question { border-color: var(--accent) !important; color: var(--accent) !important; }
+.ponti-swal .swal2-icon.swal2-warning { border-color: var(--danger) !important; color: var(--danger) !important; }
+.ponti-swal .swal2-icon.swal2-success { border-color: var(--success) !important; color: var(--success) !important; }
+.ponti-swal .swal2-icon.swal2-error { border-color: var(--danger) !important; color: var(--danger) !important; }
+.ponti-swal .swal2-icon.swal2-info { border-color: var(--info) !important; color: var(--info) !important; }
+.ponti-swal__confirm.ponti-swal__confirm, .ponti-swal__cancel.ponti-swal__cancel {
+  font-family: var(--font-ui) !important; font-size: 13px !important; font-weight: 600 !important;
+  padding: 9px 18px !important; border-radius: var(--radius-sm) !important; border: none !important;
+  cursor: pointer; margin: 0 5px !important;
+}
+.ponti-swal__confirm { background: var(--accent) !important; color: #fff !important; }
+.ponti-swal__confirm:hover { background: var(--accent-hover) !important; }
+.ponti-swal__confirm--danger { background: var(--danger) !important; }
+.ponti-swal__confirm--danger:hover { background: #dc2626 !important; }
+.ponti-swal__cancel { background: var(--bg-elevated) !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; }
+.ponti-swal__cancel:hover { color: var(--text-primary) !important; }
+.swal2-backdrop-show { background: rgba(0, 0, 0, 0.6) !important; }
 .toast {
   display: flex; align-items: center; gap: 8px;
   background: var(--bg-elevated); border: 1px solid var(--border);

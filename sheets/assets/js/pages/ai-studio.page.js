@@ -8,6 +8,7 @@ import { tokenEstimatorService } from "../services/token-estimator.service.js";
 import { showToast } from "../components/toast.component.js";
 import { AI_PROVIDERS } from "../config/app.config.js";
 import { loadPrism, parseCodeSegments } from "../utils/syntax-highlight.util.js";
+import { confirmDialog } from "../utils/confirm-dialog.util.js";
 
 function flashCopied(btn) {
   const original = btn.innerHTML;
@@ -310,11 +311,16 @@ export async function renderAIStudioPage(navigate) {
     }
   }
 
-  generateBtn.addEventListener("click", () => {
+  generateBtn.addEventListener("click", async () => {
     // Sudah pernah generate sebelumnya -> tombol ini jadi "mulai percakapan
     // baru" (reset total), bukan lagi generate turn pertama.
     if (conversation.length > 1) {
-      if (!confirm("Ini akan menghapus seluruh riwayat percakapan di halaman ini (riwayat yang sudah tersimpan di menu History tidak terhapus) dan mulai dari prompt awal lagi. Lanjutkan?")) return;
+      const ok = await confirmDialog({
+        title: "Mulai percakapan baru?",
+        text: "Ini akan menghapus seluruh riwayat percakapan di halaman ini (riwayat yang sudah tersimpan di menu History tidak terhapus) dan mulai dari prompt awal lagi.",
+        danger: true,
+      });
+      if (!ok) return;
       conversation = [{ role: "user", content: state.lastPrompt.text }];
       followUpComposer.style.display = "none";
       generateBtn.innerHTML = `${icon("sparkles", { size: 14 })} Generate`;

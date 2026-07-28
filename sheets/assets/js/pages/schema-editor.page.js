@@ -14,6 +14,7 @@ import { redesignParserService } from "../services/redesign-parser.service.js";
 import { applySimpleSuggestion, applySplitSheetSuggestion } from "../services/redesign-apply.service.js";
 import { createFloatingWindow } from "../components/floating-window.component.js";
 import { showToast } from "../components/toast.component.js";
+import { confirmDialog } from "../utils/confirm-dialog.util.js";
 
 function newTriState(value = "unknown", condition = null) {
   return { value, condition };
@@ -303,7 +304,12 @@ export async function renderSchemaEditorPage(navigate) {
         const splitBtn = el("button", { class: "btn btn--primary btn--sm", disabled: isApplied ? "true" : undefined }, isApplied ? "Sudah Diterapkan" : "Terapkan Split Ini Sekarang");
         if (!isApplied) {
           splitBtn.addEventListener("click", async () => {
-            if (!confirm(`Ini akan MEMBUAT SHEET BARU "${s.action.newSheetName}" dan MENULIS ULANG data di sheet "${s.action.sourceSheet}" secara LANGSUNG ke Google Sheets (bukan cuma editan lokal). Pastikan Anda sudah menerapkan/menyimpan editan lain sebelumnya. Lanjutkan?`)) return;
+            const ok = await confirmDialog({
+              title: "Terapkan Split Sheet sekarang?",
+              text: `Ini akan MEMBUAT SHEET BARU "${s.action.newSheetName}" dan MENULIS ULANG data di sheet "${s.action.sourceSheet}" secara LANGSUNG ke Google Sheets (bukan cuma editan lokal). Pastikan Anda sudah menerapkan/menyimpan editan lain sebelumnya.`,
+              danger: true,
+            });
+            if (!ok) return;
             splitBtn.disabled = true;
             splitBtn.textContent = "Memproses...";
             try {
@@ -599,8 +605,13 @@ export async function renderSchemaEditorPage(navigate) {
       const idx = sheet.columns.findIndex((c) => c._key === col._key);
       if (idx < sheet.columns.length - 1) { [sheet.columns[idx + 1], sheet.columns[idx]] = [sheet.columns[idx], sheet.columns[idx + 1]]; onStructuralChange(); }
     });
-    deleteBtn.addEventListener("click", () => {
-      if (!confirm(`Hapus kolom "${col.name}"? Data pada kolom ini akan hilang permanen saat perubahan diterapkan.`)) return;
+    deleteBtn.addEventListener("click", async () => {
+      const ok = await confirmDialog({
+        title: `Hapus kolom "${col.name}"?`,
+        text: "Data pada kolom ini akan hilang permanen saat perubahan diterapkan.",
+        danger: true,
+      });
+      if (!ok) return;
       sheet.columns = sheet.columns.filter((c) => c._key !== col._key);
       onStructuralChange();
     });
@@ -740,8 +751,13 @@ export async function renderSchemaEditorPage(navigate) {
       const idx = edited.sheets.findIndex((s) => s._key === sheet._key);
       if (idx < edited.sheets.length - 1) { [edited.sheets[idx + 1], edited.sheets[idx]] = [edited.sheets[idx], edited.sheets[idx + 1]]; onStructuralChange(); }
     });
-    deleteSheetBtn.addEventListener("click", () => {
-      if (!confirm(`Hapus sheet "${sheet.name}" beserta seluruh isinya? Tindakan ini permanen setelah diterapkan.`)) return;
+    deleteSheetBtn.addEventListener("click", async () => {
+      const ok = await confirmDialog({
+        title: `Hapus sheet "${sheet.name}"?`,
+        text: "Seluruh isinya akan hilang. Tindakan ini permanen setelah diterapkan.",
+        danger: true,
+      });
+      if (!ok) return;
       edited.sheets = edited.sheets.filter((s) => s._key !== sheet._key);
       onStructuralChange();
     });
@@ -856,8 +872,13 @@ export async function renderSchemaEditorPage(navigate) {
       target: "_blank", rel: "noopener",
     }, [el("span", { html: icon("external-link", { size: 14 }) }), "Buka Google Sheets"]);
     const reloadBtn = el("button", { class: "btn btn--ghost" }, [el("span", { html: icon("history", { size: 14 }) }), "Muat Ulang dari Google Sheets"]);
-    reloadBtn.addEventListener("click", () => {
-      if (!confirm("Semua editan yang belum diterapkan akan hilang dan diganti dengan struktur terbaru dari Google Sheets. Lanjutkan?")) return;
+    reloadBtn.addEventListener("click", async () => {
+      const ok = await confirmDialog({
+        title: "Muat ulang dari Google Sheets?",
+        text: "Semua editan yang belum diterapkan akan hilang dan diganti dengan struktur terbaru dari Google Sheets.",
+        danger: true,
+      });
+      if (!ok) return;
       loadSchema();
     });
     const applyBtn = el("button", { class: "btn btn--primary" }, [el("span", { html: icon("check", { size: 14 }) }), "Terapkan Perubahan ke Google Sheets"]);

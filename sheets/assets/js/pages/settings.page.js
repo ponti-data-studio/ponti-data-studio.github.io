@@ -4,6 +4,7 @@ import { settingsService } from "../services/settings.service.js";
 import { appState } from "../controllers/app-state.js";
 import { getStorage } from "../storage/storage.factory.js";
 import { showToast } from "../components/toast.component.js";
+import { confirmDialog } from "../utils/confirm-dialog.util.js";
 
 function field(label, inputNode, hint) {
   return el("label", { class: "field" }, [
@@ -80,7 +81,12 @@ export async function renderSettingsPage(applyTheme) {
     el("h3", {}, "Storage"),
     el("p", { class: "muted" }, `Mode storage saat ini: ${APP_CONFIG.storageDriver} (semua data disimpan di browser ini, terpisah per akun Google yang login).`),
     el("button", { class: "btn btn--danger", onClick: async () => {
-      if (confirm("Ini akan menghapus SEMUA data lokal akun Anda yang SEDANG login (history, settings, API key) — tidak memengaruhi akun Google lain yang mungkin login di device ini. Lanjutkan?")) {
+      const ok = await confirmDialog({
+        title: "Hapus data akun ini?",
+        text: "Ini akan menghapus SEMUA data lokal akun Anda yang SEDANG login (history, settings, API key) — tidak memengaruhi akun Google lain yang mungkin login di device ini.",
+        danger: true,
+      });
+      if (ok) {
         await getStorage().clearAll();
         showToast("Data lokal akun ini dihapus. Memuat ulang...", "info");
         setTimeout(() => window.location.reload(), 1000);
