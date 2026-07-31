@@ -1,0 +1,39 @@
+{
+  "name": "SIMAJI — Sistem Manajemen Pembelajaran Mengaji",
+  "short_name": "SIMAJI",
+  "description": "Kelola pembelajaran mengaji: Daily Achievement, laporan bulanan/semester, dashboard, dan Parent Portal — tersinkron dengan Google Sheets.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f766e",
+  "theme_color": "#0f766e",
+  "lang": "id",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
