@@ -1,7 +1,7 @@
 /** consultation.js — halaman inti 2 panel:
  *  KIRI: timeline percakapan + paste chat + upload/drag-drop file
  *  KANAN: hasil analisis AI (coverage, missing info, suggested reply, dst) */
-const Consult = { attachments: [] };
+const Consult = { attachments: [], messages: [] };
 
 UI.routes.consultation = async function (view) {
   if (!App.projects.length) App.projects = await Api.post('projects.list', {});
@@ -15,6 +15,7 @@ UI.routes.consultation = async function (view) {
   }
   await UI.loadCurrent();
   Consult.attachments = [];
+  Consult.messages = [];
 
   const grid = U.el('<div class="consult"><div id="colL"></div><div id="colR"></div></div>');
   view.appendChild(grid);
@@ -29,9 +30,13 @@ Consult.renderLeft = function (col) {
     '  <div class="timeline" id="timeline">' + (msgs.length ? '' :
       '<div class="empty small">Belum ada percakapan.<br>Paste chat pertama client di bawah.</div>') + '</div></div>' +
     '<div class="card"><h2><span class="ic">📥</span>Data baru dari client</h2>' +
-    '  <div class="field"><textarea class="input" id="chatInput" rows="5" placeholder="Paste chat WhatsApp / Fastwork / Email di sini…"></textarea></div>' +
-    '  <div class="dropzone" id="dropzone">Tarik file ke sini atau <u>klik untuk memilih</u><br>' +
-    '    <span class="small">Screenshot · Gambar · PDF · Excel · CSV · TXT (maks 8 MB)</span></div>' +
+    '  <p class="small muted" style="margin:0 0 10px">Client kirim beberapa pesan beruntun? Tambahkan satu per satu agar tetap terpisah,' +
+    '  atau langsung paste semuanya jadi satu lalu klik Analisis.</p>' +
+    '  <div id="queue"></div>' +
+    '  <div class="field"><textarea class="input" id="chatInput" rows="4" placeholder="Paste satu pesan/chat client di sini…"></textarea></div>' +
+    '  <div class="row" style="margin:-6px 0 10px"><button class="btn ghost sm" id="addMsg">+ Tambah pesan lain (jangan gabung dulu)</button></div>' +
+    '  <div class="dropzone" id="dropzone">Tarik file ke sini (boleh lebih dari satu sekaligus) atau <u>klik untuk memilih</u><br>' +
+    '    <span class="small">Screenshot · Gambar · PDF · Excel · CSV · TXT (maks 8 MB / file)</span></div>' +
     '  <input type="file" id="fileInput" multiple hidden accept=".png,.jpg,.jpeg,.webp,.gif,.pdf,.xlsx,.xls,.csv,.txt,.md,.json">' +
     '  <div class="attach" id="attach"></div>' +
     '  <div class="row" style="margin-top:14px">' +
@@ -63,6 +68,33 @@ Consult.renderLeft = function (col) {
 
   col.querySelector('#analyzeBtn').addEventListener('click', function () { Consult.analyze(col); });
   col.querySelector('#noteBtn').addEventListener('click', function () { Consult.addNote(); });
+  col.querySelector('#addMsg').addEventListener('click', function () { Consult.queueMessage(col); });
+  Consult.renderQueue(col);
+};
+
+Consult.queueMessage = function (col) {
+  const box = col.querySelector('#chatInput');
+  const v = box.value.trim();
+  if (!v) { UI.toast('warning', 'Tulis/paste pesan dulu sebelum menambah'); return; }
+  Consult.messages.push(v);
+  box.value = '';
+  Consult.renderQueue(col);
+  box.focus();
+};
+
+Consult.renderQueue = function (col) {
+  const wrap = col.querySelector('#queue');
+  if (!Consult.messages.length) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = '<p class="small muted" style="margin:0 0 6px">' + Consult.messages.length + ' pesan siap dianalisis:</p>';
+  Consult.messages.forEach(function (m, i) {
+    const row = U.el('<div class="qitem"><span class="n">' + (i + 1) + '</span>' +
+      '<span class="tx">' + U.esc(m.slice(0, 160)) + (m.length > 160 ? '…' : '') + '</span>' +
+      '<button class="iconbtn" title="Hapus">✕</button></div>');
+    row.querySelector('button').addEventListener('click', function () {
+      Consult.messages.splice(i, 1); Consult.renderQueue(col);
+    });
+    wrap.appendChild(row);
+  });
 };
 
 Consult.addFiles = async function (fileList, col) {
@@ -91,14 +123,18 @@ Consult.renderAttach = function (col) {
 };
 
 Consult.analyze = async function (col) {
-  const text = col.querySelector('#chatInput').value.trim();
-  if (!text && !Consult.attachments.length) { UI.toast('warning', 'Paste chat atau lampirkan file dulu'); return; }
-  UI.loading('AI sedang menganalisis percakapan…');
+  const box = col.querySelector('#chatInput');
+  const current = box.value.trim();
+  const texts = Consult.messages.slice();
+  if (current) texts.push(current); // ikut sertakan yang belum ditambahkan ke antrian
+  if (!texts.length && !Consult.attachments.length) { UI.toast('warning', 'Paste chat atau lampirkan file dulu'); return; }
+  UI.loading('AI sedang menganalisis ' + texts.length + ' pesan & ' + Consult.attachments.length + ' lampiran…');
   try {
     App.current = await Api.post('chat.analyze', {
-      projectId: App.currentProjectId, text: text, files: Consult.attachments
+      projectId: App.currentProjectId, texts: texts, files: Consult.attachments
     });
     Consult.attachments = [];
+    Consult.messages = [];
     UI.closeLoading(); UI.toast('success', 'Analisis selesai');
     UI.route();
   } catch (err) { UI.closeLoading(); UI.error(err); }
