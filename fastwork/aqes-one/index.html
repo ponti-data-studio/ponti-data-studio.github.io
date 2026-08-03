@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="description" content="AQES One — Al-'Abdu Qur'anic Evaluation System: sistem informasi, monitoring, dan evaluasi TPQ Al-'Abdu berbasis Model Pendidikan Qurani Integral (MPQI).">
+
+<!-- Open Graph / pratinjau tautan -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="AQES One — TPQ Al-'Abdu">
+<meta property="og:description" content="Sistem evaluasi Qurani TPQ Al-'Abdu — evaluasi harian, RTLI, dan rapor otomatis, bisa dipasang di HP dan desktop.">
+<meta property="og:image" content="./icons/icon-512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+
+<title>AQES One — TPQ Al-'Abdu</title>
+
+<!-- Favicon -->
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png">
+
+<!-- PWA: manifest -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#065F46">
+
+<!-- PWA: Android / Chrome / Windows install -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="AQES One">
+
+<!-- PWA: iOS (Add to Home Screen) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AQES One">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#F3F4F6}
+  iframe{width:100%;height:100%;border:none;display:block;background:#F3F4F6}
+
+  /* ------------------------------ SPLASH ----------------------------- */
+  #splash{
+    position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:16px;
+    background:linear-gradient(150deg,#064E3B 0%,#065F46 55%,#059669 100%);
+    transition:opacity .35s ease;
+  }
+  #splash.hide{opacity:0;pointer-events:none}
+  #splash .mark{
+    width:84px;height:84px;border-radius:20px;
+    background:#fff;box-shadow:0 12px 34px rgba(0,0,0,.25);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+    padding:10px;animation:pulse 1.6s ease-in-out infinite;
+  }
+  #splash .mark img{ width:100%;height:100%;object-fit:contain }
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+  #splash .brand{
+    color:#D1FAE5;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  #splash .dots{display:flex;gap:6px}
+  #splash .dots span{
+    width:6px;height:6px;border-radius:50%;background:#fff;
+    animation:blink 1.2s infinite ease-in-out;
+  }
+  #splash .dots span:nth-child(2){animation-delay:.15s;opacity:.6}
+  #splash .dots span:nth-child(3){animation-delay:.3s}
+  @keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+  @media (prefers-reduced-motion:reduce){
+    #splash .mark{animation:none}
+    #splash .dots span{animation:none;opacity:.7}
+  }
+
+  /* ------------------------------ OFFLINE ----------------------------- */
+  #offlineBar{
+    position:fixed;left:0;right:0;top:0;z-index:60;display:none;
+    align-items:center;gap:10px;padding:10px 14px;
+    background:#D97706;color:#2A1B00;font-size:13px;font-weight:500;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding-top:calc(10px + env(safe-area-inset-top));
+  }
+  #offlineBar.show{display:flex}
+  #offlineBar button{
+    margin-left:auto;border:1px solid rgba(0,0,0,.25);background:transparent;
+    color:#2A1B00;padding:5px 10px;border-radius:6px;font-size:12.5px;cursor:pointer;
+  }
+
+  /* ---------------------------- INSTALL FAB --------------------------- */
+  #installBtn{
+    position:fixed;right:16px;bottom:16px;z-index:55;display:none;
+    align-items:center;gap:8px;padding:11px 16px;border-radius:12px;border:0;
+    background:#065F46;color:#fff;font-weight:600;font-size:13.5px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    box-shadow:0 8px 20px rgba(6,95,70,.35);cursor:pointer;
+  }
+  #installBtn.show{display:flex}
+  #installBtn svg{width:16px;height:16px}
+  #installBtn.installed{display:none!important}
+
+  @supports (bottom: env(safe-area-inset-bottom)){
+    #installBtn{bottom:calc(16px + env(safe-area-inset-bottom))}
+  }
+</style>
+</head>
+<body>
+
+  <div id="offlineBar" role="status">
+    Tidak ada koneksi internet. Sebagian data mungkin tidak termuat.
+    <button id="offlineRetry">Coba lagi</button>
+  </div>
+
+  <div id="splash">
+    <div class="mark"><img src="./icons/icon-192.png" alt="AQES One"></div>
+    <div class="dots"><span></span><span></span><span></span></div>
+    <div class="brand">Menyiapkan AQES One</div>
+  </div>
+
+  <!--
+    GANTI URL DI BAWAH INI dengan URL Web App Apps Script Anda
+    (Deploy → Manage deployments → salin "Web app URL").
+  -->
+  <iframe
+    id="app"
+    src="GANTI_DENGAN_URL_WEB_APP_ANDA"
+    title="AQES One — TPQ Al-'Abdu"
+    allow="clipboard-write"
+    referrerpolicy="no-referrer-when-downgrade">
+  </iframe>
+
+  <button id="installBtn" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 11l5 5 5-5M5 21h14"/></svg>
+    Pasang aplikasi
+  </button>
+
+<script>
+  /* ------------------------------ SPLASH ------------------------------ */
+  var splash = document.getElementById('splash');
+  var frame = document.getElementById('app');
+  var splashHidden = false;
+
+  function hideSplash() {
+    if (splashHidden) return;
+    splashHidden = true;
+    splash.classList.add('hide');
+    setTimeout(function () { splash.remove(); }, 400);
+  }
+  frame.addEventListener('load', hideSplash);
+  // Jaring pengaman: kalau iframe lambat/gagal memicu 'load', jangan biarkan
+  // splash menutupi aplikasi selamanya.
+  setTimeout(hideSplash, 6000);
+
+  /* ------------------------------ OFFLINE ------------------------------ */
+  var offlineBar = document.getElementById('offlineBar');
+  function syncOnlineState() {
+    offlineBar.classList.toggle('show', !navigator.onLine);
+  }
+  window.addEventListener('online', syncOnlineState);
+  window.addEventListener('offline', syncOnlineState);
+  document.getElementById('offlineRetry').addEventListener('click', function () {
+    frame.src = frame.src; // muat ulang iframe
+    syncOnlineState();
+  });
+  syncOnlineState();
+
+  /* --------------------------- SERVICE WORKER --------------------------- */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(function (err) {
+        console.warn('Pendaftaran service worker gagal:', err);
+      });
+    });
+  }
+
+  /* ------------------------- TOMBOL PASANG APLIKASI ---------------------- */
+  var installBtn = document.getElementById('installBtn');
+  var deferredPrompt = null;
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.classList.add('show');
+  });
+
+  installBtn.addEventListener('click', function () {
+    if (!deferredPrompt) return;
+    installBtn.classList.remove('show');
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(function () { deferredPrompt = null; });
+  });
+
+  window.addEventListener('appinstalled', function () {
+    installBtn.classList.remove('show');
+    installBtn.classList.add('installed');
+  });
+
+  // Sudah berjalan sebagai app terpasang (standalone) -> jangan tampilkan tombol.
+  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+    installBtn.classList.add('installed');
+  }
+</script>
+</body>
+</html>
