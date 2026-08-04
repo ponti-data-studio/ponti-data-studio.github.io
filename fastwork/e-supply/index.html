@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="E-Supply — Procurement System: pengajuan Purchase Requisition (PR) multi-item, approval berjenjang, tanda tangan digital, tersinkron langsung dengan Google Sheets.">
+
+<!-- Open Graph / pratinjau tautan -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="E-Supply — Procurement System">
+<meta property="og:description" content="Pengajuan Purchase Requisition multi-item dengan approval berjenjang, bisa dipasang di HP dan desktop.">
+<meta property="og:image" content="./icons/icon-512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+
+<title>E-Supply — Procurement System</title>
+
+<!-- Favicon -->
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png">
+
+<!-- PWA: manifest -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#1F3A5F">
+
+<!-- PWA: Android / Chrome / Windows install -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="E-Supply">
+
+<!-- PWA: iOS (Add to Home Screen) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="E-Supply">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#0E1C29}
+  iframe{width:100%;height:100%;border:none;display:block;background:#0E1C29}
+
+  /* ------------------------------ SPLASH ----------------------------- */
+  #splash{
+    position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:16px;background:#0E1C29;
+    transition:opacity .35s ease;
+  }
+  #splash.hide{opacity:0;pointer-events:none}
+  #splash .mark{
+    width:72px;height:72px;border-radius:16px;
+    background:#1F3A5F;border:2px solid rgba(255,255,255,.15);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:700;font-size:24px;letter-spacing:.04em;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    animation:pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+  #splash .brand{
+    color:#9FB2C4;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  #splash .dots{display:flex;gap:6px}
+  #splash .dots span{
+    width:6px;height:6px;border-radius:50%;background:#B98A2E;
+    animation:blink 1.2s infinite ease-in-out;
+  }
+  #splash .dots span:nth-child(2){animation-delay:.15s;background:#33547F}
+  #splash .dots span:nth-child(3){animation-delay:.3s;background:#B98A2E}
+  @keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+  @media (prefers-reduced-motion:reduce){
+    #splash .mark{animation:none}
+    #splash .dots span{animation:none;opacity:.7}
+  }
+
+  /* ------------------------------ OFFLINE ----------------------------- */
+  #offlineBar{
+    position:fixed;left:0;right:0;top:0;z-index:60;display:none;
+    align-items:center;gap:10px;padding:10px 14px;
+    background:#B98A2E;color:#2A1B00;font-size:13px;font-weight:500;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding-top:calc(10px + env(safe-area-inset-top));
+  }
+  #offlineBar.show{display:flex}
+  #offlineBar button{
+    margin-left:auto;border:1px solid rgba(0,0,0,.25);background:transparent;
+    color:#2A1B00;padding:5px 10px;border-radius:6px;font-size:12.5px;cursor:pointer;
+  }
+
+  /* ---------------------------- INSTALL FAB --------------------------- */
+  #installBtn{
+    position:fixed;right:16px;bottom:16px;z-index:55;display:none;
+    align-items:center;gap:8px;padding:11px 16px;border-radius:8px;border:0;
+    background:#1F3A5F;color:#fff;font-weight:500;font-size:13.5px;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    box-shadow:0 8px 20px rgba(7,26,51,.35);cursor:pointer;
+  }
+  #installBtn.show{display:flex}
+  #installBtn svg{width:16px;height:16px}
+  #installBtn.installed{display:none!important}
+
+  @supports (bottom: env(safe-area-inset-bottom)){
+    #installBtn{bottom:calc(16px + env(safe-area-inset-bottom))}
+  }
+
+  /* ------------------------------ iOS HINT ----------------------------- */
+  /* iOS Safari tidak mendukung beforeinstallprompt, jadi tombol #installBtn
+     tidak akan pernah muncul di iPhone/iPad. Sebagai gantinya tampilkan
+     petunjuk manual "Tambahkan ke Layar Utama" satu kali saja. */
+  #iosHint{
+    position:fixed;left:16px;right:16px;z-index:55;display:none;
+    bottom:calc(16px + env(safe-area-inset-bottom));
+    background:#14314C;color:#E7ECF4;border-radius:10px;padding:12px 14px;
+    font-size:13px;line-height:1.5;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    box-shadow:0 8px 20px rgba(7,26,51,.35);
+  }
+  #iosHint.show{display:flex;align-items:flex-start;gap:10px}
+  #iosHint b{color:#fff}
+  #iosHint button{
+    flex:0 0 auto;border:0;background:transparent;color:#9FB2C4;font-size:18px;
+    line-height:1;cursor:pointer;padding:0 2px;
+  }
+</style>
+</head>
+<body>
+
+  <div id="offlineBar" role="status">
+    Tidak ada koneksi internet. Sebagian data mungkin tidak termuat.
+    <button id="offlineRetry">Coba lagi</button>
+  </div>
+
+  <div id="splash">
+    <div class="mark">PR</div>
+    <div class="dots"><span></span><span></span><span></span></div>
+    <div class="brand">Menyiapkan E-Supply</div>
+  </div>
+
+  <!--
+    PENTING — SEBELUM DI-HOST:
+    Ganti nilai src di bawah dengan URL Web App hasil Deploy Anda sendiri
+    (Apps Script editor → Deploy → Manage deployments → salin "Web app URL").
+    URL harus diakhiri "/exec", bukan "/dev".
+  -->
+  <iframe
+    id="app"
+    src="https://script.google.com/macros/s/AKfycbwl1jivz-475PqYtFD4neapQEvxRZmKPHSNuKIT_43xZY7zvYRmb2i7E2ldvVAk19pY/exec"
+    title="E-Supply — Procurement System"
+    allow="clipboard-write"
+    referrerpolicy="no-referrer-when-downgrade">
+  </iframe>
+
+  <button id="installBtn" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 11l5 5 5-5M5 21h14"/></svg>
+    Pasang aplikasi
+  </button>
+
+  <div id="iosHint" role="status">
+    <div><b>Pasang E-Supply di iPhone/iPad:</b> ketuk ikon Bagikan (kotak dengan panah ke atas) di Safari, lalu pilih "Tambahkan ke Layar Utama".</div>
+    <button id="iosHintClose" aria-label="Tutup">&times;</button>
+  </div>
+
+<script>
+  /* ------------------------------ SPLASH ------------------------------ */
+  var splash = document.getElementById('splash');
+  var frame = document.getElementById('app');
+  var splashHidden = false;
+
+  function hideSplash() {
+    if (splashHidden) return;
+    splashHidden = true;
+    splash.classList.add('hide');
+    setTimeout(function () { splash.remove(); }, 400);
+  }
+  frame.addEventListener('load', hideSplash);
+  // Jaring pengaman: kalau iframe lambat/gagal memicu 'load', jangan biarkan
+  // splash menutupi aplikasi selamanya.
+  setTimeout(hideSplash, 6000);
+
+  /* ------------------------------ OFFLINE ------------------------------ */
+  var offlineBar = document.getElementById('offlineBar');
+  function syncOnlineState() {
+    offlineBar.classList.toggle('show', !navigator.onLine);
+  }
+  window.addEventListener('online', syncOnlineState);
+  window.addEventListener('offline', syncOnlineState);
+  document.getElementById('offlineRetry').addEventListener('click', function () {
+    frame.src = frame.src; // muat ulang iframe
+    syncOnlineState();
+  });
+  syncOnlineState();
+
+  /* --------------------------- SERVICE WORKER --------------------------- */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(function (err) {
+        console.warn('Pendaftaran service worker gagal:', err);
+      });
+    });
+  }
+
+  /* ------------------------- TOMBOL PASANG APLIKASI ---------------------- */
+  var installBtn = document.getElementById('installBtn');
+  var deferredPrompt = null;
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.classList.add('show');
+  });
+
+  installBtn.addEventListener('click', function () {
+    if (!deferredPrompt) return;
+    installBtn.classList.remove('show');
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(function () { deferredPrompt = null; });
+  });
+
+  window.addEventListener('appinstalled', function () {
+    installBtn.classList.remove('show');
+    installBtn.classList.add('installed');
+  });
+
+  // Sudah berjalan sebagai app terpasang (standalone) -> jangan tampilkan tombol/hint.
+  var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (isStandalone) {
+    installBtn.classList.add('installed');
+  }
+
+  /* ------------------------------ iOS HINT ----------------------------- */
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS 13+
+  var iosHint = document.getElementById('iosHint');
+  var IOS_HINT_KEY = 'esupply_ios_hint_dismissed';
+
+  if (isIOS && !isStandalone) {
+    var dismissed = false;
+    try { dismissed = localStorage.getItem(IOS_HINT_KEY) === '1'; } catch (e) {}
+    if (!dismissed) {
+      setTimeout(function () { iosHint.classList.add('show'); }, 1200);
+    }
+  }
+  document.getElementById('iosHintClose').addEventListener('click', function () {
+    iosHint.classList.remove('show');
+    try { localStorage.setItem(IOS_HINT_KEY, '1'); } catch (e) {}
+  });
+</script>
+</body>
+</html>
