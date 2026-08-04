@@ -86,39 +86,44 @@
     color:#2A1B00;padding:5px 10px;border-radius:6px;font-size:12.5px;cursor:pointer;
   }
 
-  /* ---------------------------- INSTALL FAB --------------------------- */
-  #installBtn{
-    position:fixed;right:16px;bottom:16px;z-index:55;display:none;
-    align-items:center;gap:8px;padding:11px 16px;border-radius:8px;border:0;
-    background:#1F3A5F;color:#fff;font-weight:500;font-size:13.5px;
+  /* ---------------------------- POPUP PASANG APLIKASI --------------------------- */
+  /* Menggantikan tombol melayang: saat aplikasi masih dibuka lewat browser
+     (belum terpasang), muncul popup ajakan memasang — bukan tombol permanen. */
+  #installModal{
+    position:fixed;inset:0;z-index:70;display:none;
+    align-items:flex-end;justify-content:center;
+  }
+  #installModal.show{display:flex}
+  .install-backdrop{position:absolute;inset:0;background:rgba(6,14,25,.6)}
+  .install-card{
+    position:relative;z-index:1;width:100%;max-width:420px;
+    margin:0 auto calc(16px + env(safe-area-inset-bottom));
+    background:#14314C;color:#E7ECF4;border-radius:16px 16px 0 0;
+    padding:20px 20px calc(18px + env(safe-area-inset-bottom));
+    box-shadow:0 -10px 30px rgba(0,0,0,.4);
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    box-shadow:0 8px 20px rgba(7,26,51,.35);cursor:pointer;
+    animation:installSlideUp .25s ease;
   }
-  #installBtn.show{display:flex}
-  #installBtn svg{width:16px;height:16px}
-  #installBtn.installed{display:none!important}
-
-  @supports (bottom: env(safe-area-inset-bottom)){
-    #installBtn{bottom:calc(16px + env(safe-area-inset-bottom))}
+  @keyframes installSlideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+  @media (min-width:560px){
+    #installModal{align-items:center}
+    .install-card{border-radius:16px;margin:0;animation:installPopIn .2s ease}
   }
-
-  /* ------------------------------ iOS HINT ----------------------------- */
-  /* iOS Safari tidak mendukung beforeinstallprompt, jadi tombol #installBtn
-     tidak akan pernah muncul di iPhone/iPad. Sebagai gantinya tampilkan
-     petunjuk manual "Tambahkan ke Layar Utama" satu kali saja. */
-  #iosHint{
-    position:fixed;left:16px;right:16px;z-index:55;display:none;
-    bottom:calc(16px + env(safe-area-inset-bottom));
-    background:#14314C;color:#E7ECF4;border-radius:10px;padding:12px 14px;
-    font-size:13px;line-height:1.5;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    box-shadow:0 8px 20px rgba(7,26,51,.35);
+  @keyframes installPopIn{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+  .install-icon{
+    width:56px;height:56px;border-radius:14px;overflow:hidden;margin-bottom:12px;
+    box-shadow:0 4px 14px rgba(0,0,0,.3)
   }
-  #iosHint.show{display:flex;align-items:flex-start;gap:10px}
-  #iosHint b{color:#fff}
-  #iosHint button{
-    flex:0 0 auto;border:0;background:transparent;color:#9FB2C4;font-size:18px;
-    line-height:1;cursor:pointer;padding:0 2px;
+  .install-icon img{width:100%;height:100%;display:block}
+  .install-card h3{font-size:17px;margin-bottom:6px;color:#fff}
+  .install-card p{font-size:13.5px;line-height:1.6;color:#C9D6E8;margin-bottom:18px}
+  .install-actions{display:flex;gap:10px}
+  .install-actions button{
+    flex:1;border:0;border-radius:8px;padding:11px 14px;font-size:13.5px;
+    font-weight:600;cursor:pointer;font-family:inherit
   }
+  #installLater{background:rgba(255,255,255,.08);color:#C9D6E8}
+  #installConfirm{background:#B98A2E;color:#1E1300}
 </style>
 </head>
 <body>
@@ -148,14 +153,17 @@
     referrerpolicy="no-referrer-when-downgrade">
   </iframe>
 
-  <button id="installBtn" type="button">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 11l5 5 5-5M5 21h14"/></svg>
-    Pasang aplikasi
-  </button>
-
-  <div id="iosHint" role="status">
-    <div><b>Pasang E-Supply di iPhone/iPad:</b> ketuk ikon Bagikan (kotak dengan panah ke atas) di Safari, lalu pilih "Tambahkan ke Layar Utama".</div>
-    <button id="iosHintClose" aria-label="Tutup">&times;</button>
+  <div id="installModal" role="dialog" aria-modal="true" aria-labelledby="installTitle">
+    <div class="install-backdrop" id="installBackdrop"></div>
+    <div class="install-card">
+      <div class="install-icon"><img src="./icons/icon-192.png" alt=""></div>
+      <h3 id="installTitle">Pasang E-Supply?</h3>
+      <p id="installText">Pasang aplikasi ini di perangkat Anda untuk akses lebih cepat, tampilan layar penuh, dan ikon di layar utama.</p>
+      <div class="install-actions">
+        <button id="installLater" type="button">Nanti saja</button>
+        <button id="installConfirm" type="button">Pasang Aplikasi</button>
+      </div>
+    </div>
   </div>
 
 <script>
@@ -197,51 +205,78 @@
     });
   }
 
-  /* ------------------------- TOMBOL PASANG APLIKASI ---------------------- */
-  var installBtn = document.getElementById('installBtn');
+  /* --------------------------- POPUP PASANG APLIKASI --------------------------- */
+  // Sudah berjalan sebagai app terpasang (standalone) -> jangan pernah tampilkan popup.
+  var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS 13+
+
+  var installModal = document.getElementById('installModal');
+  var installText = document.getElementById('installText');
+  var installConfirm = document.getElementById('installConfirm');
+  var installLater = document.getElementById('installLater');
+  var installBackdrop = document.getElementById('installBackdrop');
   var deferredPrompt = null;
 
+  var DISMISS_KEY = 'esupply_install_dismissed_at';
+  var DISMISS_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000; // jangan tampilkan lagi selama 3 hari setelah ditutup
+
+  function shouldShowInstallPopup() {
+    if (isStandalone) return false;
+    var raw = null;
+    try { raw = localStorage.getItem(DISMISS_KEY); } catch (e) {}
+    if (!raw) return true;
+    var last = parseInt(raw, 10);
+    return !last || (Date.now() - last) > DISMISS_COOLDOWN_MS;
+  }
+  function rememberDismiss() {
+    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch (e) {}
+  }
+  function closeInstallModal() {
+    installModal.classList.remove('show');
+    rememberDismiss();
+  }
+  function openInstallModal(mode) {
+    if (mode === 'ios') {
+      installText.innerHTML = 'Ketuk ikon <b>Bagikan</b> (kotak dengan panah ke atas) di Safari, lalu pilih ' +
+        '<b>"Tambahkan ke Layar Utama"</b> untuk memasang E-Supply di perangkat Anda.';
+      installConfirm.textContent = 'Mengerti';
+      installConfirm.onclick = closeInstallModal;
+    } else {
+      installText.textContent = 'Pasang aplikasi ini di perangkat Anda untuk akses lebih cepat, tampilan layar penuh, dan ikon di layar utama.';
+      installConfirm.textContent = 'Pasang Aplikasi';
+      installConfirm.onclick = function () {
+        installModal.classList.remove('show');
+        rememberDismiss();
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.finally(function () { deferredPrompt = null; });
+      };
+    }
+    installModal.classList.add('show');
+  }
+  installLater.addEventListener('click', closeInstallModal);
+  installBackdrop.addEventListener('click', closeInstallModal);
+
+  // Android/Chrome/Edge: tangkap event resmi lalu tampilkan popup (bukan tombol).
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault();
     deferredPrompt = e;
-    installBtn.classList.add('show');
-  });
-
-  installBtn.addEventListener('click', function () {
-    if (!deferredPrompt) return;
-    installBtn.classList.remove('show');
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.finally(function () { deferredPrompt = null; });
-  });
-
-  window.addEventListener('appinstalled', function () {
-    installBtn.classList.remove('show');
-    installBtn.classList.add('installed');
-  });
-
-  // Sudah berjalan sebagai app terpasang (standalone) -> jangan tampilkan tombol/hint.
-  var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-  if (isStandalone) {
-    installBtn.classList.add('installed');
-  }
-
-  /* ------------------------------ iOS HINT ----------------------------- */
-  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS 13+
-  var iosHint = document.getElementById('iosHint');
-  var IOS_HINT_KEY = 'esupply_ios_hint_dismissed';
-
-  if (isIOS && !isStandalone) {
-    var dismissed = false;
-    try { dismissed = localStorage.getItem(IOS_HINT_KEY) === '1'; } catch (e) {}
-    if (!dismissed) {
-      setTimeout(function () { iosHint.classList.add('show'); }, 1200);
+    if (shouldShowInstallPopup()) {
+      setTimeout(function () { openInstallModal('android'); }, 1500);
     }
-  }
-  document.getElementById('iosHintClose').addEventListener('click', function () {
-    iosHint.classList.remove('show');
-    try { localStorage.setItem(IOS_HINT_KEY, '1'); } catch (e) {}
   });
+  window.addEventListener('appinstalled', function () {
+    installModal.classList.remove('show');
+    rememberDismiss(); // sudah terpasang, tidak perlu menawarkan lagi
+  });
+
+  // iOS Safari tidak mendukung beforeinstallprompt -> tampilkan popup berisi
+  // instruksi manual "Tambahkan ke Layar Utama".
+  if (isIOS && shouldShowInstallPopup()) {
+    setTimeout(function () { openInstallModal('ios'); }, 1500);
+  }
+
 </script>
 </body>
 </html>

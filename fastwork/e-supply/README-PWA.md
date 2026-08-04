@@ -47,8 +47,9 @@ Hosting apa pun yang mendukung file statis bisa dipakai, misalnya:
 **Wajib HTTPS.** Service worker dan prompt "Pasang aplikasi" hanya berfungsi di halaman HTTPS (atau `localhost` saat development). Semua penyedia di atas sudah HTTPS otomatis.
 
 ### 4. Uji coba
-- Buka URL hosting Anda di Chrome/Edge (desktop atau Android) → tombol "Pasang aplikasi" akan muncul di kanan bawah setelah beberapa detik.
-- Di iPhone/iPad (Safari), tombol otomatis tidak muncul (Safari tidak mendukung `beforeinstallprompt`) — sebagai gantinya muncul kotak petunjuk "ketuk ikon Bagikan → Tambahkan ke Layar Utama".
+- Buka URL hosting Anda di Chrome/Edge (desktop atau Android) → sekitar 1,5 detik kemudian muncul **popup** "Pasang E-Supply?" dari bawah layar dengan tombol "Pasang Aplikasi" / "Nanti saja".
+- Di iPhone/iPad (Safari), popup otomatis tidak bisa memicu instalasi langsung (Safari tidak mendukung `beforeinstallprompt`) — popup yang muncul berisi instruksi manual "ketuk ikon Bagikan → Tambahkan ke Layar Utama".
+- Kalau popup ditutup ("Nanti saja" / ketuk area gelap di luar kartu), popup tidak akan muncul lagi selama **3 hari** (tersimpan di localStorage browser), supaya tidak mengganggu pengguna berulang kali. Setelah aplikasi berhasil dipasang, popup tidak akan muncul lagi sama sekali.
 - Matikan koneksi internet sebentar → muncul bar oranye "Tidak ada koneksi internet" di atas.
 
 ## Catatan penting
