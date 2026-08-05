@@ -1,0 +1,40 @@
+{
+  "name": "SI-NOMOR — Sistem Penomoran Surat Keluar",
+  "short_name": "SI-NOMOR",
+  "description": "Aplikasi penomoran surat keluar otomatis: pengajuan nomor, riwayat, dan master klasifikasi, tersinkron langsung dengan Google Sheets.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "orientation": "portrait-primary",
+  "background_color": "#0E1C29",
+  "theme_color": "#0F4C81",
+  "lang": "id",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    { "src": "./icons/favicon-16x16.png", "sizes": "16x16", "type": "image/png" },
+    { "src": "./icons/favicon-32x32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "./icons/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "./icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Input Nomor Surat",
+      "short_name": "Input",
+      "description": "Langsung ke formulir pengajuan nomor surat",
+      "url": "./index.html#form",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Riwayat Surat",
+      "short_name": "Riwayat",
+      "description": "Lihat riwayat nomor surat yang telah diterbitkan",
+      "url": "./index.html#history",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
