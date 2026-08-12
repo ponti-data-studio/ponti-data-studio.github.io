@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="id" data-bs-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<title>POS Kasir - Point of Sale System</title>
+<meta name="description" content="Aplikasi Kasir offline-first untuk retail, F&B, minimarket, dan UMKM.">
+<meta name="theme-color" content="#4f46e5">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/icons/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+
+<!-- Bootstrap 5 -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<!-- Bootstrap Icons -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<!-- SweetAlert2 -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.10.5/sweetalert2.min.css" rel="stylesheet">
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============ OFFLINE STATUS BAR ============ -->
+<div id="offlineStatusBar" class="offline-status-bar" role="status" aria-live="polite"></div>
+
+<!-- ============ LOGIN SCREEN ============ -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <i class="bi bi-shop"></i>
+    </div>
+    <h1 class="login-title">POS SYSTEM</h1>
+    <p class="login-subtitle">Masuk untuk mulai bertransaksi</p>
+
+    <form id="loginForm" novalidate>
+      <div class="mb-3 text-start">
+        <label for="loginUsername" class="form-label">Username</label>
+        <input type="text" class="form-control" id="loginUsername" autocomplete="username" required>
+      </div>
+      <div class="mb-3 text-start">
+        <label for="loginPassword" class="form-label">Password</label>
+        <div class="input-group">
+          <input type="password" class="form-control" id="loginPassword" autocomplete="current-password" required>
+          <button class="btn btn-outline-secondary" type="button" id="togglePasswordBtn" aria-label="Tampilkan password">
+            <i class="bi bi-eye"></i>
+          </button>
+        </div>
+      </div>
+      <div id="loginError" class="alert alert-danger py-2 d-none" role="alert"></div>
+      <button type="submit" class="btn btn-primary w-100 btn-lg" id="loginSubmitBtn">MASUK</button>
+    </form>
+
+    <div class="login-divider"><span>ATAU</span></div>
+
+    <button type="button" class="btn btn-outline-secondary w-100" id="guestLoginBtn">
+      <i class="bi bi-person-badge me-1"></i> MASUK SEBAGAI GUEST
+    </button>
+
+    <div class="login-hint mt-3">
+      <small class="text-muted">Demo: admin / admin123 &nbsp;|&nbsp; kasir / kasir123</small>
+    </div>
+
+    <button type="button" class="btn btn-link btn-sm mt-2" id="loadDemoDataBtn">
+      <i class="bi bi-database-add me-1"></i>Gunakan Data Demo
+    </button>
+
+    <div class="login-footer mt-4 pt-3 border-top">
+      <small class="text-muted d-block">Made with <i class="bi bi-heart-fill text-danger" style="font-size:0.7rem;"></i> by <strong>Ponti Data ID</strong></small>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP SHELL ============ -->
+<div id="appShell" class="app-shell d-none">
+
+  <!-- Sidebar (Desktop) -->
+  <aside class="app-sidebar" id="appSidebar">
+    <div class="sidebar-brand">
+      <i class="bi bi-shop"></i>
+      <span>POS Kasir</span>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav">
+      <a href="#/dashboard" class="nav-link-item" data-page="dashboard"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
+      <a href="#/pos" class="nav-link-item" data-page="pos"><i class="bi bi-cart4"></i><span>POS</span></a>
+      <a href="#/transactions" class="nav-link-item" data-page="transactions"><i class="bi bi-receipt"></i><span>Transaksi</span></a>
+      <a href="#/products" class="nav-link-item" data-page="products"><i class="bi bi-box-seam"></i><span>Produk</span></a>
+      <a href="#/stock" class="nav-link-item" data-page="stock"><i class="bi bi-boxes"></i><span>Stok</span></a>
+      <a href="#/customers" class="nav-link-item" data-page="customers"><i class="bi bi-people"></i><span>Pelanggan</span></a>
+      <a href="#/expenses" class="nav-link-item" data-page="expenses"><i class="bi bi-wallet2"></i><span>Pengeluaran</span></a>
+      <a href="#/reports" class="nav-link-item" data-page="reports"><i class="bi bi-bar-chart"></i><span>Laporan</span></a>
+      <a href="#/settings" class="nav-link-item" data-page="settings"><i class="bi bi-gear"></i><span>Pengaturan</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn btn-sm btn-outline-secondary w-100" id="sidebarLogoutBtn">
+        <i class="bi bi-box-arrow-right me-1"></i>Logout
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="app-main">
+    <!-- Topbar -->
+    <header class="app-topbar">
+      <button class="btn btn-icon d-lg-none" id="mobileMenuBtn" aria-label="Menu"><i class="bi bi-list"></i></button>
+      <h1 class="topbar-title" id="topbarTitle">Dashboard</h1>
+      <div class="topbar-actions">
+        <span class="connection-badge" id="connectionBadge"></span>
+        <button class="btn btn-icon" id="appInfoBtn" aria-label="Informasi aplikasi" title="Tentang Aplikasi"><i class="bi bi-info-circle"></i></button>
+        <button class="btn btn-icon" id="themeToggleBtn" aria-label="Ganti tema"><i class="bi bi-moon-stars"></i></button>
+        <div class="topbar-user">
+          <span id="topbarUserName">-</span>
+          <span class="badge text-bg-secondary" id="topbarUserRole">-</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page container -->
+    <main class="app-page-container" id="pageContainer">
+
+      <!-- DASHBOARD -->
+      <section id="page-dashboard" class="app-page">
+        <div class="row g-3 mb-3" id="dashboardStats"></div>
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-md-4">
+            <div class="card action-card" data-nav="#/pos"><i class="bi bi-cart-plus"></i><span>Transaksi Baru</span></div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="card action-card" data-nav="#/products?action=new"><i class="bi bi-box-seam"></i><span>Tambah Produk</span></div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="card action-card" data-nav="#/expenses?action=new"><i class="bi bi-wallet2"></i><span>Tambah Pengeluaran</span></div>
+          </div>
+        </div>
+        <div class="row g-3">
+          <div class="col-12 col-lg-7">
+            <div class="card p-3 h-100">
+              <h6 class="card-section-title">Penjualan 7 Hari Terakhir</h6>
+              <canvas id="chartSalesWeek" height="180"></canvas>
+            </div>
+          </div>
+          <div class="col-12 col-lg-5">
+            <div class="card p-3 h-100">
+              <h6 class="card-section-title">Penjualan per Kategori</h6>
+              <canvas id="chartSalesCategory" height="180"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="row g-3 mt-1">
+          <div class="col-12 col-lg-6">
+            <div class="card p-3 h-100">
+              <h6 class="card-section-title">Produk Terlaris</h6>
+              <canvas id="chartTopProducts" height="180"></canvas>
+            </div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <div class="card p-3 h-100">
+              <h6 class="card-section-title">Stok Menipis</h6>
+              <div id="lowStockList" class="low-stock-list"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- POS -->
+      <section id="page-pos" class="app-page">
+        <div class="pos-layout">
+          <div class="pos-products-panel">
+            <div class="pos-search-bar">
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="posSearchInput" placeholder="Cari nama, SKU, atau scan barcode...">
+              </div>
+              <select class="form-select pos-category-select" id="posCategoryFilter">
+                <option value="">Semua Kategori</option>
+              </select>
+              <select class="form-select pos-sort-select" id="posSortSelect">
+                <option value="name">Nama</option>
+                <option value="price">Harga</option>
+                <option value="stock">Stok</option>
+                <option value="bestseller">Terlaris</option>
+              </select>
+            </div>
+            <div class="pos-product-grid" id="posProductGrid"></div>
+          </div>
+          <div class="pos-cart-panel" id="posCartPanel">
+            <div class="pos-cart-header">
+              <button class="btn btn-icon d-lg-none" id="posCartCloseBtn" aria-label="Tutup keranjang"><i class="bi bi-arrow-left"></i></button>
+              <h6><i class="bi bi-cart3 me-1"></i>Keranjang</h6>
+              <button class="btn btn-sm btn-link text-danger" id="posClearCartBtn">Kosongkan</button>
+            </div>
+            <div class="pos-customer-select">
+              <select class="form-select form-select-sm" id="posCustomerSelect">
+                <option value="">Walk-in Customer</option>
+              </select>
+            </div>
+            <div class="pos-cart-items" id="posCartItems">
+              <div class="pos-cart-empty" id="posCartEmpty">Keranjang masih kosong</div>
+            </div>
+            <div class="pos-cart-summary">
+              <div class="summary-row"><span>Subtotal</span><span id="posSubtotal">Rp0</span></div>
+              <div class="summary-row discount-row">
+                <span>Diskon</span>
+                <div class="discount-input-group">
+                  <select class="form-select form-select-sm" id="posDiscountType">
+                    <option value="nominal">Rp</option>
+                    <option value="percent">%</option>
+                  </select>
+                  <input type="number" min="0" class="form-control form-control-sm" id="posDiscountValue" value="0">
+                </div>
+              </div>
+              <div class="summary-row"><span>Pajak (<span id="posTaxRateLabel">0</span>%)</span><span id="posTaxAmount">Rp0</span></div>
+              <div class="summary-row total-row"><span>TOTAL</span><span id="posTotal">Rp0</span></div>
+            </div>
+            <button class="btn btn-primary btn-lg w-100 pos-pay-btn" id="posPayBtn"><i class="bi bi-credit-card me-1"></i>BAYAR</button>
+          </div>
+          <button class="pos-floating-cart-btn d-lg-none" id="posFloatingCartBtn">
+            <i class="bi bi-cart3"></i>
+            <span id="posFloatingCartCount">0</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- TRANSACTIONS -->
+      <section id="page-transactions" class="app-page">
+        <div class="card p-3 mb-3">
+          <div class="row g-2">
+            <div class="col-12 col-md-3">
+              <input type="text" class="form-control" id="trxSearchInput" placeholder="Cari no. transaksi...">
+            </div>
+            <div class="col-6 col-md-3">
+              <input type="date" class="form-control" id="trxDateFrom">
+            </div>
+            <div class="col-6 col-md-3">
+              <input type="date" class="form-control" id="trxDateTo">
+            </div>
+            <div class="col-6 col-md-3">
+              <select class="form-select" id="trxPaymentFilter">
+                <option value="">Semua Metode Bayar</option>
+                <option value="cash">Cash</option>
+                <option value="transfer">Transfer</option>
+                <option value="qris">QRIS</option>
+                <option value="debit">Debit</option>
+                <option value="kredit">Kredit</option>
+                <option value="ewallet">E-Wallet</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div id="trxListContainer"></div>
+      </section>
+
+      <!-- PRODUCTS -->
+      <section id="page-products" class="app-page">
+        <ul class="nav nav-tabs mb-3" id="productsTab">
+          <li class="nav-item"><button class="nav-link active" data-tab="list">Daftar Produk</button></li>
+          <li class="nav-item"><button class="nav-link" data-tab="categories">Kategori</button></li>
+        </ul>
+
+        <div id="productsTabList">
+          <div class="card p-3 mb-3">
+            <div class="row g-2 align-items-center">
+              <div class="col-12 col-md-4">
+                <input type="text" class="form-control" id="productSearchInput" placeholder="Cari nama, SKU, barcode...">
+              </div>
+              <div class="col-6 col-md-3">
+                <select class="form-select" id="productCategoryFilter"><option value="">Semua Kategori</option></select>
+              </div>
+              <div class="col-6 col-md-2">
+                <select class="form-select" id="productSortSelect">
+                  <option value="name">Nama</option>
+                  <option value="price">Harga</option>
+                  <option value="stock">Stok</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-3 text-md-end d-flex gap-2 justify-content-md-end flex-wrap">
+                <button class="btn btn-outline-secondary btn-sm" id="productImportBtn"><i class="bi bi-upload me-1"></i>Import</button>
+                <button class="btn btn-outline-secondary btn-sm" id="productExportBtn"><i class="bi bi-download me-1"></i>Export</button>
+                <button class="btn btn-primary btn-sm" id="productAddBtn"><i class="bi bi-plus-lg me-1"></i>Tambah</button>
+              </div>
+            </div>
+          </div>
+          <div id="productListContainer"></div>
+        </div>
+
+        <div id="productsTabCategories" class="d-none">
+          <div class="card p-3 mb-3 d-flex flex-row justify-content-end">
+            <button class="btn btn-primary btn-sm" id="categoryAddBtn"><i class="bi bi-plus-lg me-1"></i>Tambah Kategori</button>
+          </div>
+          <div id="categoryListContainer"></div>
+        </div>
+      </section>
+
+      <!-- STOCK -->
+      <section id="page-stock" class="app-page">
+        <div class="card p-3 mb-3 d-flex flex-row justify-content-between flex-wrap gap-2">
+          <h6 class="card-section-title mb-0">Riwayat Pergerakan Stok</h6>
+          <button class="btn btn-primary btn-sm" id="stockAdjustBtn"><i class="bi bi-pencil-square me-1"></i>Sesuaikan Stok</button>
+        </div>
+        <div id="stockMovementContainer"></div>
+      </section>
+
+      <!-- CUSTOMERS -->
+      <section id="page-customers" class="app-page">
+        <div class="card p-3 mb-3 d-flex flex-row justify-content-between flex-wrap gap-2">
+          <input type="text" class="form-control" style="max-width:320px" id="customerSearchInput" placeholder="Cari nama/HP pelanggan...">
+          <button class="btn btn-primary btn-sm" id="customerAddBtn"><i class="bi bi-plus-lg me-1"></i>Tambah Pelanggan</button>
+        </div>
+        <div id="customerListContainer"></div>
+      </section>
+
+      <!-- EXPENSES -->
+      <section id="page-expenses" class="app-page">
+        <div class="card p-3 mb-3 d-flex flex-row justify-content-between flex-wrap gap-2">
+          <input type="text" class="form-control" style="max-width:320px" id="expenseSearchInput" placeholder="Cari pengeluaran...">
+          <button class="btn btn-primary btn-sm" id="expenseAddBtn"><i class="bi bi-plus-lg me-1"></i>Tambah Pengeluaran</button>
+        </div>
+        <div id="expenseListContainer"></div>
+      </section>
+
+      <!-- REPORTS -->
+      <section id="page-reports" class="app-page">
+        <ul class="nav nav-pills mb-3 flex-wrap" id="reportsTab">
+          <li class="nav-item"><button class="nav-link active" data-report="sales">Penjualan</button></li>
+          <li class="nav-item"><button class="nav-link" data-report="products">Produk</button></li>
+          <li class="nav-item"><button class="nav-link" data-report="payments">Pembayaran</button></li>
+          <li class="nav-item"><button class="nav-link" data-report="finance">Keuangan</button></li>
+        </ul>
+        <div class="card p-3 mb-3">
+          <div class="row g-2 align-items-end">
+            <div class="col-6 col-md-3">
+              <label class="form-label small">Dari Tanggal</label>
+              <input type="date" class="form-control" id="reportDateFrom">
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label small">Sampai Tanggal</label>
+              <input type="date" class="form-control" id="reportDateTo">
+            </div>
+            <div class="col-12 col-md-3">
+              <div class="btn-group w-100" role="group">
+                <button class="btn btn-outline-secondary btn-sm" data-range="today">Hari Ini</button>
+                <button class="btn btn-outline-secondary btn-sm" data-range="week">Minggu Ini</button>
+                <button class="btn btn-outline-secondary btn-sm" data-range="month">Bulan Ini</button>
+              </div>
+            </div>
+            <div class="col-12 col-md-3 text-md-end">
+              <button class="btn btn-outline-secondary btn-sm" id="reportExportBtn"><i class="bi bi-download me-1"></i>Export CSV</button>
+            </div>
+          </div>
+        </div>
+        <div id="reportContent"></div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="page-settings" class="app-page">
+        <ul class="nav nav-tabs mb-3 flex-wrap" id="settingsTab">
+          <li class="nav-item"><button class="nav-link active" data-settings-tab="store">Toko</button></li>
+          <li class="nav-item"><button class="nav-link" data-settings-tab="users">User</button></li>
+          <li class="nav-item"><button class="nav-link" data-settings-tab="backup">Backup / Restore</button></li>
+        </ul>
+
+        <div id="settingsTabStore">
+          <form id="storeSettingsForm" class="card p-3">
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label">Nama Toko</label>
+                <input type="text" class="form-control" id="settingStoreName" required>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Nomor Telepon</label>
+                <input type="text" class="form-control" id="settingStorePhone">
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" id="settingStoreEmail">
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Mata Uang (Simbol)</label>
+                <input type="text" class="form-control" id="settingCurrency" value="Rp">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Alamat</label>
+                <textarea class="form-control" id="settingStoreAddress" rows="2"></textarea>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label">Pajak (%)</label>
+                <input type="number" min="0" max="100" class="form-control" id="settingTaxRate" value="0">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label">Format Nomor Transaksi</label>
+                <input type="text" class="form-control" id="settingTrxFormat" value="TRX-{YYYYMMDD}-{0000}">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label">Logo Toko (URL/Base64)</label>
+                <input type="file" accept="image/*" class="form-control" id="settingStoreLogo">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Footer Struk</label>
+                <textarea class="form-control" id="settingReceiptFooter" rows="2">TERIMA KASIH</textarea>
+              </div>
+            </div>
+            <div class="mt-3">
+              <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Simpan Pengaturan</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="settingsTabUsers" class="d-none">
+          <div class="card p-3 mb-3 d-flex flex-row justify-content-end">
+            <button class="btn btn-primary btn-sm" id="userAddBtn"><i class="bi bi-plus-lg me-1"></i>Tambah User</button>
+          </div>
+          <div id="userListContainer"></div>
+        </div>
+
+        <div id="settingsTabBackup" class="d-none">
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <div class="card p-3 h-100">
+                <h6 class="card-section-title">Backup Database</h6>
+                <p class="text-muted small">Simpan seluruh data aplikasi (produk, transaksi, dll) ke dalam satu file JSON.</p>
+                <button class="btn btn-primary" id="backupBtn"><i class="bi bi-cloud-download me-1"></i>Backup Sekarang</button>
+              </div>
+            </div>
+            <div class="col-12 col-md-6">
+              <div class="card p-3 h-100">
+                <h6 class="card-section-title">Restore Database</h6>
+                <p class="text-muted small">Pulihkan data dari file backup JSON. Data saat ini akan digantikan.</p>
+                <input type="file" accept="application/json" class="form-control mb-2" id="restoreFileInput">
+                <button class="btn btn-outline-danger" id="restoreBtn"><i class="bi bi-cloud-upload me-1"></i>Restore</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Bottom Navigation (Mobile) -->
+  <nav class="bottom-nav d-lg-none" id="bottomNav">
+    <a href="#/dashboard" class="bottom-nav-item" data-page="dashboard"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
+    <a href="#/pos" class="bottom-nav-item" data-page="pos"><i class="bi bi-cart4"></i><span>POS</span></a>
+    <a href="#/transactions" class="bottom-nav-item" data-page="transactions"><i class="bi bi-receipt"></i><span>Transaksi</span></a>
+    <a href="#/products" class="bottom-nav-item" data-page="products"><i class="bi bi-box-seam"></i><span>Produk</span></a>
+    <a href="#/more" class="bottom-nav-item" id="bottomNavMore"><i class="bi bi-grid-3x3-gap"></i><span>Lainnya</span></a>
+  </nav>
+</div>
+
+<!-- Sidebar overlay for mobile -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- Install PWA Banner -->
+<div class="install-banner d-none" id="installBanner">
+  <div class="install-banner-content">
+    <i class="bi bi-download install-banner-icon"></i>
+    <div>
+      <strong>Install POS</strong>
+      <p class="mb-0 small">Install aplikasi POS agar dapat dibuka lebih cepat seperti aplikasi native. Bisa digunakan sepenuhnya offline.</p>
+    </div>
+  </div>
+  <div class="install-banner-actions">
+    <button class="btn btn-sm btn-outline-secondary" id="installDismissBtn">Nanti</button>
+    <button class="btn btn-sm btn-primary" id="installNowBtn">Install Sekarang</button>
+  </div>
+</div>
+
+<!-- ============ MODAL TEMPLATES ============ -->
+
+<!-- More menu (mobile) -->
+<div class="offcanvas offcanvas-bottom" tabindex="-1" id="moreMenuOffcanvas">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title">Menu Lainnya</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body">
+    <div class="more-menu-grid">
+      <a href="#/stock" class="more-menu-item"><i class="bi bi-boxes"></i><span>Stok</span></a>
+      <a href="#/customers" class="more-menu-item"><i class="bi bi-people"></i><span>Pelanggan</span></a>
+      <a href="#/expenses" class="more-menu-item"><i class="bi bi-wallet2"></i><span>Pengeluaran</span></a>
+      <a href="#/reports" class="more-menu-item"><i class="bi bi-bar-chart"></i><span>Laporan</span></a>
+      <a href="#/settings" class="more-menu-item"><i class="bi bi-gear"></i><span>Pengaturan</span></a>
+      <button class="more-menu-item text-danger" id="moreMenuLogoutBtn"><i class="bi bi-box-arrow-right"></i><span>Logout</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- Generic Modal (dipakai ulang untuk form produk/kategori/customer/expense/user/checkout/detail) -->
+<div class="modal fade" id="genericModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-scrollable" id="genericModalDialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="genericModalTitle">Modal</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="genericModalBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- About Modal -->
+<div class="modal fade" id="aboutModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title d-flex align-items-center gap-2">
+          <i class="bi bi-shop" style="font-size:1.5rem;color:#4f46e5;"></i>
+          POS Kasir
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        <p class="text-muted mb-3">Aplikasi Kasir Offline-First Modern</p>
+        <p class="small">
+          Sistem Point of Sale yang ringan, cepat, dan dapat digunakan sepenuhnya offline.<br>
+          Dirancang untuk retail, F&B, minimarket, dan UMKM.
+        </p>
+        <hr>
+        <div class="py-3">
+          <p class="text-muted small mb-2">Versi 1.0</p>
+          <p class="mb-0">
+            <small class="text-muted">Made with <i class="bi bi-heart-fill text-danger" style="font-size:0.7rem;"></i> by</small><br>
+            <strong style="color:#4f46e5;font-size:1.1rem;">Ponti Data ID</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Receipt Modal -->
+<div class="modal fade" id="receiptModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header no-print">
+        <h5 class="modal-title">Struk Transaksi</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="receiptContent" class="receipt-paper"></div>
+      </div>
+      <div class="modal-footer no-print">
+        <button class="btn btn-outline-secondary" id="receiptPrintBtn"><i class="bi bi-printer me-1"></i>Print / Simpan PDF</button>
+        <button class="btn btn-primary" data-bs-dismiss="modal" id="receiptCloseBtn">Selesai</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SCRIPTS ============ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.10.5/sweetalert2.all.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js"></script>
+
+<script src="js/db.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/router.js"></script>
+<script src="js/pos.js"></script>
+<script src="js/products.js"></script>
+<script src="js/transactions.js"></script>
+<script src="js/reports.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
