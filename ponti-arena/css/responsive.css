@@ -1,0 +1,39 @@
+/* Mobile-first base already targets ~360-414px. Enhance upward from here. */
+
+@media (min-width: 600px) {
+  .char-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .modal-panel { border-radius: 18px; margin-bottom: 4vh; }
+  .modal { align-items: center; }
+}
+
+@media (min-width: 768px) {
+  .screen { max-width: 900px; margin: 0 auto; }
+  .main-menu-wrap { margin-top: 8vh; }
+  .char-detail-sw { grid-template-columns: 1fr 1fr; }
+  .action-menu { grid-template-columns: repeat(6, 1fr); }
+  .difficulty-grid, .arena-grid { grid-template-columns: repeat(5, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .screen { max-width: 1100px; }
+  .battle-arena { padding: 22px 20px; }
+  .battle-slot-name { font-size: 0.72rem; }
+  .action-btn-label { font-size: 0.95rem; }
+}
+
+/* Touch targets: guarantee 44px minimum everywhere interactive */
+button, .char-card, .team-slot, .timeline-chip, .stage-card, .arena-card, .difficulty-card, .achievement-card {
+  min-height: 44px;
+}
+
+/* Never allow horizontal scroll */
+html, body { max-width: 100%; overflow-x: hidden; }
+
+/* Focus visibility for keyboard nav */
+button:focus-visible, .char-card:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--gold-light); outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001s !important; transition-duration: 0.001s !important; }
+}

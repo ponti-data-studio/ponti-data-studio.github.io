@@ -1,0 +1,275 @@
+# Ponti Arena
+
+A fair, offline-playable, installable **5v5 turn-based strategy RPG** for the browser.
+No pay-to-win, no ads, no accounts, no backend. Strategy beats grinding.
+
+**Made by Ponti Data ID**
+
+## Features
+
+- Turn-Based Strategy RPG — Speed-based turn order, manual targeting, cooldowns, Energy/Ultimate system
+- **3-row tactical formations** — freely place your 5 characters into Front / Middle / Back; position is an optional strategic advantage, never a mandatory class restriction
+- 5v5 Battles with **30** fully data-driven characters, each with a distinct kit (not just re-skinned numbers)
+- AI opponents with 4 real difficulty levels (Easy / Normal / Hard / Extreme) — no stat cheating, ever — and 3 formation strategies (Balanced / Aggressive / Ranged) that Extreme AI picks to counter your own formation
+- Fully offline after first load, installable as a PWA on Android, iOS, Windows, macOS, and Linux
+- Landscape-only battle experience with a "rotate your device" lock on portrait screens
+- Character Mastery, Campaign (5 stages), Achievements, and Quick Battle / Practice / Character Test modes
+- No Shop, no ads, no premium currency, no loot boxes — see "Fair by Design" below
+
+## The Extended Roster (21-30)
+
+Ten additional characters with genuinely unique mechanics - not just re-skinned damage numbers.
+Their custom logic lives in `js/character-mechanics.js` so it never bleeds into the core battle
+engine (see "Data-Driven Implementation" below).
+
+| Character | Role | Signature Mechanic |
+|---|---|---|
+| Paladin | Tank | Automatically protects the lowest-HP ally each turn, redirecting a capped share of damage to himself; his Ultimate can prevent one lethal hit. |
+| Samurai | Fighter | Counters attackers if struck while Defending, in his Iaido stance, or after a successful Parry. |
+| Vampire | Bruiser | Converts a capped share of every hit into HP (Blood Feast). |
+| Chronomancer | Support | Manipulates the turn-order gauge directly - speeds up an ally, slows an enemy, and her Ultimate restores an ally to an earlier HP/Energy snapshot. |
+| Illusionist | Control | Personal evasion chance, a Decoy that fully blocks two hits, and a Confusion debuff that can make an enemy mis-target. |
+| Alchemist | Specialist | Generates random Reagents over time and consumes them for stronger Heals/Poisons; her Ultimate combines whatever she has on hand. |
+| Duelist | Assassin | Gains stacking bonus damage (up to 3x) against the same target - resets if she switches targets. |
+| Pirate Captain | Ranged | Marks a target as Wanted for bonus damage, and can knock enemies back a row with Explosive Barrel. |
+| Spirit Shaman | Summoner | Casts one of two mutually-exclusive team-wide Totem auras (only one active at a time). |
+| Gravity Mage | Mage | Physically pulls enemies between Front/Middle/Back rows, including a multi-target pull on her Ultimate. |
+
+All ten fully support 3-row formation, targeting, Advanced AI (Expert/Master score-aware of their
+mechanics - e.g. Chronomancer and active Totems get bonus Threat), Character Mastery, and the
+image-fallback asset system exactly like the original 20.
+
+## Advanced AI
+
+Every AI tier uses the exact same character stats, cooldowns, and Energy rules as the player —
+difficulty comes entirely from decision quality, never from hidden bonuses (see `combat.js` /
+`ai.js` / `ai-scoring.js`, all of which only read data a player could also see).
+
+- **Easy / Normal / Hard** — heuristic decision trees: role awareness, HP-based heal priority,
+  status/backline-aware target priority (see `js/ai.js`).
+- **Expert / Master** — a full Action Scoring Pipeline (`js/ai-scoring.js`): every legal
+  (action, target) combination is scored using Target Threat (Attack/Speed/role/Ultimate-readiness,
+  plus a turn-order lookahead bonus for targets about to act), Kill Confirmation, Overkill Avoidance,
+  simple Combo Detection (bonus for finishing off crowd-controlled targets), and per-role weighting
+  (Assassins value kills/threat more, Tanks value protection more, Mages get an AoE bonus, Supports
+  weight survival highest). Ultimates are penalized when they'd be wasted on a marginal single hit
+  and rewarded when they secure a kill or hit multiple targets.
+- **Master** additionally applies a simple Risk Assessment pass: if the AI is critically low on HP
+  and its best-scoring action doesn't secure a kill, it compares against Defending and may choose to
+  play safe instead.
+- Both tiers use **controlled randomness** (Expert picks its 2nd-best option ~10% of the time,
+  Master ~5%) so they never feel like a perfectly identical script every battle.
+- Enable **Settings → AI Decision Log (Developer)** to see each Expert/Master decision (target,
+  action, and score breakdown) printed into the Battle Log and browser console — useful for tuning,
+  off by default so it never leaks to normal players.
+
+## Formations & Positioning
+
+Ally slots render on the **left**, enemy slots on the **right**, both split into three horizontal
+bands: **Front**, **Middle**, **Back**. You place your own 5 characters — there is no forced
+"Tank front / DPS middle / Healer back" rule.
+
+- **Front Row** is the default target for Basic Attacks and most generic skills, and suits
+  Tanks/Fighters who want to soak hits.
+- **Back Row** gets a damage-reduction "protection" bonus against undirected attacks — not
+  immunity. Several characters have skills (`single_back`, `back_row`, etc.) specifically designed
+  to punch through and threaten your backline, so healers and mages are never 100% safe.
+- A handful of characters get an explicit **row synergy** bonus for standing in their preferred row
+  (e.g. Knight/Guardian gain bonus Defense in the Front Row; Archer gains bonus Crit and Cleric
+  gains bonus Healing in the Back Row) — shown on their Character Detail screen.
+- On the **Formation** screen (shown after picking your 5 characters for Quick Battle or Campaign),
+  tap a character then tap Front/Middle/Back to place them, tap a placed character to send them back
+  to the pool, or use **Auto Arrange** for a sensible default. Desktop also supports drag-and-drop.
+- Practice and Character Test skip the formation step and auto-arrange for speed.
+
+## Fair by Design
+
+- All 20 characters are unlocked from the start — there is nothing to buy.
+- Progression (level, mastery, achievements) only unlocks cosmetics/badges, never stat advantages.
+- The AI plays with the exact same stats, cooldowns, and Energy rules as the player at every difficulty.
+
+## Requirements
+
+Any modern browser: Chrome, Edge, Firefox, or Safari (desktop or mobile) released in the last ~3 years.
+No installation of Node.js, npm, or any build tool is required to play — this is a static site.
+
+## Running the Game
+
+The game is plain HTML/CSS/JavaScript with no build step. However, **Service Worker, PWA install, and
+offline caching all require the page to be served over HTTP(S)** — opening `index.html` directly via
+`file://` will run the game, but PWA install and offline mode will not work correctly under `file://`.
+
+From the `ponti-arena` folder, start any static file server, for example:
+
+```bash
+python -m http.server 8000
+```
+
+Then open:
+
+```
+http://localhost:8000
+```
+
+No Python? Any of these work identically:
+
+```bash
+npx serve .
+# or
+php -S localhost:8000
+```
+
+## Adding Character Images
+
+Character artwork is **entirely optional**. The game ships with generated icon/emoji visuals for every
+character and is 100% playable with an empty `assets/characters/` folder.
+
+To add real artwork:
+
+1. Open the folder: `assets/characters/`
+2. Prepare your image (see recommendations below).
+3. Save it using the character's exact filename (see table below).
+4. Refresh the game.
+
+If the file is found, the game automatically uses it. If not, it automatically falls back to the
+generated icon — you never need to touch any game code.
+
+```
+assets/
+  characters/
+    knight.png
+    archer.png
+    wizard.png
+    ...
+```
+
+### Character → Filename Table
+
+| Character    | Filename          |
+| ------------ | ------------------ |
+| Knight       | knight.png         |
+| Archer       | archer.png         |
+| Wizard       | wizard.png         |
+| Assassin     | assassin.png       |
+| Berserker    | berserker.png      |
+| Cleric       | cleric.png         |
+| Ranger       | ranger.png         |
+| Warlock      | warlock.png        |
+| Ninja        | ninja.png          |
+| Frost Mage   | frost-mage.png     |
+| Pyromancer   | pyromancer.png     |
+| Stormcaller  | stormcaller.png    |
+| Gunslinger   | gunslinger.png     |
+| Beastmaster  | beastmaster.png    |
+| Guardian     | guardian.png       |
+| Blood Knight | blood-knight.png   |
+| Sky Lancer   | sky-lancer.png     |
+| Necromancer  | necromancer.png    |
+| Druid        | druid.png          |
+| Machinist    | machinist.png      |
+| Paladin      | paladin.png         |
+| Samurai      | samurai.png         |
+| Vampire      | vampire.png         |
+| Chronomancer | chronomancer.png    |
+| Illusionist  | illusionist.png     |
+| Alchemist    | alchemist.png       |
+| Duelist      | duelist.png         |
+| Pirate Captain | pirate-captain.png |
+| Spirit Shaman | spirit-shaman.png  |
+| Gravity Mage | gravity-mage.png    |
+
+### Image Recommendations
+
+- Format: PNG or WebP (JPG also supported)
+- Resolution: 512×512 or 1024×1024
+- Aspect ratio: 1:1 (square)
+- Background: transparent preferred
+- Framing: character centered, facing forward or 3/4 view, clearly readable at small sizes
+- Avoid: very dark images, landscape crops, large watermarks, or busy backgrounds
+
+### Custom Character Art with an AI Image Generator
+
+If you want to generate artwork, a generic prompt shape that works well with most image tools:
+
+> "[Character name], [role] in a fantasy RPG art style, centered, square composition, transparent
+> background, no text, no watermark, clearly visible at small thumbnail size."
+
+This project has no dependency on any specific AI image generator — use whichever tool you like.
+
+## Adding a New Character
+
+1. Add a new object to the `CHARACTERS` array in `js/characters.js` (copy an existing entry as a template).
+2. Fill in `base` stats, `passive`, `basicAttack`, `skill1`, `skill2`, and `ultimate`.
+3. (Optional) Add `assets/characters/<new-character-id>.png` — a fallback icon renders automatically if omitted.
+4. Refresh the app — the character now appears in Character Selection, Quick Battle, Practice, and Campaign pools automatically. No battle engine, AI, or UI code needs to change.
+5. Test the character in **Characters → Test in Battle** against the Training Dummy.
+6. Test the character inside a full 5v5 Quick Battle.
+7. Watch how the AI plays the character (put it on the enemy team in Quick Battle) to confirm it behaves sensibly.
+
+## Project Structure
+
+```
+/index.html
+/manifest.json
+/service-worker.js
+/css
+  style.css        - design tokens, reset, buttons, modals, toasts
+  menu.css          - main menu, team builder, campaign, settings, results
+  character.css     - character cards, avatars, detail panel
+  battle.css        - battle arena, turn timeline, action menu
+  responsive.css     - breakpoints and touch-target rules
+/js
+  config.js          - arenas, campaign stages, achievement definitions
+  characters.js       - the 20-character roster (data-driven)
+  status-effects.js   - centralized status effect engine (Burn, Stun, Shield, ...)
+  combat.js           - damage/heal/energy formulas, formation row bonuses & back-row protection
+  targeting.js         - row-aware targeting engine (front/middle/back priority, backline skills, AI formation templates)
+  ai-scoring.js          - Expert/Master AI: threat scoring, kill confirmation, overkill avoidance, combo/role weighting
+  character-mechanics.js   - isolated custom mechanics for the roster expansion (redirect, counters, reagents, totems, position pulls, turn manipulation, rewind)
+  skills.js              - resolves a skill definition against its targets
+  turn-manager.js      - speed-based turn order / action bar
+  ai.js                - AI decision-making (4 difficulty tiers)
+  battle.js             - the battle engine that ties the above together
+  storage.js             - robust LocalStorage wrapper with safe fallback
+  audio.js                - Web Audio API synthesized SFX/music (no audio files needed)
+  assets.js                - character image fallback chain (photo -> SVG/CSS icon -> emoji)
+  ui.js                     - DOM rendering functions
+  app.js                     - screen navigation + battle loop orchestration
+/assets
+  /characters   - optional character photos (see table above)
+  /images       - optional extra art
+  /audio        - unused by default (audio is synthesized); reserved for future real SFX/music files
+/icons          - PWA icons (192, 512, maskable 512, apple-touch, favicon)
+```
+
+## How the Fallback Asset System Works
+
+Every character visual goes through `AssetManager.buildAvatarElement()` in `js/assets.js`:
+
+1. Try to load `assets/characters/<id>.png`.
+2. If it 404s, the `<img>`'s `onerror` handler swaps it for a generated SVG/CSS icon themed by the
+   character's role, weapon, and accent color.
+3. That fallback icon is treated as an official part of the game's visual design — not an error state.
+
+Character Selection, the Battle screen, the Turn Timeline, the Result screen, and Character Mastery all
+use this same code path, so none of them can ever show a broken image icon.
+
+## Offline & PWA Notes
+
+- After the first successful load (served via HTTP, not `file://`), `service-worker.js` caches the full
+  app shell so the game keeps working with no network connection.
+- Tap **Install Game** on the Main Menu. If your browser supports the native install prompt
+  (`beforeinstallprprompt`), it installs directly. Otherwise the game shows manual install steps for
+  Chrome/Edge, Android, iOS Safari, and macOS Safari.
+- A missing/failed Service Worker registration never blocks gameplay — the game runs fine even if PWA
+  features are unsupported in your browser.
+
+## Development Notes
+
+- No frameworks: plain HTML5, CSS3, and vanilla JavaScript. No build step, no bundler, no external runtime
+  dependency of any kind — everything runs directly in the browser.
+- Battle logic (`combat.js`, `skills.js`, `status-effects.js`, `turn-manager.js`, `ai.js`, `battle.js`)
+  never touches the DOM, so it can be reused behind a future multiplayer transport (WebSocket/WebRTC)
+  without a rewrite.
+- All character/skill/status/campaign/arena content is configuration-driven — adding content should never
+  require touching engine code.

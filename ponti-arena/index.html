@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Ponti Arena — Turn-Based 5v5 Strategy RPG</title>
+<meta name="description" content="Ponti Arena: a fair, offline-playable 5v5 turn-based strategy RPG. No pay-to-win, ever.">
+<meta name="theme-color" content="#0b0e14">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/icon-apple-touch.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ponti Arena">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/menu.css">
+<link rel="stylesheet" href="css/character.css">
+<link rel="stylesheet" href="css/battle.css">
+<link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+
+<div id="orientation-lock" class="orientation-lock" aria-hidden="true">
+  <div class="orientation-icon">↻</div>
+  <p>Please rotate your device</p>
+  <p class="orientation-sub">Ponti Arena is played in landscape orientation.</p>
+</div>
+
+<div id="app-root">
+<div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+<!-- ============ ONBOARDING ============ -->
+<section id="screen-onboarding" class="screen">
+  <div class="onboarding-wrap">
+    <div class="brand-crest" aria-hidden="true">⚔️</div>
+    <h1 class="brand-title">Welcome to Ponti Arena</h1>
+    <ol class="onboarding-steps">
+      <li>Build your team of 5.</li>
+      <li>Understand turn order — Speed decides who acts.</li>
+      <li>Exploit enemy weaknesses.</li>
+      <li>Use skills and your Ultimate wisely.</li>
+      <li>Defeat all 5 enemies.</li>
+    </ol>
+    <div class="onboarding-actions">
+      <button id="btn-start-tutorial" class="btn btn-primary" type="button">Start Tutorial</button>
+      <button id="btn-skip-tutorial" class="btn btn-ghost" type="button">Skip</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MAIN MENU ============ -->
+<section id="screen-main-menu" class="screen active">
+  <div class="main-menu-wrap">
+    <div class="brand-block">
+      <div class="brand-crest" aria-hidden="true">⚔️</div>
+      <h1 class="brand-title">PONTI ARENA</h1>
+      <p class="brand-tag">Strategy &gt; Grinding. Every character has strengths and weaknesses.</p>
+    </div>
+    <nav class="main-menu-nav">
+      <button class="btn btn-primary btn-big" type="button" data-nav="quick-battle">Play</button>
+      <button class="btn btn-secondary" type="button" data-nav="campaign">Campaign</button>
+      <button class="btn btn-secondary" type="button" data-nav="practice">Practice</button>
+      <button class="btn btn-secondary" type="button" data-nav="characters">Characters</button>
+      <button class="btn btn-secondary" type="button" data-nav="achievements">Achievements</button>
+      <button class="btn btn-secondary" type="button" data-nav="settings">Settings</button>
+    </nav>
+    <button id="btn-install" class="btn btn-install" type="button" style="display:none;">⬇ Install Game</button>
+    <footer class="app-footer">Made by Ponti Data ID</footer>
+  </div>
+</section>
+
+<!-- ============ CHARACTER ROSTER / TEST ============ -->
+<section id="screen-roster" class="screen">
+  <header class="screen-header">
+    <button class="btn btn-ghost btn-back" type="button" data-nav="main-menu">← Back</button>
+    <h2>Characters</h2>
+    <span class="header-spacer"></span>
+  </header>
+  <p class="screen-hint">Tap a character to view full details, then test them against a Training Dummy.</p>
+  <div id="roster-grid" class="char-grid"></div>
+</section>
+
+<!-- ============ TEAM BUILDER ============ -->
+<section id="screen-team-builder" class="screen">
+  <header class="screen-header">
+    <button id="btn-team-back" class="btn btn-ghost btn-back" type="button">← Back</button>
+    <h2 id="team-builder-title">Build Your Team</h2>
+    <span class="header-spacer" id="team-count">0/5</span>
+  </header>
+  <div id="team-warnings" class="team-warnings"></div>
+  <div id="team-preview-slots" class="team-preview-slots"></div>
+  <div id="builder-roster-grid" class="char-grid"></div>
+  <div class="sticky-footer">
+    <button id="btn-team-continue" class="btn btn-primary btn-big" type="button" disabled>Continue</button>
+  </div>
+</section>
+
+<!-- ============ FORMATION EDITOR ============ -->
+<section id="screen-formation" class="screen">
+  <header class="screen-header">
+    <button id="btn-formation-back" class="btn btn-ghost btn-back" type="button">← Back</button>
+    <h2>Set Your Formation</h2>
+    <button id="btn-auto-arrange" class="btn btn-ghost btn-small" type="button">Auto Arrange</button>
+  </header>
+  <p class="screen-hint">Tap a character, then tap Front / Middle / Back to place them. Tap a placed character to send them back to the pool. On desktop you can also drag &amp; drop.</p>
+
+  <div id="formation-pool" class="formation-pool" aria-label="Unplaced characters"></div>
+
+  <div class="formation-rows">
+    <div class="formation-row-block">
+      <div class="formation-row-label">FRONT <span class="row-hint">More easily targeted · best for Tanks/Fighters</span></div>
+      <div id="formation-row-front" class="formation-row-slots" data-row="front"></div>
+    </div>
+    <div class="formation-row-block">
+      <div class="formation-row-label">MIDDLE <span class="row-hint">Balanced exposure</span></div>
+      <div id="formation-row-middle" class="formation-row-slots" data-row="middle"></div>
+    </div>
+    <div class="formation-row-block">
+      <div class="formation-row-label">BACK <span class="row-hint">Protected from basic attacks · not immune to backline skills</span></div>
+      <div id="formation-row-back" class="formation-row-slots" data-row="back"></div>
+    </div>
+  </div>
+
+  <div class="sticky-footer">
+    <button id="btn-formation-continue" class="btn btn-primary btn-big" type="button" disabled>Confirm Formation</button>
+  </div>
+</section>
+
+<!-- ============ DIFFICULTY SELECT ============ -->
+<section id="screen-difficulty" class="screen">
+  <header class="screen-header">
+    <button class="btn btn-ghost btn-back" type="button" data-nav="quick-battle">← Back</button>
+    <h2>Select Difficulty</h2>
+    <span class="header-spacer"></span>
+  </header>
+  <div class="difficulty-grid">
+    <button class="difficulty-card" type="button" data-difficulty="easy"><b>Easy</b><span>Simple decisions, forgiving for beginners</span></button>
+    <button class="difficulty-card" type="button" data-difficulty="normal"><b>Normal</b><span>Understands roles, heals when needed</span></button>
+    <button class="difficulty-card" type="button" data-difficulty="hard"><b>Hard</b><span>Targets threats, exploits status &amp; backline</span></button>
+    <button class="difficulty-card" type="button" data-difficulty="expert"><b>Expert</b><span>Scores every action: threat, kills, combos</span></button>
+    <button class="difficulty-card" type="button" data-difficulty="master"><b>Master</b><span>Reads turn order, manages risk, adapts</span></button>
+  </div>
+</section>
+
+<!-- ============ ARENA SELECT ============ -->
+<section id="screen-arena" class="screen">
+  <header class="screen-header">
+    <button class="btn btn-ghost btn-back" type="button" data-nav="quick-battle">← Back</button>
+    <h2>Select Arena</h2>
+    <span class="header-spacer"></span>
+  </header>
+  <div id="arena-grid" class="arena-grid"></div>
+</section>
+
+<!-- ============ CAMPAIGN ============ -->
+<section id="screen-campaign" class="screen">
+  <header class="screen-header">
+    <button class="btn btn-ghost btn-back" type="button" data-nav="main-menu">← Back</button>
+    <h2>Campaign — Chapter 1: The Beginning</h2>
+    <span class="header-spacer"></span>
+  </header>
+  <div id="campaign-stage-list" class="stage-list"></div>
+</section>
+
+<!-- ============ ACHIEVEMENTS ============ -->
+<section id="screen-achievements" class="screen">
+  <header class="screen-header">
+    <button class="btn btn-ghost btn-back" type="button" data-nav="main-menu">← Back</button>
+    <h2>Achievements</h2>
+    <span class="header-spacer"></span>
+  </header>
+  <div id="achievements-list" class="achievements-list"></div>
+</section>
+
+<!-- ============ SETTINGS ============ -->
+<section id="screen-settings" class="screen">
+  <header class="screen-header">
+    <button class="btn btn-ghost btn-back" type="button" data-nav="main-menu">← Back</button>
+    <h2>Settings</h2>
+    <span class="header-spacer"></span>
+  </header>
+  <div class="settings-list">
+    <h3>Audio</h3>
+    <label class="settings-row">Master Volume <input id="setting-master" type="range" min="0" max="100"></label>
+    <label class="settings-row">Music Volume <input id="setting-music" type="range" min="0" max="100"></label>
+    <label class="settings-row">SFX Volume <input id="setting-sfx" type="range" min="0" max="100"></label>
+    <label class="settings-row settings-row-check">Mute <input id="setting-mute" type="checkbox"></label>
+
+    <h3>Graphics</h3>
+    <label class="settings-row">Quality
+      <select id="setting-graphics">
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+      </select>
+    </label>
+
+    <h3>Gameplay</h3>
+    <label class="settings-row settings-row-check">Damage Numbers <input id="setting-damage-numbers" type="checkbox"></label>
+    <label class="settings-row settings-row-check">Battle Animation <input id="setting-animation" type="checkbox"></label>
+    <label class="settings-row settings-row-check">Screen Shake <input id="setting-shake" type="checkbox"></label>
+    <label class="settings-row settings-row-check">Reduced Motion <input id="setting-reduced-motion" type="checkbox"></label>
+
+    <h3>Data</h3>
+    <label class="settings-row settings-row-check">AI Decision Log (Developer) <input id="setting-ai-debug" type="checkbox"></label>
+    <button id="btn-reset-progress" class="btn btn-danger" type="button">Reset All Progress</button>
+  </div>
+</section>
+
+<!-- ============ BATTLE (landscape, Ally=Left / Enemy=Right, 3 rows) ============ -->
+<section id="screen-battle" class="screen">
+  <header class="battle-header">
+    <button id="btn-forfeit" class="btn btn-ghost btn-small" type="button">Forfeit</button>
+    <div class="battle-header-labels"><span class="side-label ally-label">ALLY</span><span id="turn-timeline" class="turn-timeline" aria-label="Upcoming turn order"></span><span class="side-label enemy-label">ENEMY</span></div>
+    <span id="difficulty-badge" class="difficulty-badge">NORMAL</span>
+  </header>
+
+  <div id="battle-arena" class="battle-arena">
+    <div class="formation-column" data-row="back">
+      <div class="formation-column-label">BACK</div>
+      <div id="battle-ally-back" class="battle-side-slots ally-slots"></div>
+    </div>
+    <div class="formation-column" data-row="middle">
+      <div class="formation-column-label">MIDDLE</div>
+      <div id="battle-ally-middle" class="battle-side-slots ally-slots"></div>
+    </div>
+    <div class="formation-column" data-row="front">
+      <div class="formation-column-label">FRONT</div>
+      <div id="battle-ally-front" class="battle-side-slots ally-slots"></div>
+    </div>
+    <div class="battle-center-gap" aria-hidden="true"><span>VS</span></div>
+    <div class="formation-column" data-row="front">
+      <div class="formation-column-label">FRONT</div>
+      <div id="battle-enemy-front" class="battle-side-slots enemy-slots"></div>
+    </div>
+    <div class="formation-column" data-row="middle">
+      <div class="formation-column-label">MIDDLE</div>
+      <div id="battle-enemy-middle" class="battle-side-slots enemy-slots"></div>
+    </div>
+    <div class="formation-column" data-row="back">
+      <div class="formation-column-label">BACK</div>
+      <div id="battle-enemy-back" class="battle-side-slots enemy-slots"></div>
+    </div>
+  </div>
+
+  <div class="battle-lower">
+    <div id="battle-log" class="battle-log" aria-live="polite"></div>
+    <div class="battle-action-col">
+      <div id="action-menu-hint" class="action-menu-hint"></div>
+      <div id="action-menu" class="action-menu"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ RESULT ============ -->
+<section id="screen-result" class="screen">
+  <div class="result-wrap">
+    <h1 id="result-title" class="result-title">VICTORY</h1>
+    <div id="result-stats" class="result-stats"></div>
+    <div class="result-actions">
+      <button id="btn-rematch" class="btn btn-primary" type="button">Rematch</button>
+      <button id="btn-change-team" class="btn btn-secondary" type="button">Change Team</button>
+      <button id="btn-result-menu" class="btn btn-ghost" type="button">Main Menu</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MODALS ============ -->
+<div id="char-detail-modal" class="modal">
+  <div class="modal-panel">
+    <button id="char-detail-close" class="modal-close" type="button" aria-label="Close">✕</button>
+    <div id="char-detail-body"></div>
+    <button id="btn-test-character" class="btn btn-primary" type="button" style="display:none;">Test in Battle</button>
+  </div>
+</div>
+
+<div id="item-modal" class="modal">
+  <div class="modal-panel">
+    <button id="item-modal-close" class="modal-close" type="button" aria-label="Close">✕</button>
+    <h3>Use Item</h3>
+    <p id="item-remaining" class="item-remaining"></p>
+    <div id="item-list" class="item-list"></div>
+  </div>
+</div>
+
+<div id="install-help-modal" class="modal">
+  <div class="modal-panel">
+    <button id="install-help-close" class="modal-close" type="button" aria-label="Close">✕</button>
+    <h3>Install Ponti Arena</h3>
+    <p>Your browser doesn't support automatic install prompts. To install manually:</p>
+    <ul>
+      <li><b>Chrome/Edge (desktop):</b> click the install icon in the address bar.</li>
+      <li><b>Android Chrome:</b> menu ⋮ → "Add to Home screen" / "Install app".</li>
+      <li><b>iOS Safari:</b> tap Share → "Add to Home Screen".</li>
+      <li><b>macOS Safari:</b> File → "Add to Dock".</li>
+    </ul>
+  </div>
+</div>
+
+</div><!-- /#app-root -->
+
+<script src="js/config.js"></script>
+<script src="js/characters.js"></script>
+<script src="js/status-effects.js"></script>
+<script src="js/combat.js"></script>
+<script src="js/targeting.js"></script>
+<script src="js/ai-scoring.js"></script>
+<script src="js/character-mechanics.js"></script>
+<script src="js/skills.js"></script>
+<script src="js/turn-manager.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/assets.js"></script>
+<script src="js/battle.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

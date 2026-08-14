@@ -1,0 +1,156 @@
+.battle-header {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px;
+  margin-bottom: 6px;
+}
+.battle-header-labels { display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 0; }
+.side-label { font-family: var(--font-display); font-size: 0.68rem; letter-spacing: 0.1em; color: var(--text-dim); flex-shrink: 0; }
+.ally-label { color: var(--teal-light); }
+.enemy-label { color: var(--crimson-light); }
+.difficulty-badge {
+  font-family: var(--font-display); letter-spacing: 0.08em; font-size: 0.68rem;
+  color: var(--gold-light); border: 1px solid var(--gold); padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+}
+
+.battle-arena {
+  border-radius: 16px; border: 1px solid var(--border); padding: 8px 6px;
+  background: linear-gradient(160deg, #2b2440, #4a3b63);
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.4);
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: row; align-items: stretch; gap: 3px;
+}
+.battle-arena.shake { animation: arena-shake 0.35s ease; }
+@keyframes arena-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+
+/* ---------- Formation Column: Ally reads BACK->MIDDLE->FRONT, Enemy reads FRONT->MIDDLE->BACK,
+   so both team's Front Row lines meet in the middle, facing each other (battlefield #172-176). ---------- */
+.formation-column {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  min-width: 0; padding: 2px;
+}
+.formation-column-label {
+  font-family: var(--font-display); font-size: 0.52rem; letter-spacing: 0.08em;
+  color: rgba(232,230,223,0.4); text-align: center;
+}
+.battle-side-slots { display: flex; flex-direction: column; gap: 4px; align-items: center; flex: 1; justify-content: center; }
+
+.battle-center-gap {
+  width: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.battle-center-gap::before {
+  content: ''; position: absolute; top: 6%; bottom: 6%; left: 50%; width: 2px;
+  background: linear-gradient(180deg, transparent, var(--gold) 15%, var(--gold) 85%, transparent);
+  transform: translateX(-50%);
+}
+.battle-center-gap span {
+  position: relative; z-index: 1; background: var(--bg-void); border: 1px solid var(--gold);
+  color: var(--gold-light); font-family: var(--font-display); font-size: 0.6rem; letter-spacing: 0.05em;
+  padding: 2px 5px; border-radius: 999px;
+}
+
+/* ---------- Signature element: the Turn Standard ribbon (in the header, between side labels) ---------- */
+.turn-timeline {
+  display: flex; align-items: center; gap: 5px; position: relative; padding: 4px 8px; flex: 1; justify-content: center;
+}
+.turn-timeline::before {
+  content: ''; position: absolute; left: 4%; right: 4%; top: 50%; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold) 15%, var(--gold) 85%, transparent);
+  transform: translateY(-50%); z-index: 0;
+}
+.timeline-chip {
+  width: 26px; height: 26px; border-radius: 6px 6px 50% 50%; background: var(--bg-panel);
+  border: 2px solid var(--chip-color, var(--gold)); display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; z-index: 1; box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+  position: relative; flex-shrink: 0;
+}
+.timeline-chip::after {
+  content: ''; position: absolute; top: -5px; left: 50%; width: 2px; height: 5px;
+  background: var(--chip-color, var(--gold)); transform: translateX(-50%);
+}
+.timeline-chip.next-up { transform: scale(1.2); box-shadow: 0 0 12px var(--chip-color, var(--gold)); }
+
+/* ---------- Battle Slot (character in combat) ---------- */
+.battle-slot {
+  background: rgba(11,14,20,0.55); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+  padding: 3px 2px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  position: relative; transition: opacity 0.3s ease, filter 0.3s ease; width: 100%; max-width: 58px;
+}
+.battle-slot.dead { opacity: 0.28; filter: grayscale(1); }
+.battle-slot.active-turn { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold), 0 0 16px rgba(201,162,39,0.5); }
+.battle-slot.targetable { cursor: pointer; }
+.battle-slot.targetable:hover, .battle-slot.targetable:active { border-color: var(--crimson-light); }
+.battle-slot.selected-target { border-color: var(--crimson); box-shadow: 0 0 0 2px var(--crimson); }
+.battle-slot.invalid-target { opacity: 0.35; cursor: not-allowed; }
+.battle-slot-info { width: 100%; position: relative; }
+.battle-slot-name { font-size: 0.56rem; text-align: center; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.bar { position: relative; height: 7px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 2px; }
+.hp-bar .bar-fill { height: 100%; background: linear-gradient(90deg, var(--crimson), var(--crimson-light)); transition: width 0.4s ease; }
+.energy-bar { height: 4px; }
+.energy-bar .bar-fill { height: 100%; background: linear-gradient(90deg, var(--ice), #a9e3f2); transition: width 0.4s ease; }
+.bar-label { position: absolute; inset: 0; font-size: 0.46rem; display: flex; align-items: center; justify-content: center; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+
+.shield-badge { position: absolute; top: -8px; right: -2px; font-size: 0.56rem; background: var(--ice); color: #052a33; padding: 1px 4px; border-radius: 999px; }
+.status-icons { display: flex; justify-content: center; gap: 1px; flex-wrap: wrap; min-height: 12px; }
+.status-icon { font-size: 0.6rem; }
+
+/* ---------- Facing direction (#172/#173): Ally faces right, Enemy faces left ---------- */
+.enemy-slots .char-avatar img,
+.enemy-slots .char-avatar .generated-icon-emoji {
+  transform: scaleX(-1);
+}
+
+/* ---------- Melee lunge micro-animation (#179): a brief nudge toward the center on attack ---------- */
+.battle-slot.lunge-right { animation: lunge-right 0.4s ease; }
+.battle-slot.lunge-left { animation: lunge-left 0.4s ease; }
+@keyframes lunge-right { 30% { transform: translateX(10px); } 100% { transform: translateX(0); } }
+@keyframes lunge-left { 30% { transform: translateX(-10px); } 100% { transform: translateX(0); } }
+
+.float-text {
+  position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
+  font-weight: 800; font-size: 0.78rem; pointer-events: none;
+  animation: float-up 1.1s ease forwards; z-index: 20; white-space: nowrap;
+}
+.float-dmg { color: var(--crimson-light); text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+.float-heal { color: var(--teal-light); text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+@keyframes float-up { 0% { opacity: 0; transform: translate(-50%, 6px); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -26px); } }
+
+/* ---------- Lower panel: log (left) + action menu (right), per landscape spec ---------- */
+.battle-lower { margin-top: 8px; display: grid; grid-template-columns: 1fr 1.3fr; gap: 10px; align-items: start; }
+.battle-log {
+  height: 108px; overflow-y: auto; background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 0.72rem; color: var(--text-dim);
+}
+.log-line { padding: 1px 0; }
+.log-damage { color: var(--crimson-light); }
+.log-heal, .log-hot { color: var(--teal-light); }
+.log-death { color: #fff; font-weight: 700; }
+.log-status, .log-debuff { color: var(--gold-light); }
+.log-ai-debug { color: #7d8aa0; font-style: italic; }
+
+.battle-action-col { display: flex; flex-direction: column; gap: 4px; }
+.action-menu-hint { text-align: center; font-size: 0.74rem; color: var(--gold-light); min-height: 16px; }
+.action-menu { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.action-btn {
+  background: var(--bg-panel-2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 8px 5px; color: var(--text); display: flex; flex-direction: column; align-items: center;
+  gap: 1px; cursor: pointer; min-height: 48px;
+}
+.action-btn-label { font-family: var(--font-display); font-size: 0.78rem; color: var(--gold-light); }
+.action-btn-sub { font-size: 0.58rem; color: var(--text-dim); text-align: center; }
+.action-btn-lock { font-size: 0.55rem; color: var(--crimson-light); }
+.action-btn.locked { opacity: 0.45; }
+.action-ultimate .action-btn-label { color: var(--crimson-light); }
+.action-ultimate { border-color: var(--crimson); }
+
+@media (min-width: 700px) {
+  .battle-slot { max-width: 78px; }
+  .formation-column-label { font-size: 0.65rem; }
+  .battle-log { height: 130px; }
+}
