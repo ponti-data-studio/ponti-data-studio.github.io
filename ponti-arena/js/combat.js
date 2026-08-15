@@ -45,7 +45,10 @@ const CombatEngine = {
    */
   calculateDamage(attacker, target, power, options = {}) {
     const estimate = !!options.estimate;
-    if (!estimate && !options.skipEvasion && target.character.evasionPercent && Math.random() * 100 < target.character.evasionPercent) {
+    let targetEvasion = target.character.evasionPercent || 0;
+    const footwork = StatusEngine.get(target, 'footwork');
+    if (footwork) targetEvasion += footwork.stacks * (STATUS_DEFS.footwork.percent || 0);
+    if (!estimate && !options.skipEvasion && targetEvasion > 0 && Math.random() * 100 < targetEvasion) {
       return { amount: 0, isCrit: false, evaded: true };
     }
     const atk = this.liveStat(attacker, 'attack');
@@ -80,6 +83,20 @@ const CombatEngine = {
       if ((target.hp / target.maxHp) < 0.3) raw *= 1.25;
       if (StatusEngine.has(target, 'duel_mark') || StatusEngine.has(target, 'mark')) raw *= 1.2;
     }
+    // Demon Hunter's Hunter's Mark passive, and bonus vs Execution-eligible low HP.
+    if (attacker.character.id === 'demon_hunter' && StatusEngine.has(target, 'hunter_mark')) raw *= 1.3;
+    if (options.executionBonus && (target.hp / target.maxHp) <= 0.3) raw *= 1.6;
+    // Fate Seal (Oracle): the sealed attacker's own next offensive action is weakened, once.
+    if (!estimate && StatusEngine.has(attacker, 'fate_sealed')) {
+      raw *= 0.7;
+      StatusEngine.remove(attacker, 'fate_sealed');
+    }
+    // Champion's Grit (Gladiator ultimate): flat incoming-damage reduction while active.
+    const rageShield = StatusEngine.get(target, 'rage_shield');
+    if (rageShield && rageShield.magnitude) raw *= (1 - rageShield.magnitude / 100);
+    // Frost Knight's Frost Bind / Absolute Zero - bonus vs already-Slowed targets.
+    if (options.alreadySlowedBonus) raw *= 1.25;
+    // Engineer's Turret: absorbs damage aimed at its owner before the owner's own HP (see #applyDamage).
     // Passive: Eagle Eye (Archer) crit bump handled in crit roll below
     // Passive: Ignition (Pyromancer) - bonus vs burning targets
     if (attacker.character.id === 'pyromancer' && StatusEngine.has(target, 'burn')) {
@@ -136,11 +153,35 @@ const CombatEngine = {
   },
 
   applyDamage(attacker, target, amount) {
-    const afterShield = StatusEngine.consumeShield(target, amount);
+    // Engineer's Turret: a durability pool that absorbs damage aimed at its owner before HP is
+    // touched, exactly like a shield - this is how the Turret "gets destroyed" without needing a
+    // separate targetable battle-object entity (keeps the turn/targeting engine untouched, see #15).
+    let remaining = amount;
+    if (target.mech && target.mech.turret && target.mech.turret.hp > 0) {
+      const absorb = Math.min(target.mech.turret.hp, remaining);
+      target.mech.turret.hp -= absorb;
+      remaining -= absorb;
+      if (target.mech.turret.hp <= 0) target.mech.turret = null;
+    }
+    const afterShield = StatusEngine.consumeShield(target, remaining);
+    // Frost Knight's Ice Wall: whoever lands the hit that fully breaks it gets Slowed.
+    if (target.character.id === 'frost_knight' && StatusEngine.totalShield(target) <= 0 && afterShield < remaining) {
+      StatusEngine.apply(attacker, 'slow', 2, target.id);
+    }
     const actualHpLoss = Math.min(target.hp, afterShield);
     target.hp = Math.max(0, target.hp - afterShield);
-    if (target.hp <= 0) target.isDead = true;
-    // Taking damage grants energy
+    if (target.hp <= 0) {
+      // Death-prevention wards (Paladin's Divine Shield, Oracle's Alter Fate): consume once, survive at 1 HP.
+      if (StatusEngine.has(target, 'divine_shield')) {
+        StatusEngine.remove(target, 'divine_shield');
+        target.hp = 1;
+      } else if (StatusEngine.has(target, 'alter_fate')) {
+        StatusEngine.remove(target, 'alter_fate');
+        target.hp = 1;
+      } else {
+        target.isDead = true;
+      }
+    }
     if (!target.isDead) this.gainEnergy(target, 5);
     return actualHpLoss;
   },
@@ -149,6 +190,7 @@ const CombatEngine = {
     if (target.isDead) return 0;
     let finalAmount = amount;
     if (caster.character.id === 'druid') finalAmount *= 1.15;
+    if (StatusEngine.has(target, 'healing_reduction')) finalAmount *= 0.5;
     const rs = caster.character.rowSynergy;
     if (rs && rs.stat === 'healPower' && caster.position && caster.position.row === rs.row) {
       finalAmount *= (1 + rs.percent / 100);

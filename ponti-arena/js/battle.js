@@ -116,9 +116,15 @@ class BattleEngine {
     if (actor.cooldowns.skill1 > 0) actor.cooldowns.skill1 -= 1;
     if (actor.cooldowns.skill2 > 0) actor.cooldowns.skill2 -= 1;
 
-    CharacterMechanics.onTurnStart(actor, this.actors);
+    const mechEvents = CharacterMechanics.onTurnStart(actor, this.actors);
 
     const events = [];
+    if (mechEvents && mechEvents.length) {
+      mechEvents.forEach(e => { this._pushLog(e.text); events.push(e); });
+      // A Turret shot may have just killed its target - re-check victory/defeat before proceeding.
+      const midCheck = this.turnManager.checkVictoryDefeat();
+      if (midCheck) { this.status = midCheck; return { actor, skipped: false, events, result: midCheck }; }
+    }
     const dotEvents = StatusEngine.tickStartOfTurn(actor);
     dotEvents.forEach(e => { this._pushLog(e.text); events.push(e); });
 

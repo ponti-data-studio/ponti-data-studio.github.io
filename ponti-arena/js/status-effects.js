@@ -45,6 +45,21 @@ const STATUS_DEFS = {
   healing_totem_aura: { name: 'Healing Totem', icon: '🌀', kind: 'hot',    stackable: false, maxStacks: 1, category: 'buff', tickPercent: 5 },
   spirit_totem_aura:  { name: 'Spirit Totem',  icon: '🌪️', kind: 'stat',   stackable: false, maxStacks: 1, category: 'buff', stat: 'speed', percent: 15 },
   gravity_weight:  { name: 'Gravity Weight',  icon: '🌑', kind: 'stat',    stackable: false, maxStacks: 1, category: 'debuff', stat: 'speed', percent: -12 },
+
+  // ---- New statuses for the 40-character roster expansion ----
+  taunt:           { name: 'Taunted',         icon: '💢', kind: 'special', stackable: false, maxStacks: 1, category: 'debuff' }, // Gladiator: biases target selection toward the taunter
+  footwork:        { name: 'Footwork',        icon: '👟', kind: 'stat',    stackable: true,  maxStacks: 3, category: 'buff', stat: 'evasion', percent: 6 }, // Fencer: evasion per stack (read specially, not via statMultiplier)
+  ice_stack:       { name: 'Ice Armor',       icon: '🧊', kind: 'stat',    stackable: true,  maxStacks: 5, category: 'buff', stat: 'defense', percent: 4 },
+  healing_reduction:{ name: 'Healing Reduction', icon: '🩹', kind: 'special', stackable: false, maxStacks: 1, category: 'debuff' },
+  fate_sealed:     { name: 'Fate Sealed',     icon: '🔮', kind: 'special', stackable: false, maxStacks: 1, category: 'debuff' }, // consumed on their next offensive action
+  alter_fate:      { name: 'Altered Fate',    icon: '🍀', kind: 'special', stackable: false, maxStacks: 1, category: 'buff' },   // Oracle ultimate: prevents one lethal hit (same handling as divine_shield)
+  void_step:       { name: 'Void Step',       icon: '🌀', kind: 'ward',    stackable: false, maxStacks: 1, category: 'buff' },   // Void Walker: blocks the next hit after teleporting
+  disease:         { name: 'Disease',         icon: '🦠', kind: 'dot',     stackable: true,  maxStacks: 3, tickPercent: 3, category: 'debuff' },
+  battle_song_buff:{ name: 'Battle Song',     icon: '🎵', kind: 'stat',    stackable: false, maxStacks: 1, category: 'buff', stat: 'attack', percent: 18 },
+  war_drum_buff:   { name: 'War Drum',        icon: '🥁', kind: 'stat',    stackable: false, maxStacks: 1, category: 'buff', stat: 'speed', percent: 18 },
+  lullaby_debuff:  { name: 'Lullaby',         icon: '💤', kind: 'stat',    stackable: false, maxStacks: 1, category: 'debuff', stat: 'attack', percent: -18 },
+  rage_shield:     { name: "Champion's Grit", icon: '🛡️', kind: 'special', stackable: false, maxStacks: 1, category: 'buff' }, // Gladiator ultimate: flat damage-taken reduction, magnitude set on cast
+  hunter_mark:     { name: "Hunter's Mark",   icon: '🎯', kind: 'special', stackable: false, maxStacks: 1, category: 'debuff' }, // Demon Hunter
 };
 
 const StatusEngine = {

@@ -21,11 +21,20 @@ const AISystem = {
     const usable = this.usableActions(actor);
     if (usable.length === 0) return null;
 
-    if (difficulty === 'easy') return this.decideEasy(actor, usable, enemies, allies, allActors);
-    if (difficulty === 'normal') return this.decideNormal(actor, usable, enemies, allies, allActors);
-    if (difficulty === 'hard') return this.decideHard(actor, usable, enemies, allies, allActors);
-    // Expert / Master: full Action Scoring Pipeline (#134-142)
-    return this.decideScored(actor, usable, allActors, difficulty, context);
+    let decision;
+    if (difficulty === 'easy') decision = this.decideEasy(actor, usable, enemies, allies, allActors);
+    else if (difficulty === 'normal') decision = this.decideNormal(actor, usable, enemies, allies, allActors);
+    else if (difficulty === 'hard') decision = this.decideHard(actor, usable, enemies, allies, allActors);
+    else decision = this.decideScored(actor, usable, allActors, difficulty, context); // Expert / Master (#134-142)
+
+    // Gladiator's Taunt: if this actor is Taunted and the taunter is a legal target for the chosen
+    // skill, every difficulty tier is forced to consider them (matches how a player would reason
+    // about it - Taunt is a mechanical pull, not a hidden AI-only rule).
+    if (decision && decision.target && decision.skillDef) {
+      const legal = TargetingEngine.getSelectableTargets(decision.skillDef, actor.side, allActors);
+      decision.target = CharacterMechanics.applyTauntOverride(actor, decision.skillDef, legal, decision.target, allActors);
+    }
+    return decision;
   },
 
   usableActions(actor) {

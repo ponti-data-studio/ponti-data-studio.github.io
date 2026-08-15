@@ -1,13 +1,14 @@
 /**
- * PONTI ARENA - Character Mechanics (roster expansion: 21-30)
+ * PONTI ARENA - Character Mechanics (roster expansions: 21-30 and 31-40)
  * Isolated handlers for the handful of genuinely custom behaviors introduced by the new
  * characters (damage redirection, counter-attacks, reagents, duel stacks, totems, turn-gauge
- * manipulation, decoy wards, position pulls). Everything else about these characters (basic
- * stats, plain damage/heal/buff skills) flows through the existing data-driven systems in
+ * manipulation, decoy wards, position pulls, Ki/Rage/Footwork resources, the Engineer's Turret,
+ * Taunt, and Contagion spread). Everything else about these characters (basic stats, plain
+ * damage/heal/buff skills) flows through the existing data-driven systems in
  * characters.js/skills.js/combat.js exactly like the original 20.
  *
  * Every mechanic here has an explicit cap/duration/limit - see #25 Bug Prevention: no infinite
- * turns, counters, heals, shields, repositions, clones, rewinds, or energy.
+ * turns, counters, heals, shields, repositions, clones, rewinds, energy, Turrets, or Taunts.
  */
 
 const CharacterMechanics = {
@@ -15,25 +16,98 @@ const CharacterMechanics = {
   initActorState(actor) {
     actor.mech = {
       protectedAllyId: null,     // Paladin
-      counteredThisTurn: false,  // Samurai / Duelist
+      counteredThisTurn: false,  // Samurai / Duelist / Fencer
       reagents: { healing: 0, toxic: 0, swift: 0, purifying: 0 }, // Alchemist
       duelTarget: null, duelStacks: 0, // Duelist
       activeTotem: null,         // Spirit Shaman ('healing' | 'spirit')
+      ki: 0,                     // Monk (0-100)
+      rage: 0,                   // Gladiator (0-100)
+      turret: null,              // Engineer: { hp, maxHp, attack, duration, isWarMachine }
+      stance: null,              // Bard ('battle_song' | 'war_drum')
+      spreadCooldown: 0,         // Plague Doctor (Pandemic internal cooldown)
     };
     actor.hpHistory = []; // used by Chronomancer's Rewind (universal, cheap, capped at 6 entries)
   },
 
-  /** Called once per actor at the start of THEIR OWN turn (after status ticks), from battle.js. */
+  /** Called once per actor at the start of THEIR OWN turn (after status ticks), from battle.js.
+   *  Returns an array of log-worthy events (e.g. a Turret shot), or an empty array. */
   onTurnStart(actor, allActors) {
     actor.mech.counteredThisTurn = false;
     actor.hpHistory.push(actor.hp);
     if (actor.hpHistory.length > 6) actor.hpHistory.shift();
 
-    if (actor.isDead) return;
+    const events = [];
+    if (actor.isDead) return events;
 
     if (actor.character.id === 'paladin') this.refreshProtection(actor, allActors);
     if (actor.character.id === 'alchemist') this.generateReagent(actor);
+    if (actor.character.id === 'engineer') this.tickTurret(actor, allActors, events);
+    if (actor.mech.spreadCooldown > 0) actor.mech.spreadCooldown -= 1;
+    return events;
   },
+
+  // ---------------------------------------------------------------- ENGINEER ----
+  /** The Turret fires automatically at the start of its owner's turn, then counts down its duration. */
+  tickTurret(engineer, allActors, events) {
+    const turret = engineer.mech.turret;
+    if (!turret) return;
+    turret.duration -= 1;
+    if (turret.duration <= 0) {
+      engineer.mech.turret = null;
+      events.push({ type: 'special', actor: engineer.id, text: `${engineer.name}'s ${turret.isWarMachine ? 'War Machine' : 'Turret'} runs out of power and shuts down.` });
+      return;
+    }
+    const enemies = allActors.filter(a => a.side !== engineer.side && !a.isDead);
+    if (enemies.length === 0) return;
+    // Simple, transparent target choice: lowest current HP% (same info a player could reason about).
+    const target = [...enemies].sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
+    const dealt = CombatEngine.applyDamage(engineer, target, Math.max(1, Math.round(turret.attack)));
+    events.push({ type: 'damage', actor: engineer.id, target: target.id, amount: dealt, isCrit: false,
+      text: `${engineer.name}'s ${turret.isWarMachine ? 'War Machine' : 'Turret'} fires at ${target.name} for ${dealt} damage.` });
+    if (target.isDead) events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` });
+  },
+
+  deployTurret(engineer) {
+    const maxHp = Math.round(engineer.maxHp * 0.35);
+    engineer.mech.turret = { hp: maxHp, maxHp, attack: Math.round(CombatEngine.liveStat(engineer, 'attack') * 0.5), duration: 4, isWarMachine: false };
+  },
+
+  // ---------------------------------------------------------------- RESOURCES (Ki / Rage) ----
+  gainKi(actor, amount) { if (actor.mech) actor.mech.ki = Math.min(100, actor.mech.ki + amount); },
+  spendKi(actor, amount) { if (actor.mech) actor.mech.ki = Math.max(0, actor.mech.ki - amount); },
+  gainRage(actor, amount) { if (actor.mech) actor.mech.rage = Math.min(100, actor.mech.rage + amount); },
+  spendRage(actor, amount) { if (actor.mech) actor.mech.rage = Math.max(0, actor.mech.rage - amount); },
+
+  // ---------------------------------------------------------------- GLADIATOR: Taunt ----
+  /** If `actor` is Taunted and the taunter is a legal target for this skill, force it. */
+  applyTauntOverride(actor, skillDef, legalTargets, chosenTarget, allActors) {
+    const taunt = StatusEngine.get(actor, 'taunt');
+    if (!taunt) return chosenTarget;
+    const taunter = allActors.find(a => a.id === taunt.source && !a.isDead);
+    if (!taunter) return chosenTarget;
+    const stillLegal = legalTargets.some(t => t.id === taunter.id);
+    return stillLegal ? taunter : chosenTarget;
+  },
+
+  // ---------------------------------------------------------------- PLAGUE DOCTOR: Contagion ----
+  /** Attempts to spread Poison/Disease from `source` to up to 2 other living enemies, gated by an
+   *  internal cooldown so it can never chain-react indefinitely (see #25 Bug Prevention). */
+  trySpreadDebuff(caster, source, allActors, events) {
+    if (caster.mech.spreadCooldown > 0) return;
+    const statusId = StatusEngine.has(source, 'poison') ? 'poison' : (StatusEngine.has(source, 'disease') ? 'disease' : null);
+    if (!statusId) return;
+    const others = allActors.filter(a => a.side !== caster.side && !a.isDead && a.id !== source.id);
+    const spreadTo = others.sort(() => Math.random() - 0.5).slice(0, 2);
+    spreadTo.forEach(t => {
+      StatusEngine.apply(t, statusId, 2, caster.id);
+      events.push({ type: 'status', actor: caster.id, target: t.id, statusId,
+        text: `${STATUS_DEFS[statusId].name} spreads to ${t.name}!` });
+    });
+    caster.mech.spreadCooldown = 2; // can't spread again for 2 of the Plague Doctor's own turns
+  },
+
+  // ---------------------------------------------------------------- BARD: Stance ----
+  setStance(bard, stance) { bard.mech.stance = stance; },
 
   // ---------------------------------------------------------------- PALADIN ----
   /** Guardian's Oath: auto-protects the lowest-HP% living ally (never the Paladin itself). */
@@ -106,6 +180,14 @@ const CharacterMechanics = {
       if (riposte && marked) {
         StatusEngine.remove(defender, 'counter_stance');
         return this.fireCounter(defender, attacker, 1.1, 'Riposte');
+      }
+    }
+    if (defender.character.id === 'fencer') {
+      const parry = StatusEngine.get(defender, 'parry_stance');
+      if (parry) {
+        StatusEngine.remove(defender, 'parry_stance');
+        StatusEngine.apply(defender, 'footwork', 3, defender.id);
+        return this.fireCounter(defender, attacker, 1.0, 'Riposte');
       }
     }
     return null;
@@ -335,6 +417,144 @@ const CharacterMechanics = {
         StatusEngine.apply(actor, 'defense_down', 1, actor.id);
         events.push({ type: 'debuff', actor: actor.id, target: actor.id, text: `${actor.name} overextended - Defense Down until his next turn.` });
       }
+    },
+
+    // ---- Roster expansion 2 (31-40) ----
+
+    // Monk -----------------------------------------------------------------------------------
+    meditation(actor, skillDef, targets, events) {
+      CharacterMechanics.gainKi(actor, 25);
+      events.push({ type: 'special', actor: actor.id, text: `${actor.name} meditates, recovering Ki.` });
+    },
+    sevenfold_strike(actor, skillDef, targets, events, ctx) {
+      const target = targets[0];
+      if (!target || target.isDead) return;
+      const extraHits = Math.floor(actor.mech.ki / 25); // up to 4 bonus hits at max Ki
+      for (let i = 0; i < extraHits; i++) {
+        if (target.isDead) break;
+        const { amount, isCrit } = CombatEngine.calculateDamage(actor, target, 0.4, { bypassProtection: true });
+        const dealt = CombatEngine.applyDamage(actor, target, amount);
+        events.push({ type: 'damage', actor: actor.id, target: target.id, amount: dealt, isCrit,
+          text: `${actor.name}'s Sevenfold Strike lands another hit on ${target.name} for ${dealt} damage.` });
+        if (target.isDead) events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` });
+      }
+      CharacterMechanics.spendKi(actor, 100); // fully resets after the ultimate
+    },
+
+    // Engineer ---------------------------------------------------------------------------------
+    deploy_turret_eng(actor, skillDef, targets, events) {
+      CharacterMechanics.deployTurret(actor);
+      events.push({ type: 'special', actor: actor.id, text: `${actor.name} deploys a Turret.` });
+    },
+    repair(actor, skillDef, targets, events) {
+      if (actor.mech.turret) {
+        const restore = Math.round(actor.mech.turret.maxHp * 0.5);
+        actor.mech.turret.hp = Math.min(actor.mech.turret.maxHp, actor.mech.turret.hp + restore);
+        events.push({ type: 'special', actor: actor.id, text: `${actor.name} repairs the Turret for ${restore} durability.` });
+      } else {
+        const target = targets[0];
+        if (target && !target.isDead) {
+          CombatEngine.applyShield(target, Math.round(target.maxHp * 0.22));
+          events.push({ type: 'shield', actor: actor.id, target: target.id, text: `${actor.name} shields ${target.name}.` });
+        }
+      }
+    },
+    war_machine(actor, skillDef, targets, events, ctx) {
+      const maxHp = Math.round(actor.maxHp * 0.55);
+      const carryOver = actor.mech.turret ? Math.round(maxHp * 0.4) : 0;
+      actor.mech.turret = { hp: Math.min(maxHp, maxHp * 0.6 + carryOver), maxHp, attack: Math.round(CombatEngine.liveStat(actor, 'attack') * 0.85), duration: 4, isWarMachine: true };
+      events.push({ type: 'special', actor: actor.id, text: `${actor.name} deploys a War Machine!` });
+      const enemies = ctx.allActors.filter(a => a.side !== actor.side && !a.isDead);
+      enemies.forEach(e => {
+        const { amount, isCrit } = CombatEngine.calculateDamage(actor, e, 0.55, { bypassProtection: true });
+        const dealt = CombatEngine.applyDamage(actor, e, amount);
+        events.push({ type: 'damage', actor: actor.id, target: e.id, amount: dealt, isCrit, text: `The War Machine's opening barrage hits ${e.name} for ${dealt} damage.` });
+        if (e.isDead) events.push({ type: 'death', actor: e.id, text: `${e.name} has fallen!` });
+      });
+    },
+
+    // Fencer -------------------------------------------------------------------------------------
+    lunge(actor, skillDef, targets, events) {
+      const moved = CharacterMechanics.reposition(actor, 'forward');
+      if (moved) events.push({ type: 'special', actor: actor.id, text: `${actor.name} lunges forward to the ${actor.position.row} row.` });
+    },
+    thousand_thrusts(actor, skillDef, targets, events) {
+      const target = targets[0];
+      if (!target || target.isDead) return;
+      const stacks = StatusEngine.get(actor, 'footwork');
+      const extraHits = stacks ? stacks.stacks : 0;
+      for (let i = 0; i < extraHits; i++) {
+        if (target.isDead) break;
+        const { amount, isCrit } = CombatEngine.calculateDamage(actor, target, 0.4, { bypassProtection: true });
+        const dealt = CombatEngine.applyDamage(actor, target, amount);
+        events.push({ type: 'damage', actor: actor.id, target: target.id, amount: dealt, isCrit,
+          text: `${actor.name}'s blade finds ${target.name} again for ${dealt} damage.` });
+        if (target.isDead) events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` });
+      }
+      StatusEngine.remove(actor, 'footwork');
+    },
+
+    // Bard ---------------------------------------------------------------------------------------
+    battle_song(actor, skillDef, targets, events, ctx) {
+      CharacterMechanics.setStance(actor, 'battle_song');
+      const allies = ctx.allActors.filter(a => a.side === actor.side && !a.isDead);
+      allies.forEach(a => StatusEngine.apply(a, 'battle_song_buff', 3, actor.id));
+      events.push({ type: 'buff', actor: actor.id, text: `${actor.name} strikes up a Battle Song - the team's Attack surges!` });
+    },
+    war_drum(actor, skillDef, targets, events, ctx) {
+      CharacterMechanics.setStance(actor, 'war_drum');
+      const allies = ctx.allActors.filter(a => a.side === actor.side && !a.isDead);
+      allies.forEach(a => { StatusEngine.apply(a, 'war_drum_buff', 3, actor.id); CombatEngine.gainEnergy(a, 8); });
+      events.push({ type: 'buff', actor: actor.id, text: `${actor.name} beats the War Drum - the team quickens!` });
+    },
+    grand_performance(actor, skillDef, targets, events, ctx) {
+      const allies = ctx.allActors.filter(a => a.side === actor.side && !a.isDead);
+      const enemies = ctx.allActors.filter(a => a.side !== actor.side && !a.isDead);
+      if (actor.mech.stance === 'battle_song') {
+        allies.forEach(a => StatusEngine.apply(a, 'battle_song_buff', 2, actor.id));
+        events.push({ type: 'buff', actor: actor.id, text: `${actor.name}'s Grand Performance empowers the whole team's Attack!` });
+      } else if (actor.mech.stance === 'war_drum') {
+        allies.forEach(a => { StatusEngine.apply(a, 'war_drum_buff', 2, actor.id); CombatEngine.gainEnergy(a, 10); });
+        events.push({ type: 'buff', actor: actor.id, text: `${actor.name}'s Grand Performance quickens the whole team!` });
+      } else {
+        enemies.forEach(e => StatusEngine.apply(e, 'lullaby_debuff', 2, actor.id));
+        events.push({ type: 'debuff', actor: actor.id, text: `${actor.name} plays a Lullaby, weakening every enemy's Attack!` });
+      }
+    },
+
+    // Gladiator ----------------------------------------------------------------------------------
+    arena_champion(actor, skillDef, targets, events) {
+      const rage = actor.mech.rage;
+      const reduction = Math.round(15 + (rage / 100) * 25); // 15%-40% damage reduction scaling with Rage
+      const rageStatus = StatusEngine.get(actor, 'rage_shield');
+      if (rageStatus) rageStatus.magnitude = reduction;
+      CharacterMechanics.spendRage(actor, 100);
+      events.push({ type: 'buff', actor: actor.id, text: `${actor.name} unleashes his Rage, hardening his resolve (${reduction}% damage reduction)!` });
+    },
+
+    // Plague Doctor --------------------------------------------------------------------------------
+    pandemic(actor, skillDef, targets, events, ctx) {
+      const target = targets[0];
+      if (!target || target.isDead) return;
+      const poison = StatusEngine.get(target, 'poison');
+      const disease = StatusEngine.get(target, 'disease');
+      if (poison) poison.duration = Math.max(poison.duration, 2);
+      if (disease) disease.duration = Math.max(disease.duration, 2);
+      CharacterMechanics.trySpreadDebuff(actor, target, ctx.allActors, events);
+    },
+
+    // Void Walker -------------------------------------------------------------------------------
+    blink(actor, skillDef, targets, events) {
+      const moved = CharacterMechanics.reposition(actor, 'forward');
+      StatusEngine.apply(actor, 'void_step', 2, actor.id, 1);
+      events.push({ type: 'special', actor: actor.id, text: moved ? `${actor.name} blinks forward to the ${actor.position.row} row.` : `${actor.name} blinks in place, ready to strike.` });
+    },
+    void_strike(actor, skillDef, targets, events) {
+      StatusEngine.apply(actor, 'void_step', 2, actor.id, 1);
+    },
+    void_collapse(actor, skillDef, targets, events) {
+      StatusEngine.apply(actor, 'void_step', 2, actor.id, 1);
+      events.push({ type: 'special', actor: actor.id, text: `${actor.name} blinks back out of the fray.` });
     },
   },
 };

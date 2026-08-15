@@ -26,6 +26,16 @@ const SkillSystem = {
       }
     }
 
+    // Monk: Palm Burst costs 20 Ki for full power, or runs at reduced power without it.
+    if (skillDef.id === 'palm_burst') {
+      if (actor.mech.ki >= 20) {
+        CharacterMechanics.spendKi(actor, 20);
+      } else {
+        skillDef = { ...skillDef, power: skillDef.power * 0.6 };
+        events.push({ type: 'special', actor: actor.id, text: `${actor.name} doesn't have enough Ki - Palm Burst lands with less force.` });
+      }
+    }
+
     const targets = this.resolveTargets(actor, skillDef, chosenTarget, ctx.allActors);
 
     // Wizard passive: track consecutive skill casts for Arcane Mastery
@@ -50,11 +60,14 @@ const SkillSystem = {
           bypassProtection: TargetingEngine.bypassesProtection(skillDef.targetType),
           judgmentBonus: skillDef.id === 'judgment',
           finalCutBonus: skillDef.id === 'final_cut',
+          executionBonus: skillDef.id === 'execution',
+          alreadySlowedBonus: skillDef.id === 'absolute_zero_fk' && StatusEngine.has(target, 'slow'),
         };
         if (options.guaranteedCrit) actor.usedFirstShot = true;
         const { amount, isCrit, evaded } = CombatEngine.calculateDamage(actor, target, skillDef.power, options);
         if (evaded) {
           events.push({ type: 'evade', actor: actor.id, target: target.id, text: `${target.name} evaded the attack!` });
+          if (target.character.id === 'fencer') StatusEngine.apply(target, 'footwork', 3, target.id);
           continue;
         }
 
@@ -109,8 +122,22 @@ const SkillSystem = {
         if (actor.character.id === 'duelist' && actor.mech) {
           CharacterMechanics.registerDuelHit(actor, target);
         }
+        // Monk's Inner Ki: gained from landing any damaging action.
+        if (actor.character.id === 'monk') CharacterMechanics.gainKi(actor, options.isSkill ? 15 : 10);
+        // Gladiator's Crowd Favorite: gained from both dealing and taking damage.
+        if (actor.character.id === 'gladiator') CharacterMechanics.gainRage(actor, 8);
+        if (target.character.id === 'gladiator' && !target.isDead) CharacterMechanics.gainRage(target, 6);
+        // Frost Knight's Ice Armor: gains a stacking Defense buff whenever he takes damage.
+        if (target.character.id === 'frost_knight' && !target.isDead) StatusEngine.apply(target, 'ice_stack', 4, target.id);
+        // Fencer's Footwork: gained on landing an attack (self-buff, not applied to the target).
+        if (actor.character.id === 'fencer') StatusEngine.apply(actor, 'footwork', 3, actor.id);
 
         this.applyStatuses(actor, target, skillDef, events);
+
+        // Plague Doctor's Contagion: Basic Attack / Poison Flask can proc a spread on their own.
+        if (['infected_strike', 'poison_flask'].includes(skillDef.id) && !target.isDead) {
+          CharacterMechanics.trySpreadDebuff(actor, target, ctx.allActors, events);
+        }
 
         if (target.isDead) {
           events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` });
@@ -152,10 +179,12 @@ const SkillSystem = {
     } else if (skillDef.type === 'debuff') {
       for (const target of targets) {
         if (target.isDead) continue;
+        const wasAlreadySlowedDebuff = ['frost_bind', 'absolute_zero_fk'].includes(skillDef.id) && StatusEngine.has(target, 'slow');
         if (skillDef.power > 0) {
-          const { amount, isCrit, evaded } = CombatEngine.calculateDamage(actor, target, skillDef.power, { bypassProtection: TargetingEngine.bypassesProtection(skillDef.targetType) });
+          const { amount, isCrit, evaded } = CombatEngine.calculateDamage(actor, target, skillDef.power, { bypassProtection: TargetingEngine.bypassesProtection(skillDef.targetType), alreadySlowedBonus: wasAlreadySlowedDebuff });
           if (evaded) {
             events.push({ type: 'evade', actor: actor.id, target: target.id, text: `${target.name} evaded the attack!` });
+            if (target.character.id === 'fencer') StatusEngine.apply(target, 'footwork', 3, target.id);
             continue;
           }
           if (StatusEngine.consumeWard(target)) {
@@ -171,8 +200,14 @@ const SkillSystem = {
           events.push({ type: 'damage', actor: actor.id, target: target.id, amount: dealt, isCrit,
             text: `${actor.name} used ${skillDef.name} on ${target.name} for ${dealt} damage.` });
           if (target.isDead) events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` });
+          if (target.character.id === 'frost_knight' && !target.isDead) StatusEngine.apply(target, 'ice_stack', 4, target.id);
         }
         this.applyStatuses(actor, target, skillDef, events);
+        // Frost Knight's Frost Bind: escalates an already-Slowed target straight to a brief Freeze.
+        if (skillDef.id === 'frost_bind' && wasAlreadySlowedDebuff && !target.isDead) {
+          StatusEngine.apply(target, 'freeze', 1, actor.id);
+          events.push({ type: 'status', actor: actor.id, target: target.id, statusId: 'freeze', text: `${target.name} is frozen solid!` });
+        }
         events.push({ type: 'debuff', actor: actor.id, target: target.id,
           text: `${target.name} is afflicted by ${skillDef.name}.` });
       }

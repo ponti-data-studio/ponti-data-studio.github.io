@@ -9,7 +9,7 @@ No pay-to-win, no ads, no accounts, no backend. Strategy beats grinding.
 
 - Turn-Based Strategy RPG — Speed-based turn order, manual targeting, cooldowns, Energy/Ultimate system
 - **3-row tactical formations** — freely place your 5 characters into Front / Middle / Back; position is an optional strategic advantage, never a mandatory class restriction
-- 5v5 Battles with **30** fully data-driven characters, each with a distinct kit (not just re-skinned numbers)
+- 5v5 Battles with **40** fully data-driven characters, each with a distinct kit (not just re-skinned numbers)
 - AI opponents with 4 real difficulty levels (Easy / Normal / Hard / Extreme) — no stat cheating, ever — and 3 formation strategies (Balanced / Aggressive / Ranged) that Extreme AI picks to counter your own formation
 - Fully offline after first load, installable as a PWA on Android, iOS, Windows, macOS, and Linux
 - Fully responsive to **both Portrait and Landscape** on smartphones - the battle arena re-flows between a left/right layout (landscape) and a stacked top/bottom layout (portrait), always fitting on one screen with zero scrolling
@@ -38,6 +38,25 @@ engine (see "Data-Driven Implementation" below).
 All ten fully support 3-row formation, targeting, Advanced AI (Expert/Master score-aware of their
 mechanics - e.g. Chronomancer and active Totems get bonus Threat), Character Mastery, and the
 image-fallback asset system exactly like the original 20.
+
+## The Extended Roster II (31-40)
+
+A second wave of ten characters, each answering a different question: "why would I pick this one?"
+Just like the 21-30 batch, all custom logic is isolated in `js/character-mechanics.js` and never
+touches the core battle engine.
+
+| Character | Role | Signature Mechanic |
+|---|---|---|
+| Monk | Fighter | Builds Ki (max 100) from landing hits; Palm Burst spends it for a harder strike, and Sevenfold Strike unleashes bonus hits scaled by current Ki. |
+| Demon Hunter | Assassin | Applies Hunter's Mark for bonus damage, can snipe past the Front Row with Piercing Shot, and her Ultimate executes low-HP targets. |
+| Engineer | Specialist | Deploys a Turret with its own durability pool that auto-fires each turn and absorbs incoming damage like a shield until destroyed or expired. |
+| Fencer | Fighter | Gains stacking Footwork (up to 3) from attacking or dodging, each stack adding Evasion; Riposte punishes anyone who strikes her while it's active. |
+| Oracle | Support | Buffs an ally's next turn, seals an enemy's next hit to be weaker, and her Ultimate wards an ally against one lethal blow. |
+| Bard | Support | Switches between Battle Song (team Attack Up) and War Drum (team Speed/Energy) stances; her Ultimate's effect depends on which is active - or plays a team-wide Lullaby debuff on enemies if neither is. |
+| Gladiator | Tank | Builds Rage from dealing and taking damage, can Taunt the enemy Front Row (AI is mechanically forced to consider attacking him back), and spends Rage for a scaling damage-reduction Ultimate. |
+| Frost Knight | Tank | Gains a stacking Ice Armor Defense buff whenever he's hit; breaking his Ice Wall shield Slows the attacker, and Frost Bind escalates an already-Slowed target into a brief Freeze. |
+| Plague Doctor | Control | Poisons/Diseases targets that can spread to nearby enemies (rate-limited so it can never chain infinitely), and his Ultimate stacks DoT with Healing Reduction and Attack Down. |
+| Void Walker | Assassin | Blinks between rows and strikes the Back Row directly; every teleport grants a ward that blocks the next incoming hit. |
 
 ## Advanced AI
 
@@ -98,7 +117,7 @@ ordinary responsive layout and scrolls normally in either orientation.
 
 ## Fair by Design
 
-- All 20 characters are unlocked from the start — there is nothing to buy.
+- All 40 characters are unlocked from the start — there is nothing to buy.
 - Progression (level, mastery, achievements) only unlocks cosmetics/badges, never stat advantages.
 - The AI plays with the exact same stats, cooldowns, and Energy rules as the player at every difficulty.
 
@@ -191,6 +210,16 @@ assets/
 | Pirate Captain | pirate-captain.png |
 | Spirit Shaman | spirit-shaman.png  |
 | Gravity Mage | gravity-mage.png    |
+| Monk         | monk.png            |
+| Demon Hunter | demon-hunter.png    |
+| Engineer     | engineer.png        |
+| Fencer       | fencer.png          |
+| Oracle       | oracle.png          |
+| Bard         | bard.png            |
+| Gladiator    | gladiator.png       |
+| Frost Knight | frost-knight.png    |
+| Plague Doctor | plague-doctor.png  |
+| Void Walker  | void-walker.png     |
 
 ### Image Recommendations
 
@@ -239,7 +268,7 @@ This project has no dependency on any specific AI image generator — use whiche
   combat.js           - damage/heal/energy formulas, formation row bonuses & back-row protection
   targeting.js         - row-aware targeting engine (front/middle/back priority, backline skills, AI formation templates)
   ai-scoring.js          - Expert/Master AI: threat scoring, kill confirmation, overkill avoidance, combo/role weighting
-  character-mechanics.js   - isolated custom mechanics for the roster expansion (redirect, counters, reagents, totems, position pulls, turn manipulation, rewind)
+  character-mechanics.js   - isolated custom mechanics for both roster expansions (redirect, counters, reagents, totems, position pulls, turn manipulation, rewind, Ki/Rage/Footwork resources, Turret, Taunt, Contagion spread)
   skills.js              - resolves a skill definition against its targets
   turn-manager.js      - speed-based turn order / action bar
   ai.js                - AI decision-making (4 difficulty tiers)

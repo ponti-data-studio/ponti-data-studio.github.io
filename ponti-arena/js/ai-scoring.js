@@ -24,6 +24,13 @@ const AIScoring = {
     if (target.character.id === 'spirit_shaman' && target.mech && target.mech.activeTotem) score += 10;
     if (target.character.id === 'vampire') score += 8; // sustain threat compounds over a long fight
     if (target.character.id === 'gravity_mage') score += 6; // formation-breaker
+    // Roster expansion 2 (31-40) mechanic awareness (#17/#18)
+    if (target.character.id === 'engineer' && target.mech && target.mech.turret) score += 14; // active Turret is a real DPS threat
+    if (target.character.id === 'demon_hunter') score += 8; // execute threat against low-HP allies
+    if (target.character.id === 'void_walker') score += 10; // backline assassination threat
+    if (target.character.id === 'gladiator' && target.mech && target.mech.rage >= 70) score += 10; // near Arena Champion
+    if (target.character.id === 'frost_knight' && target.statuses.some(s => s.id === 'ice_stack' && s.stacks >= 4)) score += 6; // hard to crack soon
+    if (target.character.id === 'plague_doctor') score += 8; // debuff/spread pressure compounds
 
     // Turn-order lookahead (#140/#141): about to act soon with a near-ready Ultimate = spike priority.
     if (context && context.timelinePreview) {
