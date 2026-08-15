@@ -185,6 +185,64 @@ const AISystem = {
     return Math.random() < 0.5 ? 'aggressive' : 'ranged';
   },
 
+  // -------------------------------------------------------------- TEAM DRAFTING (Master AI) ----
+  /**
+   * A single character's overall combat power for team-drafting purposes - a rough, transparent
+   * estimate any player could eyeball themselves from the stat block plus a bonus for mechanical
+   * depth (sustain, execute, AoE ultimates, backline access). Not the same thing as in-battle
+   * Threat Score (see ai-scoring.js), which reacts to live battle state instead of raw kit strength.
+   */
+  characterPowerScore(character) {
+    const b = character.base;
+    let score = b.attack * 0.45 + b.hp * 0.045 + b.defense * 0.18 + b.speed * 0.22 + b.critRate * 0.6 + (b.critDmg - 150) * 0.15;
+    // Mechanical depth bonuses - a rough proxy for how much extra value the kit brings.
+    if (character.ultimate && ['all_enemy', 'adjacent_enemies', 'front_row', 'middle_row', 'back_row'].includes(character.ultimate.targetType)) score += 18; // AoE ultimate
+    if (character.backlineBonus || ['single_back', 'back_row'].includes((character.skill1 || {}).targetType) || ['single_back', 'back_row'].includes((character.skill2 || {}).targetType)) score += 12; // backline access
+    if (character.lifestealPercent || (character.skill1 && character.skill1.drainPercent) || (character.skill2 && character.skill2.drainPercent)) score += 10; // built-in sustain
+    if (character.rowSynergy) score += 6; // extra positional payoff
+    if (character.evasionPercent) score += 6;
+    return score;
+  },
+
+  /** Buckets a role into a coarse archetype used only for team-draft coverage, not gameplay. */
+  draftArchetype(role) {
+    if (['Tank', 'Bruiser'].includes(role)) return 'frontline';
+    if (['Support'].includes(role)) return 'sustain';
+    return 'damage';
+  },
+
+  /**
+   * Master AI drafts the strongest available 5-character team from `pool` (character ids), rather
+   * than picking randomly: guarantees at least one frontline and one sustain/support pick, then
+   * fills the remaining slots with the highest power-scoring characters left, so the team is both
+   * individually strong and not an all-glass-cannon or all-tank lineup. Never picks a character
+   * outside `pool` (already-used ids are expected to be filtered out by the caller).
+   */
+  draftPowerfulTeam(pool) {
+    const candidates = pool.map(id => getCharacterById(id)).filter(Boolean)
+      .map(c => ({ character: c, power: this.characterPowerScore(c), archetype: this.draftArchetype(c.role) }))
+      .sort((a, b) => b.power - a.power);
+
+    const picked = [];
+    const takeBest = (predicate) => {
+      const idx = candidates.findIndex(c => predicate(c) && !picked.includes(c));
+      if (idx !== -1) { picked.push(candidates[idx]); return true; }
+      return false;
+    };
+
+    takeBest(c => c.archetype === 'frontline'); // guarantee a tank/bruiser anchor
+    takeBest(c => c.archetype === 'sustain');    // guarantee a support/healer
+
+    // Fill the remaining slots with the highest raw power available, regardless of archetype -
+    // this is what makes it "the most powerful combination" rather than just a balanced one.
+    for (const c of candidates) {
+      if (picked.length >= 5) break;
+      if (!picked.includes(c)) picked.push(c);
+    }
+
+    return picked.slice(0, 5).map(c => c.character.id);
+  },
+
   bestDamageOption(usable) {
     const ult = usable.find(u => u.key === 'ultimate');
     if (ult && ult.def.type !== 'buff') return ult;

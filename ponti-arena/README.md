@@ -76,6 +76,14 @@ difficulty comes entirely from decision quality, never from hidden bonuses (see 
 - **Master** additionally applies a simple Risk Assessment pass: if the AI is critically low on HP
   and its best-scoring action doesn't secure a kill, it compares against Defending and may choose to
   play safe instead.
+- **Master also drafts its own team.** In Quick Battle, every other difficulty picks its 5 enemies
+  at random from whatever characters you didn't take. Master instead runs a transparent power draft
+  (`AISystem.draftPowerfulTeam` in `js/ai.js`): it scores every remaining character on raw stats plus
+  a bonus for high-impact kit traits (AoE Ultimates, backline access, built-in sustain, row synergy),
+  guarantees at least one frontline anchor (Tank/Bruiser) and one Support for survivability, then
+  fills the rest with whatever scores highest overall - so Master's opponents are a genuinely strong,
+  not-random lineup rather than a coin-flip team. (Campaign enemy teams are unaffected - those stay
+  hand-designed per stage regardless of difficulty.)
 - Both tiers use **controlled randomness** (Expert picks its 2nd-best option ~10% of the time,
   Master ~5%) so they never feel like a perfectly identical script every battle.
 - Enable **Settings → AI Decision Log (Developer)** to see each Expert/Master decision (target,

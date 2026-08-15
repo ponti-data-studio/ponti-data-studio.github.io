@@ -320,10 +320,11 @@ const App = {
       card.addEventListener('click', () => {
         AudioSystem.playUIClick();
         this.arenaId = arena.id;
-        // Random enemy team for Quick Battle drawn from full roster
         const pool = CHARACTERS.map(c => c.id).filter(id => !this.buildTeam.includes(id));
-        const shuffled = pool.sort(() => Math.random() - 0.5);
-        const enemyTeam = shuffled.slice(0, 5);
+        // Master AI doesn't pick its team at random - it drafts the strongest available combination.
+        const enemyTeam = this.difficulty === 'master'
+          ? AISystem.draftPowerfulTeam(pool)
+          : pool.sort(() => Math.random() - 0.5).slice(0, 5);
         const strategy = AISystem.chooseFormationStrategy(this.difficulty, this.buildFormation);
         const enemyFormation = TargetingEngine.buildFormationFromTemplate(enemyTeam, strategy);
         this.launchBattle(this.buildFormation, enemyFormation);
