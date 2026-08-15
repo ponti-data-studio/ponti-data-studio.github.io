@@ -209,9 +209,9 @@ const CharacterMechanics = {
   tryReflect(defender, attacker, dealtAmount, wasReflectDamage) {
     if (wasReflectDamage || defender.character.id !== 'mirror_knight' || defender.isDead || attacker.isDead || dealtAmount <= 0) return null;
     const boost = StatusEngine.get(defender, 'mirror_boost');
-    const percent = (defender.character.reflectPercent || 0) + (boost ? 30 : 0);
+    const percent = (defender.character.reflectPercent || 0) + (boost ? 40 : 0);
     if (percent <= 0) return null;
-    const cap = Math.round(defender.maxHp * 0.12); // maximum reflect damage per hit
+    const cap = Math.round(defender.maxHp * 0.16); // maximum reflect damage per hit
     const reflectAmount = Math.min(cap, Math.round(dealtAmount * (percent / 100)));
     if (reflectAmount <= 0) return null;
     const dealt = CombatEngine.applyDamage(defender, attacker, reflectAmount);
@@ -226,7 +226,7 @@ const CharacterMechanics = {
       const parry = StatusEngine.get(defender, 'parry_stance');
       if (iaido) {
         StatusEngine.remove(defender, 'iaido_stance');
-        return this.fireCounter(defender, attacker, 1.6, 'Iaido');
+        return this.fireCounter(defender, attacker, 1.75, 'Iaido');
       }
       if (parry) {
         StatusEngine.remove(defender, 'parry_stance');
@@ -234,7 +234,7 @@ const CharacterMechanics = {
         return null; // Parry grants a buff for the NEXT attack rather than an instant counter
       }
       if (defender.defending) {
-        return this.fireCounter(defender, attacker, 0.9, 'Bushido');
+        return this.fireCounter(defender, attacker, 1.05, 'Bushido');
       }
     }
     if (defender.character.id === 'duelist') {
@@ -269,9 +269,9 @@ const CharacterMechanics = {
     const types = ['healing', 'toxic', 'swift', 'purifying'];
     const r = alchemist.mech.reagents;
     const total = types.reduce((sum, t) => sum + r[t], 0);
-    if (total >= 6) return; // overall cap so it can't stockpile forever
+    if (total >= 8) return; // overall cap so it can't stockpile forever
     const pick = types[Math.floor(Math.random() * types.length)];
-    r[pick] = Math.min(3, r[pick] + 1);
+    r[pick] = Math.min(4, r[pick] + 1);
   },
 
   consumeReagent(alchemist, type) {
@@ -335,9 +335,9 @@ const CharacterMechanics = {
     const restoreTo = Math.max(target.hp, Math.min(target.maxHp, snapshot));
     const healed = Math.max(0, restoreTo - target.hp);
     target.hp = restoreTo;
-    const energyRestored = Math.min(40, 100 - target.energy);
-    target.energy = Math.min(100, target.energy + 40);
-    const debuffs = target.statuses.filter(s => STATUS_DEFS[s.id] && STATUS_DEFS[s.id].category === 'debuff').slice(0, 2);
+    const energyRestored = Math.min(55, 100 - target.energy);
+    target.energy = Math.min(100, target.energy + 55);
+    const debuffs = target.statuses.filter(s => STATUS_DEFS[s.id] && STATUS_DEFS[s.id].category === 'debuff').slice(0, 3);
     debuffs.forEach(s => StatusEngine.remove(target, s.id));
     return { healed, energyRestored, cleansed: debuffs.length };
   },
@@ -366,7 +366,7 @@ const CharacterMechanics = {
     time_shift(actor, skillDef, targets, events) {
       const target = targets[0];
       if (!target || target.isDead) return;
-      const fraction = actor.position && actor.position.row !== 'front' ? 0.4 : 0.3; // Time Flow row bonus
+      const fraction = actor.position && actor.position.row !== 'front' ? 0.5 : 0.4; // Time Flow row bonus
       CharacterMechanics.advanceReadiness(target, fraction);
       events.push({ type: 'special', actor: actor.id, target: target.id, text: `${target.name}'s next turn draws closer.` });
     },
@@ -438,12 +438,12 @@ const CharacterMechanics = {
     // Spirit Shaman -----------------------------------------------------------------------------
     healing_totem(actor, skillDef, targets, events, ctx) {
       const allies = ctx.allActors.filter(a => a.side === actor.side && !a.isDead);
-      CharacterMechanics.applyTotem(actor, allies, 'healing', 'healing_totem_aura', 3);
+      CharacterMechanics.applyTotem(actor, allies, 'healing', 'healing_totem_aura', 4);
       events.push({ type: 'special', actor: actor.id, text: `${actor.name} plants a Healing Totem for the team.` });
     },
     spirit_totem(actor, skillDef, targets, events, ctx) {
       const allies = ctx.allActors.filter(a => a.side === actor.side && !a.isDead);
-      CharacterMechanics.applyTotem(actor, allies, 'spirit', 'spirit_totem_aura', 3);
+      CharacterMechanics.applyTotem(actor, allies, 'spirit', 'spirit_totem_aura', 4);
       events.push({ type: 'special', actor: actor.id, text: `${actor.name} plants a Spirit Totem for the team.` });
     },
 
@@ -588,7 +588,7 @@ const CharacterMechanics = {
     // Gladiator ----------------------------------------------------------------------------------
     arena_champion(actor, skillDef, targets, events) {
       const rage = actor.mech.rage;
-      const reduction = Math.round(15 + (rage / 100) * 25); // 15%-40% damage reduction scaling with Rage
+      const reduction = Math.round(20 + (rage / 100) * 30); // 20%-50% damage reduction scaling with Rage
       const rageStatus = StatusEngine.get(actor, 'rage_shield');
       if (rageStatus) rageStatus.magnitude = reduction;
       CharacterMechanics.spendRage(actor, 100);
@@ -652,11 +652,11 @@ const CharacterMechanics = {
       const runes = actor.mech.runes;
       const allies = ctx.allActors.filter(a => a.side === actor.side && !a.isDead);
       if (runes.includes('guard')) {
-        allies.forEach(a => CombatEngine.applyShield(a, Math.round(a.maxHp * 0.12)));
+        allies.forEach(a => CombatEngine.applyShield(a, Math.round(a.maxHp * 0.18)));
         events.push({ type: 'shield', actor: actor.id, text: `${actor.name}'s Grand Rune shields the whole team!` });
       }
       if (runes.includes('wind')) {
-        allies.forEach(a => StatusEngine.apply(a, 'speed_up', 2, actor.id));
+        allies.forEach(a => StatusEngine.apply(a, 'speed_up', 3, actor.id));
         events.push({ type: 'buff', actor: actor.id, text: `${actor.name}'s Grand Rune quickens the whole team!` });
       }
       actor.mech.runes = []; // Runes are spent - see #15/#29 (no unbounded reuse of the same combo)
