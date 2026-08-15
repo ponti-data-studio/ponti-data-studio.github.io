@@ -1,14 +1,15 @@
 /**
- * PONTI ARENA - Character Mechanics (roster expansions: 21-30 and 31-40)
+ * PONTI ARENA - Character Mechanics (roster expansions: 21-30, 31-40, and 41-50)
  * Isolated handlers for the handful of genuinely custom behaviors introduced by the new
  * characters (damage redirection, counter-attacks, reagents, duel stacks, totems, turn-gauge
- * manipulation, decoy wards, position pulls, Ki/Rage/Footwork resources, the Engineer's Turret,
- * Taunt, and Contagion spread). Everything else about these characters (basic stats, plain
- * damage/heal/buff skills) flows through the existing data-driven systems in
- * characters.js/skills.js/combat.js exactly like the original 20.
+ * manipulation, decoy wards, position pulls, Ki/Rage/Footwork/Dragon Gauge/Soul resources, the
+ * Engineer's Turret, Taunt, Contagion spread, Rune fusion, and reflection). Everything else about
+ * these characters (basic stats, plain damage/heal/buff skills) flows through the existing
+ * data-driven systems in characters.js/skills.js/combat.js exactly like the original 20.
  *
- * Every mechanic here has an explicit cap/duration/limit - see #25 Bug Prevention: no infinite
- * turns, counters, heals, shields, repositions, clones, rewinds, energy, Turrets, or Taunts.
+ * Every mechanic here has an explicit cap/duration/limit - see #29 Bug Prevention: no infinite
+ * turns, counters, heals, shields, repositions, clones, rewinds, energy, Turrets, Taunts, Runes,
+ * Souls, or reflections.
  */
 
 const CharacterMechanics = {
@@ -21,10 +22,15 @@ const CharacterMechanics = {
       duelTarget: null, duelStacks: 0, // Duelist
       activeTotem: null,         // Spirit Shaman ('healing' | 'spirit')
       ki: 0,                     // Monk (0-100)
-      rage: 0,                   // Gladiator (0-100)
+      rage: 0,                   // Gladiator / Berserker Lord (0-100)
       turret: null,              // Engineer: { hp, maxHp, attack, duration, isWarMachine }
       stance: null,              // Bard ('battle_song' | 'war_drum')
       spreadCooldown: 0,         // Plague Doctor (Pandemic internal cooldown)
+      dragonGauge: 0,            // Dragon Knight (0-100)
+      attackedLastTurn: false,   // Battle Medic (Combat Heal bonus)
+      runes: [],                 // Rune Master: up to 3 of 'fire' | 'guard' | 'wind'
+      mounted: true,             // Beast Rider
+      soul: 0,                   // Soul Reaper (0-5)
     };
     actor.hpHistory = []; // used by Chronomancer's Rewind (universal, cheap, capped at 6 entries)
   },
@@ -33,6 +39,7 @@ const CharacterMechanics = {
    *  Returns an array of log-worthy events (e.g. a Turret shot), or an empty array. */
   onTurnStart(actor, allActors) {
     actor.mech.counteredThisTurn = false;
+    actor.mech.attackedLastTurn = false; // reset each turn; set true if Basic Attack is used this turn
     actor.hpHistory.push(actor.hp);
     if (actor.hpHistory.length > 6) actor.hpHistory.shift();
 
@@ -44,6 +51,19 @@ const CharacterMechanics = {
     if (actor.character.id === 'engineer') this.tickTurret(actor, allActors, events);
     if (actor.mech.spreadCooldown > 0) actor.mech.spreadCooldown -= 1;
     return events;
+  },
+
+  /** Called whenever ANY enemy of `deadActor`'s side falls, from the main death-detection points
+   *  in skills.js. Grants Soul Reaper(s) on the opposing side a Soul (bonus if the target was
+   *  Soul Marked by that Reaper specifically). Capped at 5 - see #29 Bug Prevention. */
+  registerDeath(deadActor, allActors) {
+    const reapers = allActors.filter(a => a.character.id === 'soul_reaper' && a.side !== deadActor.side && !a.isDead);
+    reapers.forEach(reaper => {
+      let gain = 1;
+      const mark = StatusEngine.get(deadActor, 'soul_mark_status');
+      if (mark && mark.source === reaper.id) gain += 1;
+      reaper.mech.soul = Math.min(5, reaper.mech.soul + gain);
+    });
   },
 
   // ---------------------------------------------------------------- ENGINEER ----
@@ -72,11 +92,35 @@ const CharacterMechanics = {
     engineer.mech.turret = { hp: maxHp, maxHp, attack: Math.round(CombatEngine.liveStat(engineer, 'attack') * 0.5), duration: 4, isWarMachine: false };
   },
 
-  // ---------------------------------------------------------------- RESOURCES (Ki / Rage) ----
+  // ---------------------------------------------------------------- RESOURCES (Ki / Rage / Dragon Gauge) ----
   gainKi(actor, amount) { if (actor.mech) actor.mech.ki = Math.min(100, actor.mech.ki + amount); },
   spendKi(actor, amount) { if (actor.mech) actor.mech.ki = Math.max(0, actor.mech.ki - amount); },
   gainRage(actor, amount) { if (actor.mech) actor.mech.rage = Math.min(100, actor.mech.rage + amount); },
   spendRage(actor, amount) { if (actor.mech) actor.mech.rage = Math.max(0, actor.mech.rage - amount); },
+  gainDragonGauge(actor, amount) { if (actor.mech) actor.mech.dragonGauge = Math.min(100, actor.mech.dragonGauge + amount); },
+  spendDragonGauge(actor, amount) { if (actor.mech) actor.mech.dragonGauge = Math.max(0, actor.mech.dragonGauge - amount); },
+
+  // ---------------------------------------------------------------- RUNE MASTER ----
+  RUNE_RECIPES: {
+    'fire+fire': 'Burst', 'fire+wind': 'Rapid', 'fire+guard': 'Barrier',
+    'wind+wind': 'Haste', 'guard+guard': 'Fortress', 'guard+wind': 'Mobility',
+  },
+  /** Adds the next Rune in a fixed Fire -> Guard -> Wind rotation (keeps skill UI simple - see #5/#31). */
+  inscribeRune(actor) {
+    const order = ['fire', 'guard', 'wind'];
+    const last = actor.mech.runes.length > 0 ? actor.mech.runes[actor.mech.runes.length - 1] : null;
+    const next = order[(order.indexOf(last) + 1) % order.length];
+    actor.mech.runes.push(next);
+    if (actor.mech.runes.length > 3) actor.mech.runes.shift(); // FIFO cap - never unbounded
+    return next;
+  },
+  /** Looks up (and does not require consuming) the fusion result for the two most recent Runes. */
+  runeFusionResult(actor) {
+    const runes = actor.mech.runes;
+    if (runes.length < 2) return null;
+    const pair = [runes[runes.length - 2], runes[runes.length - 1]].sort();
+    return this.RUNE_RECIPES[pair.join('+')] || null;
+  },
 
   // ---------------------------------------------------------------- GLADIATOR: Taunt ----
   /** If `actor` is Taunted and the taunter is a legal target for this skill, force it. */
@@ -156,6 +200,25 @@ const CharacterMechanics = {
    * Returns a damage event object or null. Guarded against double-counters per turn and against
    * counters ever chaining into further counters (isCounter flag on the resulting call site).
    */
+  // ---------------------------------------------------------------- MIRROR KNIGHT: Reflection ----
+  /**
+   * Reflects a capped share of direct attack damage back at the attacker. `wasReflectDamage` must
+   * be true for the ORIGINAL hit that triggered this if it was itself a reflection - in that case
+   * we refuse to reflect again, which is the hard guarantee against infinite reflect loops (#16/#29).
+   */
+  tryReflect(defender, attacker, dealtAmount, wasReflectDamage) {
+    if (wasReflectDamage || defender.character.id !== 'mirror_knight' || defender.isDead || attacker.isDead || dealtAmount <= 0) return null;
+    const boost = StatusEngine.get(defender, 'mirror_boost');
+    const percent = (defender.character.reflectPercent || 0) + (boost ? 30 : 0);
+    if (percent <= 0) return null;
+    const cap = Math.round(defender.maxHp * 0.12); // maximum reflect damage per hit
+    const reflectAmount = Math.min(cap, Math.round(dealtAmount * (percent / 100)));
+    if (reflectAmount <= 0) return null;
+    const dealt = CombatEngine.applyDamage(defender, attacker, reflectAmount);
+    return { type: 'damage', actor: defender.id, target: attacker.id, amount: dealt, isCrit: false, isReflectDamage: true,
+      text: `${defender.name}'s Mirror Armor reflects ${dealt} damage back at ${attacker.name}!` };
+  },
+
   tryCounter(defender, attacker, allActors) {
     if (defender.isDead || attacker.isDead || defender.mech.counteredThisTurn) return null;
     if (defender.character.id === 'samurai') {
@@ -555,6 +618,120 @@ const CharacterMechanics = {
     void_collapse(actor, skillDef, targets, events) {
       StatusEngine.apply(actor, 'void_step', 2, actor.id, 1);
       events.push({ type: 'special', actor: actor.id, text: `${actor.name} blinks back out of the fray.` });
+    },
+
+    // ---- Roster expansion 3 (41-50) ----
+
+    // Dragon Knight ------------------------------------------------------------------------------
+    dragon_form(actor, skillDef, targets, events) {
+      if (actor.mech.dragonGauge < 50) {
+        events.push({ type: 'special', actor: actor.id, text: `${actor.name}'s Dragon Gauge is too low to fully transform - the Ultimate fizzles into a weaker burst.` });
+        StatusEngine.remove(actor, 'dragon_form'); // don't grant the transformation buff without enough Gauge
+        return;
+      }
+      CharacterMechanics.spendDragonGauge(actor, 100); // consumed immediately - prevents back-to-back transformations (#17/#29)
+      events.push({ type: 'special', actor: actor.id, text: `${actor.name} transforms into DRAGON FORM!` });
+    },
+
+    // Shadow Priest --------------------------------------------------------------------------------
+    // (Shadow Heal's HP cost and Soul Sacrifice's HP-scaling are handled inline in skills.js.)
+
+    // Sniper -----------------------------------------------------------------------------------------
+    // (Aim / Long Range / Headshot bonuses are handled inline in combat.js/skills.js.)
+
+    // Rune Master --------------------------------------------------------------------------------------
+    inscribe(actor, skillDef, targets, events) {
+      const rune = CharacterMechanics.inscribeRune(actor);
+      events.push({ type: 'special', actor: actor.id, text: `${actor.name} inscribes the ${rune.toUpperCase()} Rune. (${actor.mech.runes.length}/3 active)` });
+    },
+    rune_fusion(actor, skillDef, targets, events) {
+      const result = CharacterMechanics.runeFusionResult(actor);
+      if (result) events.push({ type: 'special', actor: actor.id, text: `${actor.name} fuses her Runes into a ${result} effect!` });
+    },
+    grand_rune(actor, skillDef, targets, events, ctx) {
+      const runes = actor.mech.runes;
+      const allies = ctx.allActors.filter(a => a.side === actor.side && !a.isDead);
+      if (runes.includes('guard')) {
+        allies.forEach(a => CombatEngine.applyShield(a, Math.round(a.maxHp * 0.12)));
+        events.push({ type: 'shield', actor: actor.id, text: `${actor.name}'s Grand Rune shields the whole team!` });
+      }
+      if (runes.includes('wind')) {
+        allies.forEach(a => StatusEngine.apply(a, 'speed_up', 2, actor.id));
+        events.push({ type: 'buff', actor: actor.id, text: `${actor.name}'s Grand Rune quickens the whole team!` });
+      }
+      actor.mech.runes = []; // Runes are spent - see #15/#29 (no unbounded reuse of the same combo)
+    },
+
+    // Witch ------------------------------------------------------------------------------------------
+    hex(actor, skillDef, targets, events) {
+      const target = targets[0];
+      if (!target || target.isDead) return;
+      const pool = ['attack_down', 'defense_down', 'speed_down', 'healing_reduction', 'poison'];
+      const chosen = pool[Math.floor(Math.random() * pool.length)];
+      const debuffCount = target.statuses.filter(s => STATUS_DEFS[s.id] && STATUS_DEFS[s.id].category === 'debuff').length;
+      const witchcraftBonus = Math.min(3, debuffCount);
+      StatusEngine.apply(target, chosen, 2 + witchcraftBonus, actor.id);
+      events.push({ type: 'status', actor: actor.id, target: target.id, statusId: chosen, text: `${target.name} is afflicted by ${STATUS_DEFS[chosen].name}!` });
+    },
+    curse_transfer(actor, skillDef, targets, events, ctx) {
+      const ally = targets[0];
+      if (!ally) return;
+      const debuff = ally.statuses.find(s => STATUS_DEFS[s.id] && STATUS_DEFS[s.id].category === 'debuff');
+      if (!debuff) { events.push({ type: 'special', actor: actor.id, text: `${ally.name} has no debuff to transfer.` }); return; }
+      const enemies = ctx.allActors.filter(a => a.side !== actor.side && !a.isDead);
+      if (enemies.length === 0) return;
+      const target = enemies[Math.floor(Math.random() * enemies.length)];
+      StatusEngine.remove(ally, debuff.id);
+      StatusEngine.apply(target, debuff.id, debuff.duration || 2, actor.id);
+      events.push({ type: 'status', actor: actor.id, target: target.id, statusId: debuff.id,
+        text: `${actor.name} rips ${STATUS_DEFS[debuff.id].name} from ${ally.name} and hurls it onto ${target.name}!` });
+    },
+
+    // Battle Medic -------------------------------------------------------------------------------------
+    // (Combat Heal's attacked-last-turn bonus is handled inline in skills.js.)
+
+    // Beast Rider -----------------------------------------------------------------------------------------
+    charge(actor, skillDef, targets, events) {
+      const target = targets[0];
+      if (!target || target.isDead) return;
+      const moved = CharacterMechanics.reposition(target, 'backward');
+      if (moved) events.push({ type: 'special', actor: actor.id, target: target.id, text: `${target.name} is knocked back to the ${target.position.row} row!` });
+    },
+    dismount(actor, skillDef, targets, events) {
+      actor.mech.mounted = false;
+      events.push({ type: 'special', actor: actor.id, text: `${actor.name} dismounts, trading mobility for resilience.` });
+    },
+
+    // Berserker Lord ------------------------------------------------------------------------------------------
+    blood_roar(actor, skillDef, targets, events) {
+      if (actor.isDead) return;
+      const cost = Math.min(actor.hp - 1, Math.round(actor.maxHp * 0.12));
+      if (cost > 0) {
+        actor.hp -= cost;
+        events.push({ type: 'special', actor: actor.id, text: `${actor.name} sacrifices ${cost} HP in a Blood Roar.` });
+      }
+      CharacterMechanics.gainRage(actor, 30);
+    },
+    wrath_unleashed(actor, skillDef, targets, events) {
+      CharacterMechanics.spendRage(actor, 70); // drops sharply afterward - prevents back-to-back nukes (#29)
+      events.push({ type: 'special', actor: actor.id, text: `${actor.name}'s Rage subsides after unleashing his Wrath.` });
+    },
+
+    // Rune Master (Rune Bolt's Guard/Wind bonuses - Fire's damage bonus lives in combat.js) --------------------
+    rune_bolt(actor, skillDef, targets, events) {
+      if (!actor.mech || !actor.mech.runes.includes('guard')) return;
+      CombatEngine.applyShield(actor, Math.round(actor.maxHp * 0.04));
+      events.push({ type: 'shield', actor: actor.id, target: actor.id, text: `${actor.name}'s Guard Rune grants a sliver of Shield.` });
+      if (actor.mech.runes.includes('wind')) {
+        CharacterMechanics.advanceReadiness(actor, 0.08);
+        events.push({ type: 'special', actor: actor.id, text: `${actor.name}'s Wind Rune quickens her next turn slightly.` });
+      }
+    },
+
+    // Soul Reaper --------------------------------------------------------------------------------------------------
+    reapers_domain(actor, skillDef, targets, events) {
+      StatusEngine.apply(actor, 'attack_up', 2, actor.id);
+      events.push({ type: 'buff', actor: actor.id, text: `${actor.name} opens a Soul Domain, gaining Attack Up.` });
     },
   },
 };

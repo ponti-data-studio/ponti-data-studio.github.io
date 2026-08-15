@@ -60,6 +60,12 @@ const STATUS_DEFS = {
   lullaby_debuff:  { name: 'Lullaby',         icon: '💤', kind: 'stat',    stackable: false, maxStacks: 1, category: 'debuff', stat: 'attack', percent: -18 },
   rage_shield:     { name: "Champion's Grit", icon: '🛡️', kind: 'special', stackable: false, maxStacks: 1, category: 'buff' }, // Gladiator ultimate: flat damage-taken reduction, magnitude set on cast
   hunter_mark:     { name: "Hunter's Mark",   icon: '🎯', kind: 'special', stackable: false, maxStacks: 1, category: 'debuff' }, // Demon Hunter
+
+  // ---- New statuses for the 50-character roster expansion ----
+  dragon_form:     { name: 'Dragon Form',     icon: '🐉', kind: 'special', stackable: false, maxStacks: 1, category: 'buff' },   // Dragon Knight transformation
+  aim_stance:      { name: 'Aim',             icon: '🎯', kind: 'special', stackable: false, maxStacks: 1, category: 'buff' },   // Sniper: bonus crit/damage, extra vulnerability
+  mirror_boost:    { name: 'Mirror Boost',    icon: '🪞', kind: 'special', stackable: false, maxStacks: 1, category: 'buff' },   // Mirror Knight: temporary extra reflect %
+  soul_mark_status:{ name: 'Soul Mark',       icon: '💀', kind: 'special', stackable: false, maxStacks: 1, category: 'debuff' }, // Soul Reaper
 };
 
 const StatusEngine = {

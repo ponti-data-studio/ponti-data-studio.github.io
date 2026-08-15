@@ -62,6 +62,11 @@ const SkillSystem = {
           finalCutBonus: skillDef.id === 'final_cut',
           executionBonus: skillDef.id === 'execution',
           alreadySlowedBonus: skillDef.id === 'absolute_zero_fk' && StatusEngine.has(target, 'slow'),
+          skillId: skillDef.id,
+          headshotBonus: skillDef.id === 'headshot',
+          rageScaled: ['raging_swing', 'wrath_unleashed'].includes(skillDef.id),
+          wrathArmorBreak: skillDef.id === 'wrath_unleashed',
+          missingHpExecute: skillDef.id === 'reapers_cut',
         };
         if (options.guaranteedCrit) actor.usedFirstShot = true;
         const { amount, isCrit, evaded } = CombatEngine.calculateDamage(actor, target, skillDef.power, options);
@@ -86,7 +91,7 @@ const SkillSystem = {
         if (redirect.redirectedTo) {
           events.push({ type: 'redirect', actor: redirect.redirectedTo.id, target: target.id, amount: redirect.redirectedAmount,
             text: `${redirect.redirectedTo.name} intercepts ${redirect.redirectedAmount} damage meant for ${target.name}!` });
-          if (redirect.redirectedTo.isDead) events.push({ type: 'death', actor: redirect.redirectedTo.id, text: `${redirect.redirectedTo.name} has fallen!` });
+          if (redirect.redirectedTo.isDead) { events.push({ type: 'death', actor: redirect.redirectedTo.id, text: `${redirect.redirectedTo.name} has fallen!` }); CharacterMechanics.registerDeath(redirect.redirectedTo, ctx.allActors); }
         }
 
         const dealt = CombatEngine.applyDamage(actor, target, redirect.amount);
@@ -131,6 +136,14 @@ const SkillSystem = {
         if (target.character.id === 'frost_knight' && !target.isDead) StatusEngine.apply(target, 'ice_stack', 4, target.id);
         // Fencer's Footwork: gained on landing an attack (self-buff, not applied to the target).
         if (actor.character.id === 'fencer') StatusEngine.apply(actor, 'footwork', 3, actor.id);
+        // Dragon Knight's Dragon Blood: gained from both dealing and taking damage.
+        if (actor.character.id === 'dragon_knight') CharacterMechanics.gainDragonGauge(actor, 8);
+        if (target.character.id === 'dragon_knight' && !target.isDead) CharacterMechanics.gainDragonGauge(target, 10);
+        // Berserker Lord's Enrage: gained from both dealing and taking damage.
+        if (actor.character.id === 'berserker_lord') CharacterMechanics.gainRage(actor, 8);
+        if (target.character.id === 'berserker_lord' && !target.isDead) CharacterMechanics.gainRage(target, 6);
+        // Battle Medic's Emergency Protocol tracker: remembers she attacked, for Combat Heal's bonus.
+        if (actor.character.id === 'battle_medic' && skillDef.id === actor.character.basicAttack.id) actor.mech.attackedLastTurn = true;
 
         this.applyStatuses(actor, target, skillDef, events);
 
@@ -141,13 +154,21 @@ const SkillSystem = {
 
         if (target.isDead) {
           events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` });
+          CharacterMechanics.registerDeath(target, ctx.allActors);
+        }
+
+        // Mirror Knight's Mirror Armor: reflects a capped share of this hit back at the attacker.
+        const reflectEvent = CharacterMechanics.tryReflect(target, actor, dealt, false);
+        if (reflectEvent) {
+          events.push(reflectEvent);
+          if (actor.isDead) { events.push({ type: 'death', actor: actor.id, text: `${actor.name} has fallen!` }); CharacterMechanics.registerDeath(actor, ctx.allActors); }
         }
 
         // Counter-attack check (Samurai's Bushido/Iaido/Parry, Duelist's Riposte).
         const counterEvent = CharacterMechanics.tryCounter(target, actor, ctx.allActors);
         if (counterEvent) {
           events.push(counterEvent);
-          if (actor.isDead) events.push({ type: 'death', actor: actor.id, text: `${actor.name} has fallen!` });
+          if (actor.isDead) { events.push({ type: 'death', actor: actor.id, text: `${actor.name} has fallen!` }); CharacterMechanics.registerDeath(actor, ctx.allActors); }
         }
 
         CombatEngine.gainEnergy(actor, 0); // energy from own action handled by caller
@@ -155,11 +176,37 @@ const SkillSystem = {
     } else if (skillDef.type === 'heal') {
       for (const target of targets) {
         if (target.isDead) continue;
-        const healAmt = Math.round(CombatEngine.liveStat(actor, 'attack') * skillDef.power);
+        let healAmt = Math.round(CombatEngine.liveStat(actor, 'attack') * skillDef.power);
+        // Battle Medic's Combat Heal: bonus if she attacked on her previous turn.
+        if (skillDef.id === 'combat_heal' && actor.mech && actor.mech.attackedLastTurn) healAmt = Math.round(healAmt * 1.3);
+        // Battle Medic's Emergency Protocol: bonus healing on a critically low-HP ally.
+        if (actor.character.id === 'battle_medic' && (target.hp / target.maxHp) < 0.3) healAmt = Math.round(healAmt * 1.25);
+        // Mass Trauma Care: the more HP an ally is missing, the more they recover (capped).
+        if (skillDef.id === 'mass_trauma_care') {
+          const missingPct = 1 - (target.hp / target.maxHp);
+          healAmt = Math.round(healAmt * (1 + Math.min(0.6, missingPct)));
+        }
         const healed = CombatEngine.applyHeal(actor, target, healAmt);
         events.push({ type: 'heal', actor: actor.id, target: target.id, amount: healed,
           text: `${actor.name} used ${skillDef.name} on ${target.name}, healing ${healed} HP.` });
+        // Shadow Priest's Shadow Heal: pays part of the cost with her own HP, never below 1.
+        if (skillDef.id === 'shadow_heal' && !actor.isDead) {
+          const cost = Math.min(actor.hp - 1, Math.round(actor.maxHp * 0.08));
+          if (cost > 0) {
+            actor.hp -= cost;
+            events.push({ type: 'special', actor: actor.id, text: `${actor.name} pays ${cost} HP to fuel Shadow Heal.` });
+          }
+        }
         this.applyStatuses(actor, target, skillDef, events);
+      }
+      // Shadow Priest's Dark Blessing: extra healing effectiveness while her own HP is low.
+      if (actor.character.id === 'shadow_priest' && (actor.hp / actor.maxHp) < 0.4 && targets.length > 0) {
+        targets.forEach(t => {
+          if (t.isDead) return;
+          const bonus = Math.round(t.maxHp * 0.04);
+          const extraHealed = CombatEngine.applyHeal(actor, t, bonus);
+          if (extraHealed > 0) events.push({ type: 'heal', actor: actor.id, target: t.id, amount: extraHealed, text: `${actor.name}'s Dark Blessing adds ${extraHealed} HP.` });
+        });
       }
     } else if (skillDef.type === 'shield') {
       for (const target of targets) {
@@ -170,6 +217,14 @@ const SkillSystem = {
           text: `${actor.name} used ${skillDef.name}, shielding ${target.name} for ${shieldAmt}.` });
       }
     } else if (skillDef.type === 'buff') {
+      // Shadow Priest's Soul Sacrifice: pays part of her own HP to power the team buff (never below 1).
+      if (skillDef.id === 'soul_sacrifice' && !actor.isDead) {
+        const cost = Math.min(actor.hp - 1, Math.round(actor.maxHp * 0.15));
+        if (cost > 0) {
+          actor.hp -= cost;
+          events.push({ type: 'special', actor: actor.id, text: `${actor.name} sacrifices ${cost} HP to empower the team.` });
+        }
+      }
       for (const target of targets) {
         if (target.isDead) continue;
         this.applyStatuses(actor, target, skillDef, events);
@@ -199,8 +254,13 @@ const SkillSystem = {
           const dealt = CombatEngine.applyDamage(actor, target, redirect.amount);
           events.push({ type: 'damage', actor: actor.id, target: target.id, amount: dealt, isCrit,
             text: `${actor.name} used ${skillDef.name} on ${target.name} for ${dealt} damage.` });
-          if (target.isDead) events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` });
+          if (target.isDead) { events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` }); CharacterMechanics.registerDeath(target, ctx.allActors); }
           if (target.character.id === 'frost_knight' && !target.isDead) StatusEngine.apply(target, 'ice_stack', 4, target.id);
+          const reflectEventD = CharacterMechanics.tryReflect(target, actor, dealt, false);
+          if (reflectEventD) {
+            events.push(reflectEventD);
+            if (actor.isDead) { events.push({ type: 'death', actor: actor.id, text: `${actor.name} has fallen!` }); CharacterMechanics.registerDeath(actor, ctx.allActors); }
+          }
         }
         this.applyStatuses(actor, target, skillDef, events);
         // Frost Knight's Frost Bind: escalates an already-Slowed target straight to a brief Freeze.

@@ -31,6 +31,14 @@ const AIScoring = {
     if (target.character.id === 'gladiator' && target.mech && target.mech.rage >= 70) score += 10; // near Arena Champion
     if (target.character.id === 'frost_knight' && target.statuses.some(s => s.id === 'ice_stack' && s.stacks >= 4)) score += 6; // hard to crack soon
     if (target.character.id === 'plague_doctor') score += 8; // debuff/spread pressure compounds
+    // Roster expansion 3 (41-50) mechanic awareness (#19/#20)
+    if (target.character.id === 'dragon_knight' && target.mech && target.mech.dragonGauge >= 70) score += 14; // Dragon Form imminent
+    if (target.character.id === 'shadow_priest') score += 10; // sacrifice-fueled team buffs are dangerous
+    if (target.character.id === 'sniper' && StatusEngine.has(target, 'aim_stance')) score += 12; // about to fire a huge shot
+    if (target.character.id === 'berserker_lord' && target.mech && target.mech.rage >= 70) score += 10;
+    if (target.character.id === 'rune_master' && target.mech && target.mech.runes.length >= 2) score += 8; // combo ready
+    if (target.character.id === 'witch') score += 6; // compounding debuffs
+    if (target.character.id === 'soul_reaper' && target.mech && target.mech.soul >= 3) score += 12; // snowballing hard
 
     // Turn-order lookahead (#140/#141): about to act soon with a near-ready Ultimate = spike priority.
     if (context && context.timelinePreview) {
@@ -126,6 +134,11 @@ const AIScoring = {
       if (expected > t.hp) overkillPenalty += (expected - t.hp) * 0.15;            // Overkill Avoidance (#139)
       const hasCC = t.statuses.some(s => ['stun', 'freeze', 'root'].includes(s.id));
       if (hasCC) comboBonus += expected * 0.15;                                    // simple Combo Detection (#152)
+      // Mirror Knight's reflection makes big direct hits punish the attacker - Expert/Master AI
+      // should lean toward alternatives (DoT/debuffs) rather than dumping a huge attack into it.
+      if (t.character.id === 'mirror_knight' && (StatusEngine.has(t, 'mirror_boost') || t.character.reflectPercent)) {
+        overkillPenalty += expected * 0.12;
+      }
       threatSum += this.threatScore(t, context) * weights.threatWeight;
     });
 

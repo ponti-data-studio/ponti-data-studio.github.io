@@ -9,7 +9,7 @@ No pay-to-win, no ads, no accounts, no backend. Strategy beats grinding.
 
 - Turn-Based Strategy RPG — Speed-based turn order, manual targeting, cooldowns, Energy/Ultimate system
 - **3-row tactical formations** — freely place your 5 characters into Front / Middle / Back; position is an optional strategic advantage, never a mandatory class restriction
-- 5v5 Battles with **40** fully data-driven characters, each with a distinct kit (not just re-skinned numbers)
+- 5v5 Battles with **50** fully data-driven characters, each with a distinct kit (not just re-skinned numbers)
 - AI opponents with 4 real difficulty levels (Easy / Normal / Hard / Extreme) — no stat cheating, ever — and 3 formation strategies (Balanced / Aggressive / Ranged) that Extreme AI picks to counter your own formation
 - Fully offline after first load, installable as a PWA on Android, iOS, Windows, macOS, and Linux
 - Fully responsive to **both Portrait and Landscape** on smartphones - the battle arena re-flows between a left/right layout (landscape) and a stacked top/bottom layout (portrait), always fitting on one screen with zero scrolling
@@ -57,6 +57,24 @@ touches the core battle engine.
 | Frost Knight | Tank | Gains a stacking Ice Armor Defense buff whenever he's hit; breaking his Ice Wall shield Slows the attacker, and Frost Bind escalates an already-Slowed target into a brief Freeze. |
 | Plague Doctor | Control | Poisons/Diseases targets that can spread to nearby enemies (rate-limited so it can never chain infinitely), and his Ultimate stacks DoT with Healing Reduction and Attack Down. |
 | Void Walker | Assassin | Blinks between rows and strikes the Back Row directly; every teleport grants a ward that blocks the next incoming hit. |
+
+## The Extended Roster III (41-50)
+
+A third wave of ten characters rounding out the roster at 50. Same rule as always: every new
+mechanic lives in `js/character-mechanics.js`, isolated from the core battle engine.
+
+| Character | Role | Signature Mechanic |
+|---|---|---|
+| Dragon Knight | Fighter | Builds a Dragon Gauge from combat, then his Ultimate transforms him into Dragon Form (boosted Attack/Defense) - the Gauge is spent immediately on activation so he can't transform back-to-back. |
+| Shadow Priest | Support | Pays part of her Heal and team-buff Ultimate's cost with her own HP (hard-floored at 1 - she can never kill herself with it), and gets stronger the more danger she's personally in. |
+| Sniper | Ranged | Deals more damage the further back both she and her target are; her Aim stance consumes itself for a huge damage/crit boost on the next shot, and Piercing Bullet snipes the Back Row directly. |
+| Berserker Lord | Fighter | A dedicated Rage resource (distinct from the original Berserker's HP-based scaling) that fuels an HP-sacrificing Rage burst and a Rage-spending finisher. |
+| Rune Master | Mage | Inscribes up to 3 Runes (Fire/Guard/Wind) in rotation and fuses them via fixed recipes for bonus effects; her Ultimate reads whatever Runes are active, then clears them. |
+| Witch | Control | Hexes enemies with a fairly-randomized debuff that gets stronger against already-debuffed targets, and can rip a debuff off an ally and hurl it onto an enemy instead. |
+| Battle Medic | Support | A combat healer who heals more if she attacked on her previous turn, with bonus effectiveness on critically low-HP allies. |
+| Beast Rider | Skirmisher | Gains a Speed bonus while Mounted; Dismount is a one-way trade of that mobility for a lasting Defense boost. |
+| Mirror Knight | Tank | Reflects a capped share of direct-attack damage back at attackers - reflected damage is flagged so it can never itself trigger another reflection, guaranteeing no infinite loop. |
+| Soul Reaper | Assassin | Gains a Soul (capped at 5) whenever any enemy falls, snowballing his Basic Attack's damage as the fight goes on. |
 
 ## Advanced AI
 
@@ -125,7 +143,7 @@ ordinary responsive layout and scrolls normally in either orientation.
 
 ## Fair by Design
 
-- All 40 characters are unlocked from the start — there is nothing to buy.
+- All 50 characters are unlocked from the start — there is nothing to buy.
 - Progression (level, mastery, achievements) only unlocks cosmetics/badges, never stat advantages.
 - The AI plays with the exact same stats, cooldowns, and Energy rules as the player at every difficulty.
 
@@ -228,6 +246,16 @@ assets/
 | Frost Knight | frost-knight.png    |
 | Plague Doctor | plague-doctor.png  |
 | Void Walker  | void-walker.png     |
+| Dragon Knight | dragon-knight.png  |
+| Shadow Priest | shadow-priest.png  |
+| Sniper       | sniper.png          |
+| Berserker Lord | berserker-lord.png |
+| Rune Master  | rune-master.png     |
+| Witch        | witch.png           |
+| Battle Medic | battle-medic.png    |
+| Beast Rider  | beast-rider.png     |
+| Mirror Knight | mirror-knight.png  |
+| Soul Reaper  | soul-reaper.png     |
 
 ### Image Recommendations
 

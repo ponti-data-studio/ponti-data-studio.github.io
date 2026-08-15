@@ -19,6 +19,19 @@ const CombatEngine = {
     if (rs && rs.stat === statKey && actor.position && actor.position.row === rs.row) {
       value *= (1 + rs.percent / 100);
     }
+    // Dragon Knight's Dragon Form: a temporary transformation boost to Attack and Defense.
+    if ((statKey === 'attack' || statKey === 'defense') && StatusEngine.has(actor, 'dragon_form')) {
+      value *= 1.35;
+    }
+    // Beast Rider's Mounted Combat: bonus while still Mounted.
+    const mb = actor.character.mountedBonus;
+    if (mb && mb.stat === statKey && actor.mech && actor.mech.mounted) {
+      value *= (1 + mb.percent / 100);
+    }
+    // Berserker Lord's Enrage: Attack scales up slightly with current Rage.
+    if (statKey === 'attack' && actor.character.id === 'berserker_lord' && actor.mech) {
+      value *= (1 + (actor.mech.rage / 100) * 0.25);
+    }
     return Math.max(1, Math.round(value));
   },
 
@@ -97,6 +110,45 @@ const CombatEngine = {
     // Frost Knight's Frost Bind / Absolute Zero - bonus vs already-Slowed targets.
     if (options.alreadySlowedBonus) raw *= 1.25;
     // Engineer's Turret: absorbs damage aimed at its owner before the owner's own HP (see #applyDamage).
+
+    // ---- Roster expansion 3 (41-50) ----
+    // Sniper's Long Range passive: bonus based on how far back the target is (and how far back she is).
+    if (attacker.character.id === 'sniper' && attacker.position && target.position) {
+      const depth = { front: 0, middle: 1, back: 2 };
+      const distance = depth[attacker.position.row] + depth[target.position.row];
+      raw *= (1 + distance * 0.06); // up to +24% at max Back-vs-Back range
+    }
+    // Sniper's Aim stance: big damage/crit boost on her next shot, consumed once, plus a small
+    // self-vulnerability window (handled as incoming-damage bonus below).
+    if (!estimate && attacker.character.id === 'sniper' && StatusEngine.has(attacker, 'aim_stance')) {
+      raw *= 1.4;
+      StatusEngine.remove(attacker, 'aim_stance');
+    }
+    if (options.headshotBonus && (target.hp / target.maxHp) <= 0.35) raw *= 1.5;
+    // Sniper is more vulnerable to incoming attacks while lining up Aim.
+    if (target.character.id === 'sniper' && StatusEngine.has(target, 'aim_stance')) raw *= 1.15;
+    // Dragon Knight's Dragon Breath / Basic Attack - bonus with a high Dragon Gauge.
+    if (attacker.character.id === 'dragon_knight' && attacker.mech && attacker.mech.dragonGauge >= 70) raw *= 1.2;
+    // Berserker Lord's Raging Swing / Wrath Unleashed - bonus with high Rage.
+    if (options.rageScaled && attacker.mech) raw *= (1 + (attacker.mech.rage / 100) * 0.35);
+    if (options.wrathArmorBreak && attacker.mech && attacker.mech.rage >= 80) {
+      raw *= 1.15; // the "briefly shatters Armor" bonus is expressed as extra damage this hit
+    }
+    // Soul Reaper's Soul Harvest: Basic Attack scales with current Soul count.
+    if (attacker.character.id === 'soul_reaper' && options.skillId === 'soul_slash' && attacker.mech) {
+      raw *= (1 + attacker.mech.soul * 0.12);
+    }
+    // Reaper's Cut: bonus damage based on the target's missing HP.
+    if (options.missingHpExecute) {
+      const missingPct = 1 - (target.hp / target.maxHp);
+      raw *= (1 + missingPct * 0.6);
+    }
+    // Rune Master's Rune Bolt: Fire Rune adds flat damage.
+    if (attacker.character.id === 'rune_master' && options.skillId === 'rune_bolt' && attacker.mech && attacker.mech.runes.includes('fire')) {
+      raw *= 1.25;
+    }
+    // Mirror Knight's reflected damage never triggers a second reflection (handled by the caller
+    // passing bypassProtection appropriately) - see CharacterMechanics.tryReflect for the actual guard.
     // Passive: Eagle Eye (Archer) crit bump handled in crit roll below
     // Passive: Ignition (Pyromancer) - bonus vs burning targets
     if (attacker.character.id === 'pyromancer' && StatusEngine.has(target, 'burn')) {
