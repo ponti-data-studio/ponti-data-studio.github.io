@@ -60,7 +60,7 @@ const EVASION_OVERRIDES = {
   witch: 9,         // slightly more slippery than a typical Mage
   fencer: 13,       // Footwork is an evasion-stacking kit on top of the Fighter baseline
   void_walker: 15,  // teleport-assassin, above the Assassin baseline
-  ninja: 15,        // already an evasion-flavored Assassin
+  ninja: 17,        // already an evasion-flavored Assassin
 };
 
 // Per-character Defense LEAN: how far this character's Physical/Magical Defense split deviates
