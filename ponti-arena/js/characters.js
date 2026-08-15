@@ -108,7 +108,7 @@ const CHARACTERS = [
     ultimate: { id: 'divine_blessing', name: 'Divine Blessing', type: 'heal', targetType: 'all_ally', power: 1.1, desc: 'Heals the entire team.' },
   },
   {
-    id: 'ranger', name: 'Ranger', role: 'Skirmisher', icon: '🎯', color: '#7fbf8f',
+    id: 'ranger', name: 'Ranger', role: 'Ranged', icon: '🎯', color: '#7fbf8f',
     difficulty: 'Normal',
     base: { hp: 980, attack: 135, defense: 78, speed: 105, critRate: 18, critDmg: 160 },
     description: 'A trapper who wears enemies down over time.',
@@ -152,7 +152,7 @@ const CHARACTERS = [
     ultimate: { id: 'shadow_execution', name: 'Shadow Execution', type: 'damage', targetType: 'single_enemy', power: 2.7, desc: 'A precise, devastating finisher.' },
   },
   {
-    id: 'frost-mage', name: 'Frost Mage', role: 'Control', icon: '❄️', color: '#8fd6e0',
+    id: 'frost-mage', name: 'Frost Mage', role: 'Mage', icon: '❄️', color: '#8fd6e0',
     difficulty: 'Normal',
     base: { hp: 880, attack: 130, defense: 68, speed: 94, critRate: 10, critDmg: 155 },
     description: 'Locks enemies down with cold, buying the team room to breathe.',
@@ -210,7 +210,7 @@ const CHARACTERS = [
     ultimate: { id: 'bullet_storm', name: 'Bullet Storm', type: 'damage', targetType: 'all_enemy', power: 1.35, desc: 'Empties every chamber at the enemy team.' },
   },
   {
-    id: 'beastmaster', name: 'Beastmaster', role: 'Summoner', icon: '🐾', color: '#a67c52',
+    id: 'beastmaster', name: 'Beastmaster', role: 'Mage', icon: '🐾', color: '#a67c52',
     difficulty: 'Hard',
     base: { hp: 1020, attack: 128, defense: 84, speed: 96, critRate: 12, critDmg: 155 },
     description: "Commands a bonded beast that fights alongside her.",
@@ -239,7 +239,7 @@ const CHARACTERS = [
     ultimate: { id: 'immortal_bastion', name: 'Immortal Bastion', type: 'shield', targetType: 'all_ally', power: 0.5, desc: 'Shields the entire team and taunts enemies.' },
   },
   {
-    id: 'blood-knight', name: 'Blood Knight', role: 'Bruiser', icon: '🩸', color: '#a04058',
+    id: 'blood-knight', name: 'Blood Knight', role: 'Tank', icon: '🩸', color: '#a04058',
     difficulty: 'Hard',
     base: { hp: 1080, attack: 145, defense: 92, speed: 98, critRate: 14, critDmg: 165 },
     description: 'Fuels his blade with his own blood to grow stronger with every clash.',
@@ -267,7 +267,7 @@ const CHARACTERS = [
     ultimate: { id: 'heavens_spear', name: "Heaven's Spear", type: 'damage', targetType: 'all_enemy', power: 1.35, desc: 'Rains spears across the whole enemy team.' },
   },
   {
-    id: 'necromancer', name: 'Necromancer', role: 'Summoner', icon: '☠️', color: '#6b8a6b',
+    id: 'necromancer', name: 'Necromancer', role: 'Mage', icon: '☠️', color: '#6b8a6b',
     difficulty: 'Hard',
     base: { hp: 830, attack: 140, defense: 60, speed: 88, critRate: 10, critDmg: 160 },
     description: 'Raises the dead to overwhelm the enemy with numbers and decay.',
@@ -298,7 +298,7 @@ const CHARACTERS = [
       statuses: [{ id: 'regeneration', duration: 2, chance: 100 }], desc: 'Heals the team and grants lasting Regeneration.' },
   },
   {
-    id: 'machinist', name: 'Machinist', role: 'Specialist', icon: '⚙️', color: '#c9c9a2',
+    id: 'machinist', name: 'Machinist', role: 'Ranged', icon: '⚙️', color: '#c9c9a2',
     difficulty: 'Hard',
     base: { hp: 940, attack: 132, defense: 76, speed: 97, critRate: 15, critDmg: 160 },
     description: 'Deploys turrets and mines to control the flow of battle.',
@@ -348,7 +348,7 @@ const CHARACTERS = [
       statuses: [{ id: 'attack_down', duration: 1, chance: 0 }], desc: 'A devastating strike with bonus damage vs low-HP or Marked targets. If it fails to kill, Samurai suffers a brief Defense Down.' },
   },
   {
-    id: 'vampire', name: 'Vampire', role: 'Bruiser', icon: '🧛', color: '#7a1f3d',
+    id: 'vampire', name: 'Vampire', role: 'Assassin', icon: '🧛', color: '#7a1f3d',
     difficulty: 'Hard',
     base: { hp: 1130, attack: 150, defense: 88, speed: 96, critRate: 14, critDmg: 165 },
     description: 'A bloodthirsty fighter who grows harder to kill the longer the fight drags on.',
@@ -377,7 +377,7 @@ const CHARACTERS = [
     ultimate: { id: 'rewind', name: 'Rewind', type: 'special', targetType: 'single_ally', power: 0, desc: "Restores an ally's HP to an earlier snapshot, restores some Energy, and cleanses a couple of debuffs. Cannot revive the fallen." },
   },
   {
-    id: 'illusionist', name: 'Illusionist', role: 'Control', icon: '🎭', color: '#9b59b6',
+    id: 'illusionist', name: 'Illusionist', role: 'Mage', icon: '🎭', color: '#9b59b6',
     difficulty: 'Master',
     base: { hp: 830, attack: 122, defense: 62, speed: 99, critRate: 12, critDmg: 160 },
     description: 'A trickster who wins fights by making sure the enemy can never be quite sure what they are looking at.',
@@ -393,7 +393,7 @@ const CHARACTERS = [
       statuses: [{ id: 'illusion_veil', duration: 2, chance: 100 }], desc: 'Wreathes the whole team in illusions, granting a temporary evasion window.' },
   },
   {
-    id: 'alchemist', name: 'Alchemist', role: 'Specialist', icon: '⚗️', color: '#2ea55a',
+    id: 'alchemist', name: 'Alchemist', role: 'Support', icon: '⚗️', color: '#2ea55a',
     difficulty: 'Hard',
     base: { hp: 900, attack: 108, defense: 70, speed: 90, critRate: 10, critDmg: 155 },
     description: 'A field chemist who brews reagents mid-battle and combines them into powerful effects.',
@@ -437,7 +437,7 @@ const CHARACTERS = [
     ultimate: { id: 'broadside', name: 'Broadside', type: 'damage', targetType: 'all_enemy', power: 1.4, desc: 'A full cannon salvo on the enemy formation, with bonus damage against the Wanted target.' },
   },
   {
-    id: 'spirit_shaman', name: 'Spirit Shaman', role: 'Summoner', icon: '🪶', color: '#5dade2',
+    id: 'spirit_shaman', name: 'Spirit Shaman', role: 'Mage', icon: '🪶', color: '#5dade2',
     difficulty: 'Master',
     base: { hp: 940, attack: 98, defense: 75, speed: 92, critRate: 8, critDmg: 150 },
     description: 'A totem-caller whose team-wide auras shift depending on which spirit she has bonded with.',
@@ -498,7 +498,7 @@ const CHARACTERS = [
     ultimate: { id: 'execution', name: 'Execution', type: 'damage', targetType: 'single_enemy', power: 2.2, desc: 'A finishing blow with sharply increased damage against targets at or below 30% HP.' },
   },
   {
-    id: 'engineer', name: 'Engineer', role: 'Specialist', icon: '⚙️', color: '#8a8f38',
+    id: 'engineer', name: 'Engineer', role: 'Ranged', icon: '⚙️', color: '#8a8f38',
     difficulty: 'Master',
     base: { hp: 900, attack: 100, defense: 72, speed: 88, critRate: 8, critDmg: 150 },
     description: 'A field technician who deploys a Turret to control the battlefield from a distance.',
@@ -585,7 +585,7 @@ const CHARACTERS = [
       statuses: [{ id: 'slow', duration: 2, chance: 75 }], desc: 'An area attack that Slows the whole enemy team - stronger against already-Slowed targets.' },
   },
   {
-    id: 'plague_doctor', name: 'Plague Doctor', role: 'Control', icon: '☠️', color: '#4a5c3a',
+    id: 'plague_doctor', name: 'Plague Doctor', role: 'Mage', icon: '☠️', color: '#4a5c3a',
     difficulty: 'Master',
     base: { hp: 870, attack: 118, defense: 66, speed: 90, critRate: 10, critDmg: 155 },
     description: 'A disease-flinging disruptor who thrives as fights drag on and healing runs thin.',
@@ -617,7 +617,7 @@ const CHARACTERS = [
   // ===================== ROSTER EXPANSION 3: 41-50 =====================
 
   {
-    id: 'dragon_knight', name: 'Dragon Knight', role: 'Fighter', icon: '🐲', color: '#c0392b',
+    id: 'dragon_knight', name: 'Dragon Knight', role: 'Tank', icon: '🐲', color: '#c0392b',
     difficulty: 'Master',
     base: { hp: 1150, attack: 145, defense: 110, speed: 88, critRate: 14, critDmg: 165 },
     description: 'A draconic warrior who channels rising battle-fury into a devastating transformation.',
@@ -631,7 +631,7 @@ const CHARACTERS = [
     skill2: { id: 'dragon_breath', name: 'Dragon Breath', type: 'damage', targetType: 'front_row', power: 0.8, cooldown: 3, energyGain: 15,
       statuses: [{ id: 'burn', duration: 2, chance: 70 }], desc: 'Breathes fire across the enemy Front Row - hits harder with a high Dragon Gauge.' },
     ultimate: { id: 'dragon_form', name: 'Dragon Form', type: 'buff', targetType: 'self', power: 0,
-      statuses: [{ id: 'dragon_form', duration: 2, chance: 100 }], desc: 'If his Dragon Gauge is high enough, transforms for a few turns of greatly increased Attack and Defense (consumes the Gauge to prevent back-to-back transformations).' },
+      statuses: [{ id: 'dragon_form', duration: 4, chance: 100 }], desc: 'If his Dragon Gauge is high enough, transforms for several turns of greatly increased Attack and Defense (consumes the Gauge to prevent back-to-back transformations).' },
   },
   {
     id: 'shadow_priest', name: 'Shadow Priest', role: 'Support', icon: '🖤', color: '#4a3a5a',
@@ -641,12 +641,12 @@ const CHARACTERS = [
     strengths: ['Very strong team-wide buffs', 'Healing that scales when she is in danger', 'High reward for careful HP management'],
     weaknesses: ['Low personal survivability', 'Vulnerable to burst and target isolation', 'Weak to anti-heal'],
     passive: { name: 'Dark Blessing', desc: 'Gains a modest healing/effect bonus while her own HP is below 40%.' },
-    basicAttack: { id: 'shadow_bolt', name: 'Shadow Bolt', type: 'damage', targetType: 'single_enemy', power: 0.75, energyGain: 12 },
-    skill1: { id: 'shadow_heal', name: 'Shadow Heal', type: 'heal', targetType: 'single_ally', power: 1.3, cooldown: 2, energyGain: 15, desc: 'Heals an ally, paying part of the cost with her own HP (never below 1).' },
+    basicAttack: { id: 'shadow_bolt', name: 'Shadow Bolt', type: 'damage', targetType: 'single_enemy', power: 0.85, energyGain: 12 },
+    skill1: { id: 'shadow_heal', name: 'Shadow Heal', type: 'heal', targetType: 'single_ally', power: 1.55, cooldown: 2, energyGain: 15, desc: 'Heals an ally, paying part of the cost with her own HP (never below 1).' },
     skill2: { id: 'dark_curse', name: 'Dark Curse', type: 'debuff', targetType: 'single_enemy', power: 0, cooldown: 2, energyGain: 15,
-      statuses: [{ id: 'attack_down', duration: 2, chance: 90 }, { id: 'healing_reduction', duration: 2, chance: 90 }], desc: 'Curses an enemy with Attack Down and Healing Reduction.' },
+      statuses: [{ id: 'attack_down', duration: 3, chance: 90 }, { id: 'healing_reduction', duration: 3, chance: 90 }], desc: 'Curses an enemy with Attack Down and Healing Reduction.' },
     ultimate: { id: 'soul_sacrifice', name: 'Soul Sacrifice', type: 'buff', targetType: 'all_ally', power: 0,
-      statuses: [{ id: 'attack_up', duration: 2, chance: 100 }, { id: 'defense_up', duration: 2, chance: 100 }, { id: 'regeneration', duration: 2, chance: 100 }],
+      statuses: [{ id: 'attack_up', duration: 3, chance: 100 }, { id: 'defense_up', duration: 3, chance: 100 }, { id: 'regeneration', duration: 3, chance: 100 }],
       desc: 'Sacrifices some of her own HP to empower the whole team - the effect is reduced if her HP is already critical.' },
   },
   {
@@ -691,7 +691,7 @@ const CHARACTERS = [
     ultimate: { id: 'grand_rune', name: 'Grand Rune', type: 'damage', targetType: 'all_enemy', power: 1.0, desc: "A powerful effect determined by her current Rune combination - then clears her Runes." },
   },
   {
-    id: 'witch', name: 'Witch', role: 'Control', icon: '🧙‍♀️', color: '#5a3a6b',
+    id: 'witch', name: 'Witch', role: 'Mage', icon: '🧙‍♀️', color: '#5a3a6b',
     difficulty: 'Master',
     base: { hp: 810, attack: 122, defense: 60, speed: 94, critRate: 10, critDmg: 155 },
     description: 'A hex-slinger whose curses compound the longer a fight drags on.',
@@ -720,7 +720,7 @@ const CHARACTERS = [
     ultimate: { id: 'mass_trauma_care', name: 'Mass Trauma Care', type: 'heal', targetType: 'all_ally', power: 1.0, desc: 'Heals the whole team - the more HP an ally is missing, the more they recover, up to a cap.' },
   },
   {
-    id: 'beast_rider', name: 'Beast Rider', role: 'Skirmisher', icon: '🐺', color: '#a67c52',
+    id: 'beast_rider', name: 'Beast Rider', role: 'Fighter', icon: '🐺', color: '#a67c52',
     difficulty: 'Master',
     base: { hp: 950, attack: 140, defense: 78, speed: 116, critRate: 16, critDmg: 165 },
     description: 'A mounted skirmisher who trades her mount\'s speed for raw sturdiness when the fight calls for it.',

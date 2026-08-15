@@ -13,13 +13,8 @@ const ROLE_META = {
   Ranged:     { abbr: 'RNG', color: '#8fc98f' },
   Mage:       { abbr: 'MAG', color: '#b18fe0' },
   Support:    { abbr: 'SUP', color: '#e0d68f' },
-  Summoner:   { abbr: 'SUM', color: '#a67c52' },
-  Control:    { abbr: 'CTL', color: '#8fd6e0' },
-  Specialist: { abbr: 'SPC', color: '#c9c9a2' },
-  Bruiser:    { abbr: 'BRU', color: '#a04058' },
-  Skirmisher: { abbr: 'SKM', color: '#7fbf8f' },
 };
-const ROLE_ORDER = ['Tank', 'Fighter', 'Bruiser', 'Skirmisher', 'Assassin', 'Ranged', 'Mage', 'Control', 'Support', 'Summoner', 'Specialist'];
+const ROLE_ORDER = ['Tank', 'Fighter', 'Assassin', 'Ranged', 'Mage', 'Support'];
 
 const ARENAS = [
   { id: 'medieval-castle', name: 'Medieval Castle', gradient: ['#2b2440', '#4a3b63'] },
@@ -47,19 +42,19 @@ const CAMPAIGN_STAGES = [
 // row bucket automatically falls back to a sensible default row for its role.
 const AI_FORMATION_TEMPLATES = {
   balanced: {
-    front: ['Tank', 'Tank', 'Bruiser'],
-    middle: ['Fighter', 'Hybrid', 'Skirmisher'],
-    back: ['Support', 'Mage', 'Ranged', 'Summoner', 'Control', 'Specialist'],
+    front: ['Tank', 'Tank', 'Fighter'],
+    middle: ['Fighter', 'Assassin'],
+    back: ['Support', 'Mage', 'Ranged'],
   },
   aggressive: {
-    front: ['Fighter', 'Assassin', 'Bruiser'],
-    middle: ['Assassin', 'Skirmisher', 'Fighter'],
+    front: ['Fighter', 'Assassin', 'Tank'],
+    middle: ['Assassin', 'Fighter'],
     back: ['Ranged', 'Mage'],
   },
   ranged: {
     front: ['Tank'],
-    middle: ['Mage', 'Control', 'Specialist'],
-    back: ['Ranged', 'Support', 'Mage', 'Summoner'],
+    middle: ['Mage', 'Fighter'],
+    back: ['Ranged', 'Support', 'Mage'],
   },
 };
 

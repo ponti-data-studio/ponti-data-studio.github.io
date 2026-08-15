@@ -133,6 +133,7 @@
 }
 .float-dmg { color: var(--crimson-light); text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
 .float-heal { color: var(--teal-light); text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+.float-evade { color: var(--ice); text-shadow: 0 1px 3px rgba(0,0,0,0.8); font-style: italic; }
 @keyframes float-up { 0% { opacity: 0; transform: translate(-50%, 6px); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -26px); } }
 
 /* ---------- Lower panel: log (left) + action menu (right), per landscape spec ---------- */
@@ -165,6 +166,16 @@
 .action-btn.locked { opacity: 0.45; }
 .action-ultimate .action-btn-label { color: var(--crimson-light); }
 .action-ultimate { border-color: var(--crimson); }
+
+/* ---------- Hold-to-view skill description tooltip ---------- */
+.skill-hold-tooltip {
+  position: fixed; z-index: 800; max-width: 220px; background: var(--bg-panel);
+  border: 1px solid var(--gold); border-radius: 8px; padding: 8px 10px; font-size: 0.74rem;
+  color: var(--text); line-height: 1.4; box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+  opacity: 0; transform: translateY(4px); transition: opacity 0.15s ease, transform 0.15s ease;
+  pointer-events: none;
+}
+.skill-hold-tooltip.show { opacity: 1; transform: translateY(0); }
 
 @media (min-width: 700px) {
   .battle-slot { max-width: 78px; }

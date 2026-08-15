@@ -134,7 +134,6 @@ const UI = {
     const chars = team.map(getCharacterById);
     const roles = chars.map(c => c.role);
     if (!roles.some(r => r === 'Support')) warnings.push('Your team has no healer.');
-    const rangedLike = ['Ranged', 'Skirmisher'].filter(r => roles.filter(x => x === r).length).length;
     const rangedCount = roles.filter(r => r === 'Ranged').length;
     if (rangedCount >= 4) warnings.push(`Your team has ${rangedCount} ranged characters.`);
     if (!roles.some(r => r === 'Tank')) warnings.push('Your team has no Tank.');
@@ -278,22 +277,62 @@ const UI = {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = `action-btn action-${a.key}` + (!a.ready ? ' locked' : '');
-      const cdText = (a.key === 'skill1' || a.key === 'skill2');
       btn.innerHTML = `
         <span class="action-btn-label">${labels[a.key]}</span>
         <span class="action-btn-sub">${a.def.name}</span>
         ${!a.ready ? `<span class="action-btn-lock">${a.key === 'ultimate' ? 'Need Energy' : 'On Cooldown'}</span>` : ''}
       `;
       btn.disabled = !a.ready;
-      btn.addEventListener('click', () => onPick(a));
+      const description = a.def.desc || (a.key === 'defend' ? 'Reduces incoming damage this turn and generates a little Energy.' : 'A basic attack - no cooldown.');
+      const held = this.attachHoldDescription(btn, description);
+      btn.addEventListener('click', () => { if (held.value) return; onPick(a); });
       container.appendChild(btn);
     });
     const itemBtn = document.createElement('button');
     itemBtn.type = 'button';
     itemBtn.className = 'action-btn action-item';
     itemBtn.innerHTML = `<span class="action-btn-label">Item</span><span class="action-btn-sub">Use consumable</span>`;
-    itemBtn.addEventListener('click', () => onPick({ key: 'item', def: null, ready: true }));
+    const itemHeld = this.attachHoldDescription(itemBtn, 'Use a Small/Large Potion, Energy Potion, or Antidote - limited uses per battle.');
+    itemBtn.addEventListener('click', () => { if (itemHeld.value) return; onPick({ key: 'item', def: null, ready: true }); });
     container.appendChild(itemBtn);
+  },
+
+  /** Shows a tooltip with `text` after the element is held (mouse or touch) past a short delay,
+   *  and suppresses the click that follows so holding-to-read never also triggers the action.
+   *  Returns a mutable `{ value: boolean }` the caller checks in its own click handler. */
+  attachHoldDescription(el, text) {
+    const heldRef = { value: false };
+    if (!text) return heldRef;
+    let timer = null;
+    let tooltip = null;
+    const showTooltip = () => {
+      heldRef.value = true;
+      tooltip = document.createElement('div');
+      tooltip.className = 'skill-hold-tooltip';
+      tooltip.textContent = text;
+      document.body.appendChild(tooltip);
+      const rect = el.getBoundingClientRect();
+      const left = Math.min(window.innerWidth - tooltip.offsetWidth - 8, Math.max(8, rect.left + rect.width / 2 - tooltip.offsetWidth / 2));
+      let top = rect.top - tooltip.offsetHeight - 10;
+      if (top < 4) top = rect.bottom + 10;
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+      requestAnimationFrame(() => tooltip && tooltip.classList.add('show'));
+    };
+    const hideTooltip = () => { if (tooltip) { tooltip.remove(); tooltip = null; } };
+    const start = (e) => { clearTimeout(timer); timer = setTimeout(showTooltip, 420); };
+    const cancel = () => {
+      clearTimeout(timer);
+      hideTooltip();
+      if (heldRef.value) setTimeout(() => { heldRef.value = false; }, 50); // let the click handler see it first
+    };
+    el.addEventListener('mousedown', start);
+    el.addEventListener('touchstart', start, { passive: true });
+    el.addEventListener('mouseup', cancel);
+    el.addEventListener('mouseleave', cancel);
+    el.addEventListener('touchend', cancel);
+    el.addEventListener('touchcancel', cancel);
+    return heldRef;
   },
 
   appendBattleLog(container, text, type = '') {

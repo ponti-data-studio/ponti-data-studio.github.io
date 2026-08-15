@@ -90,9 +90,9 @@ const TargetingEngine = {
 
   /** Simple default formation: Tank/Bruiser-like roles up front, ranged/casters in the back. */
   autoArrangeRow(role) {
-    if (['Tank', 'Bruiser'].includes(role)) return 'front';
-    if (['Fighter', 'Assassin', 'Skirmisher', 'Hybrid'].includes(role)) return 'middle';
-    return 'back'; // Mage, Ranged, Support, Summoner, Specialist, Control
+    if (role === 'Tank') return 'front';
+    if (['Fighter', 'Assassin'].includes(role)) return 'middle';
+    return 'back'; // Mage, Ranged, Support
   },
 
   buildAutoFormation(characterIds) {

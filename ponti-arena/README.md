@@ -26,13 +26,13 @@ engine (see "Data-Driven Implementation" below).
 |---|---|---|
 | Paladin | Tank | Automatically protects the lowest-HP ally each turn, redirecting a capped share of damage to himself; his Ultimate can prevent one lethal hit. |
 | Samurai | Fighter | Counters attackers if struck while Defending, in his Iaido stance, or after a successful Parry. |
-| Vampire | Bruiser | Converts a capped share of every hit into HP (Blood Feast). |
+| Vampire | Assassin | Converts a capped share of every hit into HP (Blood Feast). |
 | Chronomancer | Support | Manipulates the turn-order gauge directly - speeds up an ally, slows an enemy, and her Ultimate restores an ally to an earlier HP/Energy snapshot. |
-| Illusionist | Control | Personal evasion chance, a Decoy that fully blocks two hits, and a Confusion debuff that can make an enemy mis-target. |
-| Alchemist | Specialist | Generates random Reagents over time and consumes them for stronger Heals/Poisons; her Ultimate combines whatever she has on hand. |
+| Illusionist | Mage | Personal evasion chance, a Decoy that fully blocks two hits, and a Confusion debuff that can make an enemy mis-target. |
+| Alchemist | Support | Generates random Reagents over time and consumes them for stronger Heals/Poisons; her Ultimate combines whatever she has on hand. |
 | Duelist | Assassin | Gains stacking bonus damage (up to 3x) against the same target - resets if she switches targets. |
 | Pirate Captain | Ranged | Marks a target as Wanted for bonus damage, and can knock enemies back a row with Explosive Barrel. |
-| Spirit Shaman | Summoner | Casts one of two mutually-exclusive team-wide Totem auras (only one active at a time). |
+| Spirit Shaman | Mage | Casts one of two mutually-exclusive team-wide Totem auras (only one active at a time). |
 | Gravity Mage | Mage | Physically pulls enemies between Front/Middle/Back rows, including a multi-target pull on her Ultimate. |
 
 All ten fully support 3-row formation, targeting, Advanced AI (Expert/Master score-aware of their
@@ -49,13 +49,13 @@ touches the core battle engine.
 |---|---|---|
 | Monk | Fighter | Builds Ki (max 100) from landing hits; Palm Burst spends it for a harder strike, and Sevenfold Strike unleashes bonus hits scaled by current Ki. |
 | Demon Hunter | Assassin | Applies Hunter's Mark for bonus damage, can snipe past the Front Row with Piercing Shot, and her Ultimate executes low-HP targets. |
-| Engineer | Specialist | Deploys a Turret with its own durability pool that auto-fires each turn and absorbs incoming damage like a shield until destroyed or expired. |
+| Engineer | Ranged | Deploys a Turret with its own durability pool that auto-fires each turn and absorbs incoming damage like a shield until destroyed or expired. |
 | Fencer | Fighter | Gains stacking Footwork (up to 3) from attacking or dodging, each stack adding Evasion; Riposte punishes anyone who strikes her while it's active. |
 | Oracle | Support | Buffs an ally's next turn, seals an enemy's next hit to be weaker, and her Ultimate wards an ally against one lethal blow. |
 | Bard | Support | Switches between Battle Song (team Attack Up) and War Drum (team Speed/Energy) stances; her Ultimate's effect depends on which is active - or plays a team-wide Lullaby debuff on enemies if neither is. |
 | Gladiator | Tank | Builds Rage from dealing and taking damage, can Taunt the enemy Front Row (AI is mechanically forced to consider attacking him back), and spends Rage for a scaling damage-reduction Ultimate. |
 | Frost Knight | Tank | Gains a stacking Ice Armor Defense buff whenever he's hit; breaking his Ice Wall shield Slows the attacker, and Frost Bind escalates an already-Slowed target into a brief Freeze. |
-| Plague Doctor | Control | Poisons/Diseases targets that can spread to nearby enemies (rate-limited so it can never chain infinitely), and his Ultimate stacks DoT with Healing Reduction and Attack Down. |
+| Plague Doctor | Mage | Poisons/Diseases targets that can spread to nearby enemies (rate-limited so it can never chain infinitely), and his Ultimate stacks DoT with Healing Reduction and Attack Down. |
 | Void Walker | Assassin | Blinks between rows and strikes the Back Row directly; every teleport grants a ward that blocks the next incoming hit. |
 
 ## The Extended Roster III (41-50)
@@ -65,14 +65,14 @@ mechanic lives in `js/character-mechanics.js`, isolated from the core battle eng
 
 | Character | Role | Signature Mechanic |
 |---|---|---|
-| Dragon Knight | Fighter | Builds a Dragon Gauge from combat, then his Ultimate transforms him into Dragon Form (boosted Attack/Defense) - the Gauge is spent immediately on activation so he can't transform back-to-back. |
-| Shadow Priest | Support | Pays part of her Heal and team-buff Ultimate's cost with her own HP (hard-floored at 1 - she can never kill herself with it), and gets stronger the more danger she's personally in. |
+| Dragon Knight | Tank | Builds a Dragon Gauge from combat, then his Ultimate transforms him into Dragon Form (boosted Attack/Defense) for an extended duration - the Gauge is spent immediately on activation so he can't transform back-to-back. |
+| Shadow Priest | Support | Pays part of her Heal and team-buff Ultimate's cost with her own HP (hard-floored at 1 - she can never kill herself with it), and gets noticeably stronger the more danger she's personally in. |
 | Sniper | Ranged | Deals more damage the further back both she and her target are; her Aim stance consumes itself for a huge damage/crit boost on the next shot, and Piercing Bullet snipes the Back Row directly. |
 | Berserker Lord | Fighter | A dedicated Rage resource (distinct from the original Berserker's HP-based scaling) that fuels an HP-sacrificing Rage burst and a Rage-spending finisher. |
 | Rune Master | Mage | Inscribes up to 3 Runes (Fire/Guard/Wind) in rotation and fuses them via fixed recipes for bonus effects; her Ultimate reads whatever Runes are active, then clears them. |
-| Witch | Control | Hexes enemies with a fairly-randomized debuff that gets stronger against already-debuffed targets, and can rip a debuff off an ally and hurl it onto an enemy instead. |
+| Witch | Mage | Hexes enemies with a fairly-randomized debuff that gets stronger against already-debuffed targets, and can rip a debuff off an ally and hurl it onto an enemy instead. |
 | Battle Medic | Support | A combat healer who heals more if she attacked on her previous turn, with bonus effectiveness on critically low-HP allies. |
-| Beast Rider | Skirmisher | Gains a Speed bonus while Mounted; Dismount is a one-way trade of that mobility for a lasting Defense boost. |
+| Beast Rider | Fighter | Gains a Speed bonus while Mounted; Dismount is a one-way trade of that mobility for a lasting Defense boost. |
 | Mirror Knight | Tank | Reflects a capped share of direct-attack damage back at attackers - reflected damage is flagged so it can never itself trigger another reflection, guaranteeing no infinite loop. |
 | Soul Reaper | Assassin | Gains a Soul (capped at 5) whenever any enemy falls, snowballing his Basic Attack's damage as the fight goes on. |
 
@@ -98,7 +98,7 @@ difficulty comes entirely from decision quality, never from hidden bonuses (see 
   at random from whatever characters you didn't take. Master instead runs a transparent power draft
   (`AISystem.draftPowerfulTeam` in `js/ai.js`): it scores every remaining character on raw stats plus
   a bonus for high-impact kit traits (AoE Ultimates, backline access, built-in sustain, row synergy),
-  guarantees at least one frontline anchor (Tank/Bruiser) and one Support for survivability, then
+  guarantees at least one frontline anchor (Tank) and one Support for survivability, then
   fills the rest with whatever scores highest overall - so Master's opponents are a genuinely strong,
   not-random lineup rather than a coin-flip team. (Campaign enemy teams are unaffected - those stay
   hand-designed per stage regardless of difficulty.)
@@ -107,6 +107,25 @@ difficulty comes entirely from decision quality, never from hidden bonuses (see 
 - Enable **Settings → AI Decision Log (Developer)** to see each Expert/Master decision (target,
   action, and score breakdown) printed into the Battle Log and browser console — useful for tuning,
   off by default so it never leaks to normal players.
+
+## The 6 Official Classes
+
+Every character belongs to **exactly one** of six official classes - never a hybrid label like
+"Fighter/Tank". A character's secondary gameplay flavor (e.g. Battle Medic being a *combat*
+healer, or Shadow Priest being a *sacrifice* support) shows up in their description and kit, not
+in their class.
+
+| Class | Icon | Archetype | Weakness |
+|---|---|---|---|
+| **Tank** 🛡️ | Shield | Frontline defender - highest HP, highest total Defense, protection/shield/taunt | Lower damage, lower Speed, low Evasion |
+| **Fighter** ⚔️ | Sword | Close-range all-rounder, between Tank and Assassin in both survivability and burst | No standout Defense or burst - a generalist |
+| **Assassin** 🗡️ | Dagger | High-priority-target killer - burst, Speed, Evasion, execute, some backline access | Low HP/Defense, punished hard if the kill fails |
+| **Ranged** 🏹 | Bow | Long-range physical consistency - accuracy and sustained damage over burst | Fragile, weak if forced into unfavorable range |
+| **Mage** ✨ | Staff | Magical damage and control - AoE, debuffs, elemental/special mechanics | Low Physical Defense, vulnerable to Assassins |
+| **Support** ➕ | Cross | Team utility - healing, buffs, cleanse, sustain (not always a pure healer) | Low damage, a high-priority target itself |
+
+Class filters (in Character Selection and the Character Collection) only ever show these 6, plus
+"All". Character cards show their class as a small colored badge in the top-right corner.
 
 ## Damage Types & Class Balance
 
@@ -117,22 +136,25 @@ target's Magical Defense; a Knight's Sword Slash is checked against Physical Def
 shown on every Character Detail screen (P.DEF / M.DEF / a Physical or Magical badge).
 
 Every character also has an **Evasion** stat (a flat chance to fully evade an incoming hit),
-scaled by role - Assassins dodge the most, Tanks/Supports/Summoners the least, with a few
-thematic exceptions (Illusionist, Void Walker, Ninja, Fencer, and Witch get extra Evasion because
-it's core to their kit).
+scaled by class - Assassins dodge the most, Tanks/Supports the least, with a few thematic
+exceptions (Illusionist, Void Walker, Ninja, Fencer, and Witch get extra Evasion because it's core
+to their kit). A successful dodge shows a floating "EVADE" indicator over the defender.
 
-**Class balance is centralized in `js/balance.js`**, not scattered across 50 character blocks.
-Every character's HP, Attack, Speed, Crit Rate/Damage, total Defense, and Evasion are drawn from a
-single per-role template, so every Tank has the *same* HP/Attack/Speed/Defense budget as every
-other Tank, every Mage matches every other Mage, and so on - power comes entirely from each
-character's kit (passive/skills/Ultimate), never from one Tank simply having bigger numbers than
-another. To retune the game later, edit the tables in `js/balance.js` - never the individual
-character blocks in `characters.js`.
+**Class balance is centralized in `js/balance.js`**, not scattered across 50 character blocks -
+but a class template is a shared *power budget*, not identical numbers. Every character in a class
+draws the same HP/Attack/Speed/Crit/total-Defense/Evasion budget, while each character's own
+`DEFENSE_LEAN` shifts how that Defense budget splits between Physical and Magical (e.g. Paladin
+leans Magical-resistant, Gladiator leans Physical-resistant - both are still full-strength Tanks).
+To retune the game later, edit the tables in `js/balance.js` - never the individual character
+blocks in `characters.js`.
 
 A **Sudden Death** safety net (`js/battle.js`) also guarantees every battle eventually resolves:
 if a fight runs unusually long (past 120 individual turns - far beyond a normal battle), gradually
 escalating Fatigue damage kicks in once per round for everyone equally, so two extremely
 defensive/sustain-heavy teams can never stalemate forever.
+
+Hold down any Basic Attack/Skill/Ultimate/Defend/Item button in battle (mouse or touch) to see its
+full description in a tooltip - releasing after a hold never accidentally triggers the action.
 
 ## Formations & Positioning
 

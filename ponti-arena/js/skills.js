@@ -203,7 +203,7 @@ const SkillSystem = {
       if (actor.character.id === 'shadow_priest' && (actor.hp / actor.maxHp) < 0.4 && targets.length > 0) {
         targets.forEach(t => {
           if (t.isDead) return;
-          const bonus = Math.round(t.maxHp * 0.04);
+          const bonus = Math.round(t.maxHp * 0.07);
           const extraHealed = CombatEngine.applyHeal(actor, t, bonus);
           if (extraHealed > 0) events.push({ type: 'heal', actor: actor.id, target: t.id, amount: extraHealed, text: `${actor.name}'s Dark Blessing adds ${extraHealed} HP.` });
         });

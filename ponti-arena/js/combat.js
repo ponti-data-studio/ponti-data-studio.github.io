@@ -27,7 +27,7 @@ const CombatEngine = {
     }
     // Dragon Knight's Dragon Form: a temporary transformation boost to Attack and both Defenses.
     if (StatusEngine.has(actor, 'dragon_form') && (statKey === 'attack' || statKey === 'physicalDefense' || statKey === 'magicalDefense')) {
-      value *= 1.35;
+      value *= 1.28;
     }
     // Beast Rider's Mounted Combat: bonus while still Mounted.
     const mb = actor.character.mountedBonus;

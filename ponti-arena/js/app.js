@@ -570,6 +570,7 @@ const App = {
         this.lungeActor(e.actor);
       }
       if (e.type === 'heal' || e.type === 'hot') AudioSystem.playHeal();
+      if (e.type === 'evade') AudioSystem.playUIClick();
       if (e.type === 'status' || e.type === 'debuff' || e.type === 'buff') AudioSystem.playStatus();
       if (e.type === 'death') AudioSystem.playDeath();
       if (e.text) UI.appendBattleLog(UI.el('battle-log'), e.text, e.type);
@@ -578,6 +579,10 @@ const App = {
         if (hostSlot && this.save.settings.damageNumbers) {
           UI.floatText(hostSlot, e.type === 'damage' ? `-${e.amount}${e.isCrit ? '!' : ''}` : `+${e.amount}`, e.type === 'damage' ? 'dmg' : 'heal');
         }
+      }
+      if (e.type === 'evade') {
+        const hostSlot = document.querySelector(`[data-actor-id="${e.target}"] .battle-slot-info`);
+        if (hostSlot) UI.floatText(hostSlot, 'EVADE', 'evade');
       }
       this.quickRenderBars();
       await this.delay(this.save.settings.battleAnimation ? 420 : 60);

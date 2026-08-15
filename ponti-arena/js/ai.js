@@ -107,7 +107,7 @@ const AISystem = {
     if (executable) return { skillDef: best.def, actionKey: best.key, target: executable };
     // Prioritize squishy high-value targets (Mage/Support/Ranged) if this skill can legally reach them
     const priority = [...pool].sort((a, b) => {
-      const weight = e => (['Mage', 'Support', 'Ranged', 'Summoner'].includes(e.character.role) ? 0 : 1);
+      const weight = e => (['Mage', 'Support', 'Ranged'].includes(e.character.role) ? 0 : 1);
       return weight(a) - weight(b) || (a.hp / a.maxHp) - (b.hp / b.maxHp);
     })[0];
     return { skillDef: best.def, actionKey: best.key, target: priority };
@@ -206,7 +206,7 @@ const AISystem = {
 
   /** Buckets a role into a coarse archetype used only for team-draft coverage, not gameplay. */
   draftArchetype(role) {
-    if (['Tank', 'Bruiser'].includes(role)) return 'frontline';
+    if (role === 'Tank') return 'frontline';
     if (['Support'].includes(role)) return 'sustain';
     return 'damage';
   },
