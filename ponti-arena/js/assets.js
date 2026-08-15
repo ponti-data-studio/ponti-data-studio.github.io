@@ -11,26 +11,36 @@ const AssetManager = {
   _cache: new Map(),      // characterId -> resolved asset descriptor
   _checked: new Set(),    // characterId -> whether photo probe finished
 
-  /** Returns an <img> or generated element wrapped in a container, synchronously safe to insert. */
-  buildAvatarElement(character, sizeClass = '') {
+  /**
+   * Returns an <img> or generated element wrapped in a container, synchronously safe to insert.
+   * @param {object} character
+   * @param {string} sizeClass  e.g. 'small'
+   * @param {boolean} fullBody  when true, the photo fills its box uncropped (object-fit: contain)
+   *   instead of the small circular avatar - used for full-body character art in selection grids
+   *   and the roster menu.
+   */
+  buildAvatarElement(character, sizeClass = '', fullBody = false) {
     const wrap = document.createElement('div');
-    wrap.className = `char-avatar ${sizeClass}`;
+    wrap.className = `char-avatar ${sizeClass}${fullBody ? ' full-body' : ''}`;
     wrap.style.setProperty('--char-color', character.color || '#c9a227');
-  
-    // Format ID agar selalu menggunakan strip (-)
+
+    // Normalize the ID to always use dashes (some newer character IDs use underscores, but
+    // asset filenames follow the dash convention documented in the README).
     const safeId = String(character.id || '')
       .toLowerCase()
       .replace(/[\s_]+/g, '-');
-  
+
     const img = document.createElement('img');
     img.alt = character.name;
     img.loading = 'lazy';
     img.decoding = 'async';
     img.src = `assets/characters/${safeId}.png`;
-    
+
     img.onload = () => { wrap.classList.add('photo-loaded'); };
     img.onerror = () => {
+      // Tier 2/3 fallback: swap the broken <img> for a generated SVG icon.
       img.remove();
+      wrap.classList.remove('full-body'); // generated icons stay circular even in full-body slots
       wrap.appendChild(this.buildGeneratedIcon(character));
       wrap.classList.add('fallback-loaded');
     };

@@ -10,30 +10,40 @@
 .generated-icon-emoji { font-size: 1.5em; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
 .char-avatar.small .generated-icon-emoji { font-size: 1.2em; }
 
+/* Full-body avatar: used in Character Selection grids and the Character Collection menu.
+   Photo fills the box uncropped-ish (cover, anchored to the top so the head/face never gets cut
+   off if the aspect ratio doesn't match exactly). Falls back to the normal circular icon. */
+.char-avatar.full-body {
+  width: 100%; height: auto; aspect-ratio: 3 / 4; border-radius: 10px;
+  border: 1.5px solid var(--char-color, var(--gold)); box-shadow: none; background: var(--bg-panel-3);
+}
+.char-avatar.full-body img { object-position: top center; }
+.char-avatar.full-body .generated-icon { border-radius: 9px; }
+.char-avatar.full-body .generated-icon-emoji { font-size: 2.4em; }
+
 /* ---------- Character Grid / Card ---------- */
-.char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; padding-bottom: 90px; }
+.char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 10px; padding-bottom: 90px; }
 .char-card {
   background: var(--bg-panel-2); border: 1.5px solid var(--border); border-radius: var(--radius);
-  padding: 12px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 6px 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 5px;
   cursor: pointer; color: var(--text); position: relative; min-height: 44px;
   transition: border-color 0.12s ease, transform 0.12s ease;
 }
 .char-card:active { transform: scale(0.96); }
 .char-card.selected { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
 .char-card.disabled { opacity: 0.4; cursor: not-allowed; }
+.char-card-avatar-slot { width: 100%; }
 .char-card-name { font-weight: 700; font-size: 0.82rem; text-align: center; }
-.char-card-role { font-size: 0.68rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
-.char-card-diff { font-size: 0.62rem; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); }
-.diff-easy { color: var(--teal-light); border-color: var(--teal); }
-.diff-normal { color: var(--gold-light); border-color: var(--gold); }
-.diff-hard { color: var(--crimson-light); border-color: var(--crimson); }
-.char-card-mastery { position: absolute; top: 6px; right: 6px; font-size: 0.6rem; background: var(--gold); color: #221a05; padding: 1px 6px; border-radius: 999px; font-weight: 700; }
+.char-card-mastery { position: absolute; top: 6px; right: 6px; font-size: 0.6rem; background: var(--gold); color: #221a05; padding: 1px 6px; border-radius: 999px; font-weight: 700; z-index: 2; }
 
 /* ---------- Character Detail ---------- */
 .char-detail-header { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
 .char-detail-avatar .char-avatar { width: 72px; height: 72px; }
 .char-detail-header h3 { font-family: var(--font-display); margin: 0 0 4px; color: var(--gold-light); font-size: 1.3rem; }
 .char-detail-role { display: inline-block; font-size: 0.72rem; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border); margin-right: 8px; text-transform: uppercase; }
+.char-detail-atktype { display: inline-block; font-size: 0.68rem; padding: 2px 9px; border-radius: 999px; margin-right: 8px; text-transform: uppercase; font-weight: 700; }
+.atktype-physical { color: #d9924f; border: 1px solid #d9924f; }
+.atktype-magical { color: #7fa8e0; border: 1px solid #7fa8e0; }
 .char-detail-diff { color: var(--text-dim); font-size: 0.78rem; }
 .char-detail-desc { color: var(--text-dim); font-size: 0.88rem; line-height: 1.5; }
 .char-detail-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }

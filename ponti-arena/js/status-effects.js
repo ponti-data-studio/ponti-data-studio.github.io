@@ -120,12 +120,17 @@ const StatusEngine = {
   },
 
   /** Aggregate a live stat multiplier (1.0 = no change) for a given base stat. */
+  /** statKey can be a concrete stat ('attack', 'speed', 'physicalDefense', 'magicalDefense', ...).
+   *  Status effects defined generically as `stat: 'defense'` (e.g. Defense Up, Ice Armor) apply to
+   *  BOTH Physical and Magical Defense, so content doesn't need to pick one at data-entry time. */
   statMultiplier(target, statKey) {
     let mult = 1.0;
+    const genericDefense = (statKey === 'physicalDefense' || statKey === 'magicalDefense');
     for (const s of target.statuses) {
       const def = STATUS_DEFS[s.id];
-      if (def && def.kind === 'stat' && def.stat === statKey) {
-        mult += (def.percent / 100);
+      if (!def || def.kind !== 'stat') continue;
+      if (def.stat === statKey || (genericDefense && def.stat === 'defense')) {
+        mult += (def.percent / 100) * (s.stacks || 1);
       }
     }
     return Math.max(0.1, mult);

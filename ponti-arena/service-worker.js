@@ -18,6 +18,7 @@ const APP_SHELL = [
   './css/responsive.css',
   './js/config.js',
   './js/characters.js',
+  './js/balance.js',
   './js/status-effects.js',
   './js/combat.js',
   './js/targeting.js',

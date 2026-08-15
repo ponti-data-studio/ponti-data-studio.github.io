@@ -16,11 +16,17 @@ const CombatEngine = {
       value *= (1 + bonus);
     }
     const rs = actor.character.rowSynergy;
-    if (rs && rs.stat === statKey && actor.position && actor.position.row === rs.row) {
-      value *= (1 + rs.percent / 100);
+    if (rs && actor.position && actor.position.row === rs.row) {
+      if (rs.stat === statKey) {
+        value *= (1 + rs.percent / 100);
+      } else if (rs.stat === 'defense' && (statKey === 'physicalDefense' || statKey === 'magicalDefense')) {
+        // Generic "defense" row synergy (e.g. Knight/Guardian's Front Row bonus) boosts both
+        // Physical and Magical Defense equally, rather than needing to pick one at data-entry time.
+        value *= (1 + rs.percent / 100);
+      }
     }
-    // Dragon Knight's Dragon Form: a temporary transformation boost to Attack and Defense.
-    if ((statKey === 'attack' || statKey === 'defense') && StatusEngine.has(actor, 'dragon_form')) {
+    // Dragon Knight's Dragon Form: a temporary transformation boost to Attack and both Defenses.
+    if (StatusEngine.has(actor, 'dragon_form') && (statKey === 'attack' || statKey === 'physicalDefense' || statKey === 'magicalDefense')) {
       value *= 1.35;
     }
     // Beast Rider's Mounted Combat: bonus while still Mounted.
@@ -58,14 +64,15 @@ const CombatEngine = {
    */
   calculateDamage(attacker, target, power, options = {}) {
     const estimate = !!options.estimate;
-    let targetEvasion = target.character.evasionPercent || 0;
+    let targetEvasion = (target.character.base && target.character.base.evasion) || 0;
     const footwork = StatusEngine.get(target, 'footwork');
     if (footwork) targetEvasion += footwork.stacks * (STATUS_DEFS.footwork.percent || 0);
     if (!estimate && !options.skipEvasion && targetEvasion > 0 && Math.random() * 100 < targetEvasion) {
       return { amount: 0, isCrit: false, evaded: true };
     }
     const atk = this.liveStat(attacker, 'attack');
-    const def = this.liveStat(target, 'defense');
+    const defenseKey = attacker.character.attackType === 'magical' ? 'magicalDefense' : 'physicalDefense';
+    const def = this.liveStat(target, defenseKey);
     let raw = (atk * power * 100) / (100 + def);
     raw = Math.max(raw, atk * power * 0.15); // damage floor so it never trends to 0
 

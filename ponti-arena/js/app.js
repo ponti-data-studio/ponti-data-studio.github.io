@@ -270,19 +270,23 @@ const App = {
       selectedId: this.formationSelectedId,
       onChipClick: (id, row) => {
         AudioSystem.playUIClick();
-        if (row) {
-          // Tapped an already-placed chip's portrait.
-          if (this.formationSelectedId && this.formationSelectedId !== id) {
-            // Something else is already selected - swap them directly (works whether the
-            // selection came from the pool or another row), no need to unplace first.
-            this.swapFormationSlots(this.formationSelectedId, id);
-            return;
-          }
-          // Nothing selected (or tapping itself again) - send it back to the pool.
-          this.buildFormation = this.buildFormation.filter(p => p.id !== id);
+        if (this.formationSelectedId === id) {
+          // Tapping the already-selected chip again: if it's placed, treat it as "remove";
+          // if it's still in the pool, just deselect.
+          if (row) this.buildFormation = this.buildFormation.filter(p => p.id !== id);
           this.formationSelectedId = null;
+        } else if (this.formationSelectedId) {
+          // Something else is already selected and we tapped a different chip.
+          if (row) {
+            // Target is already placed - swap the two directly, no need to unplace first.
+            this.swapFormationSlots(this.formationSelectedId, id);
+            return; // swapFormationSlots already refreshes and clears the selection
+          }
+          // Target is still in the pool - just move the selection to it instead.
+          this.formationSelectedId = id;
         } else {
-          this.formationSelectedId = this.formationSelectedId === id ? null : id;
+          // Nothing selected yet - select this chip (whether from the pool or already placed).
+          this.formationSelectedId = id;
         }
         this.refreshFormationEditor();
       },
@@ -291,8 +295,6 @@ const App = {
         this.placeInRow(this.formationSelectedId, row);
       },
       onRowDrop: (id, row) => this.placeInRow(id, row),
-      onMoveRow: (id, delta) => this.moveCharacterRow(id, delta),
-      onMoveColumn: (id, delta) => this.moveCharacterColumn(id, delta),
       onSwap: (draggedId, targetId) => this.swapFormationSlots(draggedId, targetId),
     });
     UI.el('btn-formation-continue').disabled = this.buildFormation.length < this.buildTeam.length;

@@ -33,6 +33,7 @@ class BattleEngine {
     this.arenaId = arenaId;
     this.log = [];
     this.stats = { damageDealt: 0, damageReceived: 0, healing: 0, criticals: 0, skillsUsed: 0, turns: 0 };
+    this._lastFatigueTurn = 0;
     this.itemsRemaining = ITEM_USES_PER_BATTLE;
     this.status = 'active'; // active | victory | defeat
     const playerPlacements = this._normalizeFormation(playerFormation);
@@ -67,10 +68,12 @@ class BattleEngine {
       position: { row: (placement && placement.row) || 'middle', column: (placement && placement.column) || 0 },
       stats: {
         attack: character.base.attack,
-        defense: character.base.defense,
+        physicalDefense: character.base.physicalDefense,
+        magicalDefense: character.base.magicalDefense,
         speed: character.base.speed,
         critRate: character.base.critRate,
         critDamage: character.base.critDmg,
+        evasion: character.base.evasion || 0,
       },
       hp: maxHp,
       maxHp,
@@ -96,10 +99,36 @@ class BattleEngine {
 
   _pushLog(text) { this.log.push({ turn: this.stats.turns, text }); }
 
+  /** Escalating fatigue damage once a battle has run unusually long - guarantees resolution
+   *  without ever feeling like a sudden, unfair wipe (grows slowly, applies to everyone equally).
+   *  Called at most once every ~10 individual turns (roughly one full round), never per-actor. */
+  _applySuddenDeath() {
+    const events = [];
+    const roundsOvertime = Math.floor((this.stats.turns - 120) / 10);
+    const percent = Math.min(15, 2 + roundsOvertime * 2); // 2% climbing to a 15% cap per round
+    if (roundsOvertime <= 1) {
+      const t = 'The battle drags on... both sides start taking Fatigue damage each round.';
+      this._pushLog(t); events.push({ type: 'special', text: t });
+    }
+    this.actors.forEach((a) => {
+      if (a.isDead) return;
+      const amount = Math.max(1, Math.round(a.maxHp * (percent / 100)));
+      a.hp = Math.max(0, a.hp - amount);
+      if (a.hp <= 0) {
+        a.isDead = true;
+        events.push({ type: 'death', actor: a.id, text: `${a.name} succumbs to Fatigue!` });
+      }
+    });
+    return events;
+  }
+
   lowestDefenseEnemyIdFor(actor) {
     const enemies = this.actors.filter(a => a.side !== actor.side && !a.isDead);
     if (enemies.length === 0) return null;
-    return [...enemies].sort((a, b) => CombatEngine.liveStat(a, 'defense') - CombatEngine.liveStat(b, 'defense'))[0].id;
+    // Relevant defense depends on the actor's own Attack Type - a magical attacker cares about
+    // who has the lowest Magical Defense, not Physical.
+    const defenseKey = actor.character.attackType === 'magical' ? 'magicalDefense' : 'physicalDefense';
+    return [...enemies].sort((a, b) => CombatEngine.liveStat(a, defenseKey) - CombatEngine.liveStat(b, defenseKey))[0].id;
   }
 
   /** Advances the timeline to the next actor and resolves start-of-turn effects. */
@@ -125,6 +154,19 @@ class BattleEngine {
       const midCheck = this.turnManager.checkVictoryDefeat();
       if (midCheck) { this.status = midCheck; return { actor, skipped: false, events, result: midCheck }; }
     }
+
+    // Sudden Death: two very defensive/sustain-heavy teams can occasionally out-heal each other
+    // indefinitely. Past a generous turn count, apply gradually escalating fatigue damage to
+    // every living actor (once per full round, not every individual turn) so every battle is
+    // guaranteed to resolve - never a true stalemate/softlock.
+    if (this.stats.turns > 120 && this.stats.turns - this._lastFatigueTurn >= 10) {
+      this._lastFatigueTurn = this.stats.turns;
+      const fatigueEvents = this._applySuddenDeath();
+      fatigueEvents.forEach(e => { this._pushLog(e.text); events.push(e); });
+      const fatigueCheck = this.turnManager.checkVictoryDefeat();
+      if (fatigueCheck) { this.status = fatigueCheck; return { actor, skipped: false, events, result: fatigueCheck }; }
+    }
+
     const dotEvents = StatusEngine.tickStartOfTurn(actor);
     dotEvents.forEach(e => { this._pushLog(e.text); events.push(e); });
 

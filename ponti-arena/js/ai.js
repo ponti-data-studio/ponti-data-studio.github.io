@@ -194,13 +194,13 @@ const AISystem = {
    */
   characterPowerScore(character) {
     const b = character.base;
-    let score = b.attack * 0.45 + b.hp * 0.045 + b.defense * 0.18 + b.speed * 0.22 + b.critRate * 0.6 + (b.critDmg - 150) * 0.15;
+    let score = b.attack * 0.45 + b.hp * 0.045 + (b.physicalDefense + b.magicalDefense) * 0.09 + b.speed * 0.22 + b.critRate * 0.6 + (b.critDmg - 150) * 0.15;
     // Mechanical depth bonuses - a rough proxy for how much extra value the kit brings.
     if (character.ultimate && ['all_enemy', 'adjacent_enemies', 'front_row', 'middle_row', 'back_row'].includes(character.ultimate.targetType)) score += 18; // AoE ultimate
     if (character.backlineBonus || ['single_back', 'back_row'].includes((character.skill1 || {}).targetType) || ['single_back', 'back_row'].includes((character.skill2 || {}).targetType)) score += 12; // backline access
     if (character.lifestealPercent || (character.skill1 && character.skill1.drainPercent) || (character.skill2 && character.skill2.drainPercent)) score += 10; // built-in sustain
     if (character.rowSynergy) score += 6; // extra positional payoff
-    if (character.evasionPercent) score += 6;
+    if (character.base && character.base.evasion >= 12) score += 6;
     return score;
   },
 

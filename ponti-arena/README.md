@@ -108,6 +108,32 @@ difficulty comes entirely from decision quality, never from hidden bonuses (see 
   action, and score breakdown) printed into the Battle Log and browser console — useful for tuning,
   off by default so it never leaks to normal players.
 
+## Damage Types & Class Balance
+
+Every character has **two separate Defense stats** - Physical Defense and Magical Defense - and an
+Attack Type (Physical or Magical) that determines which of the *target's* two defenses their Basic
+Attack, Skills, and Ultimate are checked against. A Wizard's Fireball is checked against the
+target's Magical Defense; a Knight's Sword Slash is checked against Physical Defense. This is
+shown on every Character Detail screen (P.DEF / M.DEF / a Physical or Magical badge).
+
+Every character also has an **Evasion** stat (a flat chance to fully evade an incoming hit),
+scaled by role - Assassins dodge the most, Tanks/Supports/Summoners the least, with a few
+thematic exceptions (Illusionist, Void Walker, Ninja, Fencer, and Witch get extra Evasion because
+it's core to their kit).
+
+**Class balance is centralized in `js/balance.js`**, not scattered across 50 character blocks.
+Every character's HP, Attack, Speed, Crit Rate/Damage, total Defense, and Evasion are drawn from a
+single per-role template, so every Tank has the *same* HP/Attack/Speed/Defense budget as every
+other Tank, every Mage matches every other Mage, and so on - power comes entirely from each
+character's kit (passive/skills/Ultimate), never from one Tank simply having bigger numbers than
+another. To retune the game later, edit the tables in `js/balance.js` - never the individual
+character blocks in `characters.js`.
+
+A **Sudden Death** safety net (`js/battle.js`) also guarantees every battle eventually resolves:
+if a fight runs unusually long (past 120 individual turns - far beyond a normal battle), gradually
+escalating Fatigue damage kicks in once per round for everyone equally, so two extremely
+defensive/sustain-heavy teams can never stalemate forever.
+
 ## Formations & Positioning
 
 Ally slots render on the **left**, enemy slots on the **right** in Landscape (or **bottom**/**top**
@@ -303,6 +329,7 @@ This project has no dependency on any specific AI image generator — use whiche
   status-effects.js   - centralized status effect engine (Burn, Stun, Shield, ...)
   combat.js           - damage/heal/energy formulas, formation row bonuses & back-row protection
   targeting.js         - row-aware targeting engine (front/middle/back priority, backline skills, AI formation templates)
+  balance.js            - single source of truth for per-class base stats, Physical/Magical Defense split, and Evasion
   ai-scoring.js          - Expert/Master AI: threat scoring, kill confirmation, overkill avoidance, combo/role weighting
   character-mechanics.js   - isolated custom mechanics for both roster expansions (redirect, counters, reagents, totems, position pulls, turn manipulation, rewind, Ki/Rage/Footwork resources, Turret, Taunt, Contagion spread)
   skills.js              - resolves a skill definition against its targets
