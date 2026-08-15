@@ -26,10 +26,10 @@ const SkillSystem = {
       }
     }
 
-    // Monk: Palm Burst costs 20 Ki for full power, or runs at reduced power without it.
+    // Monk: Palm Burst costs 15 Ki for full power, or runs at reduced power without it.
     if (skillDef.id === 'palm_burst') {
-      if (actor.mech.ki >= 20) {
-        CharacterMechanics.spendKi(actor, 20);
+      if (actor.mech.ki >= 15) {
+        CharacterMechanics.spendKi(actor, 15);
       } else {
         skillDef = { ...skillDef, power: skillDef.power * 0.6 };
         events.push({ type: 'special', actor: actor.id, text: `${actor.name} doesn't have enough Ki - Palm Burst lands with less force.` });
@@ -130,8 +130,8 @@ const SkillSystem = {
         // Monk's Inner Ki: gained from landing any damaging action.
         if (actor.character.id === 'monk') CharacterMechanics.gainKi(actor, options.isSkill ? 15 : 10);
         // Gladiator's Crowd Favorite: gained from both dealing and taking damage.
-        if (actor.character.id === 'gladiator') CharacterMechanics.gainRage(actor, 8);
-        if (target.character.id === 'gladiator' && !target.isDead) CharacterMechanics.gainRage(target, 6);
+        if (actor.character.id === 'gladiator') CharacterMechanics.gainRage(actor, 10);
+        if (target.character.id === 'gladiator' && !target.isDead) CharacterMechanics.gainRage(target, 8);
         // Frost Knight's Ice Armor: gains a stacking Defense buff whenever he takes damage.
         if (target.character.id === 'frost_knight' && !target.isDead) StatusEngine.apply(target, 'ice_stack', 4, target.id);
         // Fencer's Footwork: gained on landing an attack (self-buff, not applied to the target).
@@ -178,9 +178,9 @@ const SkillSystem = {
         if (target.isDead) continue;
         let healAmt = Math.round(CombatEngine.liveStat(actor, 'attack') * skillDef.power);
         // Battle Medic's Combat Heal: bonus if she attacked on her previous turn.
-        if (skillDef.id === 'combat_heal' && actor.mech && actor.mech.attackedLastTurn) healAmt = Math.round(healAmt * 1.3);
+        if (skillDef.id === 'combat_heal' && actor.mech && actor.mech.attackedLastTurn) healAmt = Math.round(healAmt * 1.15);
         // Battle Medic's Emergency Protocol: bonus healing on a critically low-HP ally.
-        if (actor.character.id === 'battle_medic' && (target.hp / target.maxHp) < 0.3) healAmt = Math.round(healAmt * 1.25);
+        if (actor.character.id === 'battle_medic' && (target.hp / target.maxHp) < 0.3) healAmt = Math.round(healAmt * 1.12);
         // Mass Trauma Care: the more HP an ally is missing, the more they recover (capped).
         if (skillDef.id === 'mass_trauma_care') {
           const missingPct = 1 - (target.hp / target.maxHp);
@@ -200,10 +200,10 @@ const SkillSystem = {
         this.applyStatuses(actor, target, skillDef, events);
       }
       // Shadow Priest's Dark Blessing: extra healing effectiveness while her own HP is low.
-      if (actor.character.id === 'shadow_priest' && (actor.hp / actor.maxHp) < 0.4 && targets.length > 0) {
+      if (actor.character.id === 'shadow_priest' && (actor.hp / actor.maxHp) < 0.45 && targets.length > 0) {
         targets.forEach(t => {
           if (t.isDead) return;
-          const bonus = Math.round(t.maxHp * 0.07);
+          const bonus = Math.round(t.maxHp * 0.10);
           const extraHealed = CombatEngine.applyHeal(actor, t, bonus);
           if (extraHealed > 0) events.push({ type: 'heal', actor: actor.id, target: t.id, amount: extraHealed, text: `${actor.name}'s Dark Blessing adds ${extraHealed} HP.` });
         });
