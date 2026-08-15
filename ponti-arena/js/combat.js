@@ -108,7 +108,7 @@ const CombatEngine = {
     if (options.executionBonus && (target.hp / target.maxHp) <= 0.3) raw *= 1.6;
     // Fate Seal (Oracle): the sealed attacker's own next offensive action is weakened, once.
     if (!estimate && StatusEngine.has(attacker, 'fate_sealed')) {
-      raw *= 0.7;
+      raw *= 0.6;
       StatusEngine.remove(attacker, 'fate_sealed');
     }
     // Champion's Grit (Gladiator ultimate): flat incoming-damage reduction while active.
@@ -137,7 +137,7 @@ const CombatEngine = {
     // Dragon Knight's Dragon Breath / Basic Attack - bonus with a high Dragon Gauge.
     if (attacker.character.id === 'dragon_knight' && attacker.mech && attacker.mech.dragonGauge >= 70) raw *= 1.2;
     // Berserker Lord's Raging Swing / Wrath Unleashed - bonus with high Rage.
-    if (options.rageScaled && attacker.mech) raw *= (1 + (attacker.mech.rage / 100) * 0.35);
+    if (options.rageScaled && attacker.mech) raw *= (1 + (attacker.mech.rage / 100) * 0.48);
     if (options.wrathArmorBreak && attacker.mech && attacker.mech.rage >= 80) {
       raw *= 1.15; // the "briefly shatters Armor" bonus is expressed as extra damage this hit
     }
@@ -152,7 +152,7 @@ const CombatEngine = {
     }
     // Rune Master's Rune Bolt: Fire Rune adds flat damage.
     if (attacker.character.id === 'rune_master' && options.skillId === 'rune_bolt' && attacker.mech && attacker.mech.runes.includes('fire')) {
-      raw *= 1.25;
+      raw *= 1.38;
     }
     // Mirror Knight's reflected damage never triggers a second reflection (handled by the caller
     // passing bypassProtection appropriately) - see CharacterMechanics.tryReflect for the actual guard.
@@ -189,7 +189,7 @@ const CombatEngine = {
     let isCrit = false;
     let critChance = this.liveCritRate(attacker);
     if (attacker.character.id === 'archer' && (target.hp / target.maxHp) > 0.5) {
-      critChance += 15;
+      critChance += 10;
     }
     if (options.guaranteedCrit) critChance = 100;
     if (estimate) {
@@ -248,7 +248,7 @@ const CombatEngine = {
   applyHeal(caster, target, amount) {
     if (target.isDead) return 0;
     let finalAmount = amount;
-    if (caster.character.id === 'druid') finalAmount *= 1.15;
+    if (caster.character.id === 'druid') finalAmount *= 1.10;
     if (StatusEngine.has(target, 'healing_reduction')) finalAmount *= 0.5;
     const rs = caster.character.rowSynergy;
     if (rs && rs.stat === 'healPower' && caster.position && caster.position.row === rs.row) {
