@@ -4,6 +4,23 @@
  * without touching engine code.
  */
 
+// Short badge label + accent color per class/role - used for the class badge on character cards
+// and the class filter chips in Character Selection / the Character Collection.
+const ROLE_META = {
+  Tank:       { abbr: 'TNK', color: '#7fa6c9' },
+  Fighter:    { abbr: 'FTR', color: '#d18a4a' },
+  Assassin:   { abbr: 'ASN', color: '#c96b6b' },
+  Ranged:     { abbr: 'RNG', color: '#8fc98f' },
+  Mage:       { abbr: 'MAG', color: '#b18fe0' },
+  Support:    { abbr: 'SUP', color: '#e0d68f' },
+  Summoner:   { abbr: 'SUM', color: '#a67c52' },
+  Control:    { abbr: 'CTL', color: '#8fd6e0' },
+  Specialist: { abbr: 'SPC', color: '#c9c9a2' },
+  Bruiser:    { abbr: 'BRU', color: '#a04058' },
+  Skirmisher: { abbr: 'SKM', color: '#7fbf8f' },
+};
+const ROLE_ORDER = ['Tank', 'Fighter', 'Bruiser', 'Skirmisher', 'Assassin', 'Ranged', 'Mage', 'Control', 'Support', 'Summoner', 'Specialist'];
+
 const ARENAS = [
   { id: 'medieval-castle', name: 'Medieval Castle', gradient: ['#2b2440', '#4a3b63'] },
   { id: 'mystic-forest', name: 'Mystic Forest', gradient: ['#152a20', '#2f5c3f'] },

@@ -27,14 +27,38 @@ const UI = {
   },
 
   // ---------- Character Card (roster / selection) ----------
+  // ---------- Class Filter ----------
+  renderClassFilter(container, activeRole, onSelectRole) {
+    container.innerHTML = '';
+    const allChip = document.createElement('button');
+    allChip.type = 'button';
+    allChip.className = 'class-filter-chip' + (!activeRole ? ' active' : '');
+    allChip.textContent = 'All';
+    allChip.addEventListener('click', () => onSelectRole(null));
+    container.appendChild(allChip);
+    ROLE_ORDER.forEach(role => {
+      const meta = ROLE_META[role] || { color: '#c9a227' };
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'class-filter-chip' + (activeRole === role ? ' active' : '');
+      chip.style.setProperty('--role-color', meta.color);
+      chip.textContent = role;
+      chip.addEventListener('click', () => onSelectRole(role));
+      container.appendChild(chip);
+    });
+  },
+
   buildCharacterCard(character, { selected = false, disabled = false, mastery = 0 } = {}) {
     const card = document.createElement('button');
     card.type = 'button';
     card.className = `char-card role-${character.role.toLowerCase()}` + (selected ? ' selected' : '') + (disabled ? ' disabled' : '');
     card.dataset.characterId = character.id;
+    card.dataset.role = character.role;
     card.setAttribute('aria-label', `${character.name}, ${character.role}`);
+    const roleMeta = ROLE_META[character.role] || { abbr: character.role.slice(0, 3).toUpperCase(), color: '#c9a227' };
     card.innerHTML = `
       <div class="char-card-avatar-slot"></div>
+      <div class="char-card-class-badge" style="--role-color:${roleMeta.color}" title="${character.role}">${roleMeta.abbr}</div>
       <div class="char-card-name">${character.name}</div>
       ${mastery > 0 ? `<div class="char-card-mastery">M${mastery}</div>` : ''}
     `;

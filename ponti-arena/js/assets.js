@@ -34,7 +34,13 @@ const AssetManager = {
     img.alt = character.name;
     img.loading = 'lazy';
     img.decoding = 'async';
+    img.draggable = false;
     img.src = `assets/characters/${safeId}.png`;
+
+    // Prevent the native "Save image / Copy image" long-press or right-click menu on the
+    // character art - this is decorative game UI, not a page the user should be able to save from.
+    img.addEventListener('contextmenu', (e) => e.preventDefault());
+    img.addEventListener('dragstart', (e) => e.preventDefault());
 
     img.onload = () => { wrap.classList.add('photo-loaded'); };
     img.onerror = () => {

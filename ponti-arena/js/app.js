@@ -137,9 +137,20 @@ const App = {
 
   openCharacterTest() {
     this.mode = 'test';
+    this.rosterClassFilter = null;
+    this.renderRosterScreen();
+    UI.showScreen('screen-roster');
+  },
+
+  renderRosterScreen() {
+    UI.renderClassFilter(UI.el('roster-class-filter'), this.rosterClassFilter, (role) => {
+      this.rosterClassFilter = role;
+      this.renderRosterScreen();
+    });
     const grid = UI.el('roster-grid');
     grid.innerHTML = '';
-    CHARACTERS.forEach(c => {
+    const list = this.rosterClassFilter ? CHARACTERS.filter(c => c.role === this.rosterClassFilter) : CHARACTERS;
+    list.forEach(c => {
       const mastery = this.save.mastery[c.id] || 0;
       const card = UI.buildCharacterCard(c, { mastery: Math.floor(mastery / 100) });
       card.addEventListener('click', () => {
@@ -148,7 +159,6 @@ const App = {
       });
       grid.appendChild(card);
     });
-    UI.showScreen('screen-roster');
   },
 
   showCharacterDetailModal(character, offerTest) {
@@ -196,13 +206,25 @@ const App = {
   },
 
   openTeamBuilder(skipModeHeader) {
-    const grid = UI.el('builder-roster-grid');
-    grid.innerHTML = '';
+    this.builderClassFilter = null;
     const title = UI.el('team-builder-title');
     title.textContent = this.mode === 'campaign' ? `Campaign Team - Stage ${CAMPAIGN_STAGES[this.campaignStageIndex].stage}`
       : this.mode === 'practice' ? 'Practice Team' : 'Quick Battle Team';
 
-    CHARACTERS.forEach(c => {
+    this.renderBuilderGrid();
+    this.refreshTeamBuilder();
+    UI.showScreen('screen-team-builder');
+  },
+
+  renderBuilderGrid() {
+    UI.renderClassFilter(UI.el('builder-class-filter'), this.builderClassFilter, (role) => {
+      this.builderClassFilter = role;
+      this.renderBuilderGrid();
+    });
+    const grid = UI.el('builder-roster-grid');
+    grid.innerHTML = '';
+    const list = this.builderClassFilter ? CHARACTERS.filter(c => c.role === this.builderClassFilter) : CHARACTERS;
+    list.forEach(c => {
       const card = UI.buildCharacterCard(c, { selected: this.buildTeam.includes(c.id) });
       card.addEventListener('click', () => {
         AudioSystem.playUIClick();
@@ -218,8 +240,6 @@ const App = {
       });
       grid.appendChild(card);
     });
-    this.refreshTeamBuilder();
-    UI.showScreen('screen-team-builder');
   },
 
   refreshTeamBuilder() {
