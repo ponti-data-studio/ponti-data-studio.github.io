@@ -79,14 +79,14 @@ const DEFENSE_LEAN = {
   void_walker: -0.10, soul_reaper: 0.00,
   // Ranged
   archer: 0.02, ranger: -0.05, gunslinger: 0.06, machinist: 0.10, pirate_captain: 0.04,
-  engineer: -0.02, sniper: -0.08,
+  engineer: -0.02, sniper: -0.08, beastmaster: 0.08,
   // Mages
   wizard: 0.00, warlock: -0.05, 'frost-mage': 0.02, pyromancer: -0.03, stormcaller: 0.04,
-  beastmaster: 0.08, necromancer: -0.06, illusionist: -0.10, spirit_shaman: 0.05,
+  necromancer: -0.06, illusionist: -0.10,
   gravity_mage: -0.02, plague_doctor: 0.03, rune_master: 0.06, witch: -0.08,
   // Supports
   cleric: -0.06, druid: 0.05, chronomancer: -0.10, alchemist: 0.02, oracle: -0.08,
-  bard: 0.00, shadow_priest: -0.04, battle_medic: 0.08,
+  bard: 0.00, shadow_priest: -0.04, battle_medic: 0.08, spirit_shaman: 0.05,
 };
 
 function applyClassBalance(characters) {

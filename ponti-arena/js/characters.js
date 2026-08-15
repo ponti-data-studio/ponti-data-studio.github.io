@@ -210,7 +210,7 @@ const CHARACTERS = [
     ultimate: { id: 'bullet_storm', name: 'Bullet Storm', type: 'damage', targetType: 'all_enemy', power: 1.35, desc: 'Empties every chamber at the enemy team.' },
   },
   {
-    id: 'beastmaster', name: 'Beastmaster', role: 'Mage', icon: '🐾', color: '#a67c52',
+    id: 'beastmaster', name: 'Beastmaster', role: 'Ranged', icon: '🐾', color: '#a67c52',
     difficulty: 'Hard',
     base: { hp: 1020, attack: 128, defense: 84, speed: 96, critRate: 12, critDmg: 155 },
     description: "Commands a bonded beast that fights alongside her.",
@@ -437,7 +437,7 @@ const CHARACTERS = [
     ultimate: { id: 'broadside', name: 'Broadside', type: 'damage', targetType: 'all_enemy', power: 1.4, desc: 'A full cannon salvo on the enemy formation, with bonus damage against the Wanted target.' },
   },
   {
-    id: 'spirit_shaman', name: 'Spirit Shaman', role: 'Mage', icon: '🪶', color: '#5dade2',
+    id: 'spirit_shaman', name: 'Spirit Shaman', role: 'Support', icon: '🪶', color: '#5dade2',
     difficulty: 'Master',
     base: { hp: 940, attack: 98, defense: 75, speed: 92, critRate: 8, critDmg: 150 },
     description: 'A totem-caller whose team-wide auras shift depending on which spirit she has bonded with.',

@@ -32,7 +32,7 @@ engine (see "Data-Driven Implementation" below).
 | Alchemist | Support | Generates random Reagents over time and consumes them for stronger Heals/Poisons; her Ultimate combines whatever she has on hand. |
 | Duelist | Assassin | Gains stacking bonus damage (up to 3x) against the same target - resets if she switches targets. |
 | Pirate Captain | Ranged | Marks a target as Wanted for bonus damage, and can knock enemies back a row with Explosive Barrel. |
-| Spirit Shaman | Mage | Casts one of two mutually-exclusive team-wide Totem auras (only one active at a time). |
+| Spirit Shaman | Support | Casts one of two mutually-exclusive team-wide Totem auras (only one active at a time). |
 | Gravity Mage | Mage | Physically pulls enemies between Front/Middle/Back rows, including a multi-target pull on her Ultimate. |
 
 All ten fully support 3-row formation, targeting, Advanced AI (Expert/Master score-aware of their
