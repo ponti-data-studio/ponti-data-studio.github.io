@@ -195,3 +195,80 @@
   .battle-slot { max-width: 40px; }
   .action-btn-sub { display: none; } /* keep only the essential label when space is extremely tight */
 }
+
+/* =========================================================================
+   PORTRAIT MODE (smartphones held upright): re-flow the arena from a
+   left/right "facing" layout into a stacked top/bottom layout - Enemy team
+   on top, Ally team on the bottom, both Front Rows still meeting at a
+   horizontal "VS" divider in the middle. Everything else (header, log,
+   action menu) restacks to fit the narrower width. Still zero page scroll.
+   ========================================================================= */
+@media (orientation: portrait) {
+  .battle-arena { flex-direction: column; gap: 2px; padding: 6px 8px; }
+
+  /* Reorder purely by DOM position (see index.html): 1-3=Ally Back/Middle/Front,
+     4=center gap, 5-7=Enemy Front/Middle/Back. Flip so Enemy reads top->down
+     Back->Middle->Front, then the divider, then Ally Front->Middle->Back. */
+  .battle-arena > *:nth-child(1) { order: 7; } /* Ally Back   -> bottom-most */
+  .battle-arena > *:nth-child(2) { order: 6; } /* Ally Middle */
+  .battle-arena > *:nth-child(3) { order: 5; } /* Ally Front  -> just below the divider */
+  .battle-arena > *:nth-child(4) { order: 4; } /* VS divider */
+  .battle-arena > *:nth-child(5) { order: 3; } /* Enemy Front -> just above the divider */
+  .battle-arena > *:nth-child(6) { order: 2; } /* Enemy Middle */
+  .battle-arena > *:nth-child(7) { order: 1; } /* Enemy Back  -> top-most */
+
+  .formation-column {
+    flex-direction: row; align-items: center; gap: 6px; flex: 1 1 0; min-height: 0;
+    padding: 1px 4px; width: 100%;
+  }
+  .formation-column-label {
+    writing-mode: horizontal-tb; width: 38px; flex-shrink: 0; text-align: left;
+    font-size: 0.5rem;
+  }
+  .battle-side-slots {
+    flex-direction: row; flex-wrap: wrap; justify-content: flex-start;
+    width: auto; flex: 1 1 auto;
+  }
+  .ally-slots, .enemy-slots { justify-content: flex-start; }
+
+  .battle-center-gap {
+    width: 100%; height: 14px; flex-shrink: 0;
+  }
+  .battle-center-gap::before {
+    top: 50%; bottom: auto; left: 4%; right: 4%; height: 2px; width: auto;
+    background: linear-gradient(90deg, transparent, var(--gold) 15%, var(--gold) 85%, transparent);
+    transform: translateY(-50%);
+  }
+
+  .battle-slot { max-width: 52px; width: auto; flex: 0 0 auto; }
+
+  .battle-header {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px;
+  }
+  .battle-header-labels { flex-basis: 100%; order: 3; justify-content: center; }
+  #btn-forfeit { order: 1; }
+  #difficulty-badge { order: 2; }
+  .side-label { font-size: 0.6rem; }
+  .turn-timeline { gap: 3px; padding: 2px 4px; }
+  .timeline-chip { width: 22px; height: 22px; font-size: 0.7rem; }
+  .difficulty-badge { font-size: 0.6rem; padding: 3px 8px; }
+
+  .battle-lower {
+    flex-direction: column; max-height: 30vh; max-height: 30dvh; gap: 4px;
+  }
+  .battle-log { max-height: 40%; flex: 0 1 auto; }
+  .battle-action-col { flex: 1 1 auto; min-height: 0; }
+}
+
+@media (orientation: portrait) and (max-height: 700px) {
+  .battle-slot { max-width: 44px; width: auto; flex: 0 0 auto; }
+  .formation-column-label { font-size: 0.44rem; width: 32px; }
+  .bar { height: 6px; }
+  .action-btn { min-height: 30px; }
+}
+
+@media (orientation: portrait) and (min-width: 500px) {
+  /* Portrait tablets get a bit more breathing room. */
+  .battle-slot { max-width: 68px; width: auto; flex: 0 0 auto; }
+  .formation-column-label { width: 50px; font-size: 0.6rem; }
+}

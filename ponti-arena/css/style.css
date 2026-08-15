@@ -130,17 +130,16 @@ ul, ol { padding-left: 1.2em; }
 .onboarding-actions { display: flex; gap: 12px; margin-top: 20px; }
 .onboarding-actions .btn { flex: 1; }
 
-/* ---------- Orientation Lock (Ponti Arena is landscape-only, see spec #107 / #127) ---------- */
+/* ---------- Orientation Lock (disabled) ----------
+   Ponti Arena now fully supports smartphone Portrait mode as well as Landscape - the battle
+   screen (and every other screen) adapts its layout via orientation-aware CSS instead of forcing
+   a rotate prompt. The markup/JS for the rotate overlay is kept harmlessly inert (never shown)
+   in case a future release wants to reintroduce a hard landscape requirement for a specific mode. */
 .orientation-lock {
-  display: none; position: fixed; inset: 0; z-index: 9999; background: var(--bg-void);
+  display: none !important; position: fixed; inset: 0; z-index: 9999; background: var(--bg-void);
   flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px;
 }
 .orientation-icon { font-size: 3rem; color: var(--gold-light); animation: rotate-hint 1.8s ease-in-out infinite; }
 @keyframes rotate-hint { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-90deg); } }
 .orientation-lock p { color: var(--text); font-family: var(--font-display); font-size: 1.1rem; margin: 14px 0 4px; }
 .orientation-sub { font-family: var(--font-body); color: var(--text-dim); font-size: 0.85rem; }
-
-@media (orientation: portrait) {
-  .orientation-lock { display: flex; }
-  #app-root { display: none; }
-}

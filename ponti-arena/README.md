@@ -12,7 +12,7 @@ No pay-to-win, no ads, no accounts, no backend. Strategy beats grinding.
 - 5v5 Battles with **30** fully data-driven characters, each with a distinct kit (not just re-skinned numbers)
 - AI opponents with 4 real difficulty levels (Easy / Normal / Hard / Extreme) — no stat cheating, ever — and 3 formation strategies (Balanced / Aggressive / Ranged) that Extreme AI picks to counter your own formation
 - Fully offline after first load, installable as a PWA on Android, iOS, Windows, macOS, and Linux
-- Landscape-only battle experience with a "rotate your device" lock on portrait screens
+- Fully responsive to **both Portrait and Landscape** on smartphones - the battle arena re-flows between a left/right layout (landscape) and a stacked top/bottom layout (portrait), always fitting on one screen with zero scrolling
 - Character Mastery, Campaign (5 stages), Achievements, and Quick Battle / Practice / Character Test modes
 - No Shop, no ads, no premium currency, no loot boxes — see "Fair by Design" below
 
@@ -65,9 +65,9 @@ difficulty comes entirely from decision quality, never from hidden bonuses (see 
 
 ## Formations & Positioning
 
-Ally slots render on the **left**, enemy slots on the **right**, both split into three horizontal
-bands: **Front**, **Middle**, **Back**. You place your own 5 characters — there is no forced
-"Tank front / DPS middle / Healer back" rule.
+Ally slots render on the **left**, enemy slots on the **right** in Landscape (or **bottom**/**top**
+in Portrait), both split into three bands: **Front**, **Middle**, **Back**. You place your own 5
+characters — there is no forced "Tank front / DPS middle / Healer back" rule.
 
 - **Front Row** is the default target for Basic Attacks and most generic skills, and suits
   Tanks/Fighters who want to soak hits.
@@ -81,6 +81,20 @@ bands: **Front**, **Middle**, **Back**. You place your own 5 characters — ther
   tap a character then tap Front/Middle/Back to place them, tap a placed character to send them back
   to the pool, or use **Auto Arrange** for a sensible default. Desktop also supports drag-and-drop.
 - Practice and Character Test skip the formation step and auto-arrange for speed.
+
+### Portrait vs Landscape
+
+The Battle screen adapts to whichever way the phone is held, and always fits in one screen with no
+scrolling:
+
+- **Landscape**: Ally reads Back → Middle → Front (left to right) facing Enemy's Front → Middle →
+  Back, so both team's Front Rows meet at a "VS" divider in the center.
+- **Portrait**: the same idea rotated 90° — Enemy is stacked Back (top) → Middle → Front, then the
+  "VS" divider, then Ally Front → Middle → Back (bottom), so the two Front Rows still meet in the
+  middle of the screen.
+
+Every other screen (menus, Character Selection, Formation editor, Settings, Results) uses an
+ordinary responsive layout and scrolls normally in either orientation.
 
 ## Fair by Design
 
