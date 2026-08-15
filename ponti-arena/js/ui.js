@@ -119,18 +119,40 @@ const UI = {
   },
 
   // ---------- Formation Editor ----------
-  buildFormationChip(characterId, { selected = false, draggable = true } = {}) {
+  buildFormationChip(characterId, { selected = false, draggable = true, arrows = null } = {}) {
     const character = getCharacterById(characterId);
     const chip = document.createElement('div');
-    chip.className = 'formation-chip' + (selected ? ' selected' : '');
+    chip.className = 'formation-chip' + (selected ? ' selected' : '') + (arrows ? ' placed' : '');
     chip.dataset.characterId = characterId;
     chip.draggable = draggable;
-    chip.innerHTML = `<div class="char-avatar small"></div><span class="formation-chip-name">${character.name}</span>`;
-    chip.querySelector('.char-avatar').appendChild(AssetManager.buildAvatarElement(character, 'small'));
+
+    if (arrows) {
+      chip.innerHTML = `
+        <button type="button" class="chip-arrow chip-arrow-up" aria-label="Move up a row" ${arrows.canUp ? '' : 'disabled'}>▲</button>
+        <div class="chip-middle-row">
+          <button type="button" class="chip-arrow chip-arrow-left" aria-label="Move left" ${arrows.canLeft ? '' : 'disabled'}>◀</button>
+          <div class="chip-portrait">
+            <div class="char-avatar small"></div>
+            <span class="formation-chip-name">${character.name}</span>
+          </div>
+          <button type="button" class="chip-arrow chip-arrow-right" aria-label="Move right" ${arrows.canRight ? '' : 'disabled'}>▶</button>
+        </div>
+        <button type="button" class="chip-arrow chip-arrow-down" aria-label="Move down a row" ${arrows.canDown ? '' : 'disabled'}>▼</button>
+      `;
+      chip.querySelector('.char-avatar').appendChild(AssetManager.buildAvatarElement(character, 'small'));
+      chip.querySelector('.chip-arrow-up').addEventListener('click', (e) => { e.stopPropagation(); arrows.onUp(); });
+      chip.querySelector('.chip-arrow-down').addEventListener('click', (e) => { e.stopPropagation(); arrows.onDown(); });
+      chip.querySelector('.chip-arrow-left').addEventListener('click', (e) => { e.stopPropagation(); arrows.onLeft(); });
+      chip.querySelector('.chip-arrow-right').addEventListener('click', (e) => { e.stopPropagation(); arrows.onRight(); });
+      chip.querySelector('.chip-portrait').addEventListener('click', (e) => { e.stopPropagation(); arrows.onRemove(); });
+    } else {
+      chip.innerHTML = `<div class="char-avatar small"></div><span class="formation-chip-name">${character.name}</span>`;
+      chip.querySelector('.char-avatar').appendChild(AssetManager.buildAvatarElement(character, 'small'));
+    }
     return chip;
   },
 
-  renderFormationEditor(formation, poolIds, { selectedId, onChipClick, onRowClick, onDragStart, onRowDrop } = {}) {
+  renderFormationEditor(formation, poolIds, { selectedId, onChipClick, onRowClick, onDragStart, onRowDrop, onMoveRow, onMoveColumn, onSwap } = {}) {
     const pool = this.el('formation-pool');
     pool.innerHTML = '';
     poolIds.forEach(id => {
@@ -140,7 +162,8 @@ const UI = {
       pool.appendChild(chip);
     });
 
-    ['front', 'middle', 'back'].forEach(row => {
+    const ROW_ORDER = ['front', 'middle', 'back'];
+    ROW_ORDER.forEach((row, rowIndex) => {
       const container = this.el(`formation-row-${row}`);
       container.innerHTML = '';
       container.ondragover = (e) => { e.preventDefault(); container.classList.add('drop-hover'); };
@@ -154,9 +177,33 @@ const UI = {
       container.addEventListener('click', (e) => {
         if (e.target === container) onRowClick(row);
       });
-      formation.filter(p => p.row === row).sort((a, b) => a.column - b.column).forEach(p => {
-        const chip = this.buildFormationChip(p.id, { selected: false });
-        chip.addEventListener('click', (e) => { e.stopPropagation(); onChipClick(p.id, row); });
+      const rowMembers = formation.filter(p => p.row === row).sort((a, b) => a.column - b.column);
+      rowMembers.forEach((p, colIndex) => {
+        const chip = this.buildFormationChip(p.id, {
+          arrows: {
+            canUp: rowIndex > 0,
+            canDown: rowIndex < ROW_ORDER.length - 1,
+            canLeft: colIndex > 0,
+            canRight: colIndex < rowMembers.length - 1,
+            onUp: () => onMoveRow(p.id, -1),
+            onDown: () => onMoveRow(p.id, 1),
+            onLeft: () => onMoveColumn(p.id, -1),
+            onRight: () => onMoveColumn(p.id, 1),
+            onRemove: () => onChipClick(p.id, row),
+          },
+        });
+        // Drag-and-drop also works for already-placed chips - dropping on another row moves it
+        // there directly (no need to remove it back to the pool first), and dropping it onto
+        // another placed chip swaps the two, covering left/right and up/down rearrangement.
+        chip.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', p.id); onDragStart && onDragStart(p.id); });
+        chip.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); chip.classList.add('drop-hover'); });
+        chip.addEventListener('dragleave', () => chip.classList.remove('drop-hover'));
+        chip.addEventListener('drop', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          chip.classList.remove('drop-hover');
+          const draggedId = e.dataTransfer.getData('text/plain');
+          if (draggedId && draggedId !== p.id) onSwap(draggedId, p.id);
+        });
         container.appendChild(chip);
       });
       container.addEventListener('click', () => { if (selectedId) onRowClick(row); });

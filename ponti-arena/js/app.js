@@ -271,7 +271,14 @@ const App = {
       onChipClick: (id, row) => {
         AudioSystem.playUIClick();
         if (row) {
-          // Tapped an already-placed chip - send it back to the pool.
+          // Tapped an already-placed chip's portrait.
+          if (this.formationSelectedId && this.formationSelectedId !== id) {
+            // Something else is already selected - swap them directly (works whether the
+            // selection came from the pool or another row), no need to unplace first.
+            this.swapFormationSlots(this.formationSelectedId, id);
+            return;
+          }
+          // Nothing selected (or tapping itself again) - send it back to the pool.
           this.buildFormation = this.buildFormation.filter(p => p.id !== id);
           this.formationSelectedId = null;
         } else {
@@ -284,8 +291,32 @@ const App = {
         this.placeInRow(this.formationSelectedId, row);
       },
       onRowDrop: (id, row) => this.placeInRow(id, row),
+      onMoveRow: (id, delta) => this.moveCharacterRow(id, delta),
+      onMoveColumn: (id, delta) => this.moveCharacterColumn(id, delta),
+      onSwap: (draggedId, targetId) => this.swapFormationSlots(draggedId, targetId),
     });
     UI.el('btn-formation-continue').disabled = this.buildFormation.length < this.buildTeam.length;
+  },
+
+  /** Dropping one chip directly onto another: swaps their row+column if both are placed, or
+   *  "replaces" the target with a pool character (the target goes back to the pool) otherwise. */
+  swapFormationSlots(draggedId, targetId) {
+    AudioSystem.playUIClick();
+    const draggedEntry = this.buildFormation.find(p => p.id === draggedId);
+    const targetEntry = this.buildFormation.find(p => p.id === targetId);
+    if (!targetEntry) return;
+    if (draggedEntry) {
+      const tmpRow = draggedEntry.row, tmpCol = draggedEntry.column;
+      draggedEntry.row = targetEntry.row; draggedEntry.column = targetEntry.column;
+      targetEntry.row = tmpRow; targetEntry.column = tmpCol;
+    } else {
+      // Dragged from the pool: the target's slot is taken over, target returns to the pool.
+      const { row, column } = targetEntry;
+      this.buildFormation = this.buildFormation.filter(p => p.id !== targetId);
+      this.buildFormation.push({ id: draggedId, row, column });
+    }
+    this.formationSelectedId = null;
+    this.refreshFormationEditor();
   },
 
   placeInRow(id, row) {
@@ -294,6 +325,39 @@ const App = {
     const column = this.buildFormation.filter(p => p.row === row).length;
     this.buildFormation.push({ id, row, column });
     this.formationSelectedId = null;
+    this.refreshFormationEditor();
+  },
+
+  /** Moves an already-placed character directly to the row above (-1) or below (+1) - Back<->Middle<->Front -
+   *  without needing to unplace it back to the pool first. Appended at the end of the target row. */
+  moveCharacterRow(id, delta) {
+    const ROW_ORDER = ['front', 'middle', 'back'];
+    const entry = this.buildFormation.find(p => p.id === id);
+    if (!entry) return;
+    const currentIndex = ROW_ORDER.indexOf(entry.row);
+    const newIndex = currentIndex + delta;
+    if (newIndex < 0 || newIndex >= ROW_ORDER.length) return; // already at the boundary
+    AudioSystem.playUIClick();
+    const newRow = ROW_ORDER[newIndex];
+    this.buildFormation = this.buildFormation.filter(p => p.id !== id);
+    const column = this.buildFormation.filter(p => p.row === newRow).length;
+    this.buildFormation.push({ id, row: newRow, column });
+    this.refreshFormationEditor();
+  },
+
+  /** Swaps an already-placed character with its left (-1) or right (+1) neighbor within the same row. */
+  moveCharacterColumn(id, delta) {
+    const entry = this.buildFormation.find(p => p.id === id);
+    if (!entry) return;
+    const rowMembers = this.buildFormation.filter(p => p.row === entry.row).sort((a, b) => a.column - b.column);
+    const index = rowMembers.findIndex(p => p.id === id);
+    const swapIndex = index + delta;
+    if (swapIndex < 0 || swapIndex >= rowMembers.length) return; // already at the edge of the row
+    AudioSystem.playUIClick();
+    const neighbor = rowMembers[swapIndex];
+    const tmpColumn = entry.column;
+    entry.column = neighbor.column;
+    neighbor.column = tmpColumn;
     this.refreshFormationEditor();
   },
 
