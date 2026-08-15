@@ -16,15 +16,20 @@ const AssetManager = {
     const wrap = document.createElement('div');
     wrap.className = `char-avatar ${sizeClass}`;
     wrap.style.setProperty('--char-color', character.color || '#c9a227');
-
+  
+    // Format ID agar selalu menggunakan strip (-)
+    const safeId = String(character.id || '')
+      .toLowerCase()
+      .replace(/[\s_]+/g, '-');
+  
     const img = document.createElement('img');
     img.alt = character.name;
     img.loading = 'lazy';
     img.decoding = 'async';
-    img.src = `assets/characters/${character.id}.png`;
+    img.src = `assets/characters/${safeId}.png`;
+    
     img.onload = () => { wrap.classList.add('photo-loaded'); };
     img.onerror = () => {
-      // Tier 2/3 fallback: swap the broken <img> for a generated SVG icon.
       img.remove();
       wrap.appendChild(this.buildGeneratedIcon(character));
       wrap.classList.add('fallback-loaded');
