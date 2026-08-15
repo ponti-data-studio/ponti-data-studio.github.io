@@ -19,11 +19,11 @@
 // `physicalRatio` (how much of the total leans physical vs magical).
 const CLASS_BALANCE_TEMPLATE = {
   Tank:       { hp: 1250, attack: 96,  speed: 73,  defenseTotal: 236, critRate: 6,  critDmg: 150, evasion: 4,  physicalRatio: 0.55 },
-  Bruiser:    { hp: 1100, attack: 148, speed: 96,  defenseTotal: 172, critRate: 13, critDmg: 162, evasion: 10, physicalRatio: 0.60 },
-  Fighter:    { hp: 1040, attack: 148, speed: 101, defenseTotal: 164, critRate: 14, critDmg: 165, evasion: 10, physicalRatio: 0.62 },
-  Skirmisher: { hp: 900,  attack: 140, speed: 112, defenseTotal: 145, critRate: 16, critDmg: 168, evasion: 10, physicalRatio: 0.58 },
-  Assassin:   { hp: 820,  attack: 155, speed: 109, defenseTotal: 120, critRate: 20, critDmg: 175, evasion: 16, physicalRatio: 0.60 },
-  Ranged:     { hp: 870,  attack: 145, speed: 102, defenseTotal: 134, critRate: 18, critDmg: 165, evasion: 13, physicalRatio: 0.55 },
+  Bruiser:    { hp: 1060, attack: 136, speed: 94,  defenseTotal: 158, critRate: 12, critDmg: 158, evasion: 9,  physicalRatio: 0.60 },
+  Fighter:    { hp: 1030, attack: 144, speed: 100, defenseTotal: 158, critRate: 13, critDmg: 162, evasion: 9,  physicalRatio: 0.62 },
+  Skirmisher: { hp: 900,  attack: 138, speed: 112, defenseTotal: 145, critRate: 15, critDmg: 165, evasion: 10, physicalRatio: 0.58 },
+  Assassin:   { hp: 790,  attack: 135, speed: 105, defenseTotal: 110, critRate: 18, critDmg: 170, evasion: 10, physicalRatio: 0.60 },
+  Ranged:     { hp: 870,  attack: 134, speed: 101, defenseTotal: 134, critRate: 17, critDmg: 162, evasion: 11, physicalRatio: 0.55 },
   Mage:       { hp: 830,  attack: 136, speed: 92,  defenseTotal: 122, critRate: 10, critDmg: 158, evasion: 7,  physicalRatio: 0.35 },
   Control:    { hp: 820,  attack: 125, speed: 93,  defenseTotal: 122, critRate: 10, critDmg: 155, evasion: 7,  physicalRatio: 0.38 },
   Support:    { hp: 860,  attack: 86,  speed: 93,  defenseTotal: 128, critRate: 8,  critDmg: 150, evasion: 4,  physicalRatio: 0.42 },
@@ -56,8 +56,8 @@ const EVASION_OVERRIDES = {
   illusionist: 14,  // Mirror Image is her entire identity
   witch: 9,         // slightly more slippery than a typical Control
   fencer: 13,       // Footwork is an evasion-stacking kit on top of the Fighter baseline
-  void_walker: 18,  // teleport-assassin, above the Assassin baseline
-  ninja: 18,        // already an evasion-flavored Assassin
+  void_walker: 15,  // teleport-assassin, above the Assassin baseline
+  ninja: 15,        // already an evasion-flavored Assassin
 };
 
 function applyClassBalance(characters) {
