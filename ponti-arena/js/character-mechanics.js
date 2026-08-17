@@ -30,6 +30,9 @@ const CharacterMechanics = {
       activeTotems: { healing: false, spirit: false }, // Spirit Shaman - both can be active at once
       totemSlots: { healing: null, spirit: null },     // Spirit Shaman - {row, column} per active Totem
       skeletonsLost: 0,           // Necromancer - count of his own fallen Skeletons this battle
+      turretId: null,              // Engineer - actor id of his current Turret/War Machine summon, if any
+      isWarMachine: false,         // Engineer - whether the Turret is currently upgraded (AoE auto-fire)
+      warMachineTurnsLeft: 0,      // Engineer - how many more of HIS turns the AoE fire mode lasts
       beastCycle: 0,               // Beastmaster - which beast type is next (0=Tiger,1=Wolf,2=Eagle)
       beastId: null,                // Beastmaster - actor id of her current living Beast, if any
       ki: 0,                     // Monk (0-100)
@@ -58,7 +61,7 @@ const CharacterMechanics = {
     if (actor.isDead) return events;
 
     if (actor.character.id === 'paladin') this.refreshProtection(actor, allActors);
-    if (actor.character.id === 'engineer') this.tickTurret(actor, allActors, events);
+    if (actor.character.id === 'engineer') this.autoShootTurret(actor, allActors, events);
     if (actor.mech.spreadCooldown > 0) actor.mech.spreadCooldown -= 1;
     return events;
   },
@@ -78,28 +81,69 @@ const CharacterMechanics = {
     if (deadActor.isSummon && deadActor.ownerId) {
       const owner = allActors.find(a => a.id === deadActor.ownerId);
       if (owner && owner.character.id === 'necromancer' && owner.mech) owner.mech.skeletonsLost += 1;
+      // Engineer's Turret/War Machine destroyed - clear the reference so Auto Shoot stops trying.
+      if (owner && owner.character.id === 'engineer' && owner.mech && owner.mech.turretId === deadActor.id) {
+        owner.mech.turretId = null;
+        owner.mech.isWarMachine = false;
+      }
     }
   },
 
   // ---------------------------------------------------------------- ENGINEER ----
-  /** The Turret fires automatically at the start of its owner's turn, then counts down its duration. */
-  tickTurret(engineer, allActors, events) {
-    const turret = engineer.mech.turret;
-    if (!turret) return;
-    turret.duration -= 1;
-    if (turret.duration <= 0) {
-      engineer.mech.turret = null;
-      events.push({ type: 'special', actor: engineer.id, text: `${engineer.name}'s ${turret.isWarMachine ? 'War Machine' : 'Turret'} runs out of power and shuts down.` });
-      return;
+  /** Engineer's Auto Shoot passive: fires the Turret (single random target) or War Machine (whole
+   *  row) at the start of Engineer's own turn - see the row-fallback rule below. Called once per
+   *  Engineer turn from onTurnStart; the AoE window then ticks down by exactly one of Engineer's
+   *  own turns per call. */
+  autoShootTurret(engineer, allActors, events) {
+    const turret = allActors.find(a => a.id === engineer.mech.turretId && !a.isDead);
+    if (!turret) { engineer.mech.turretId = null; engineer.mech.isWarMachine = false; return; }
+    this.fireTurret(engineer, turret, allActors, events, false);
+    if (engineer.mech.isWarMachine) {
+      engineer.mech.warMachineTurnsLeft -= 1;
+      if (engineer.mech.warMachineTurnsLeft <= 0) {
+        engineer.mech.isWarMachine = false; // Reverts to single-target auto-fire; the stat upgrade itself stays.
+        events.push({ type: 'special', actor: engineer.id, text: `${turret.name} settles back into standard Turret fire mode.` });
+      }
     }
+  },
+
+  /** Turret fires 1 random enemy in the Front Row (or Middle, or Back - first non-empty row).
+   *  War Machine (isWarMachine true, or `forceAoe`) instead fires at EVERY enemy in that row. */
+  fireTurret(engineer, turret, allActors, events, forceAoe) {
+    if (!turret || turret.isDead) return;
+    const isWarMachine = forceAoe || engineer.mech.isWarMachine;
     const enemies = allActors.filter(a => a.side !== engineer.side && !a.isDead);
     if (enemies.length === 0) return;
-    // Simple, transparent target choice: lowest current HP% (same info a player could reason about).
-    const target = [...enemies].sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
-    const dealt = CombatEngine.applyDamage(engineer, target, Math.max(1, Math.round(turret.attack)));
-    events.push({ type: 'damage', actor: engineer.id, target: target.id, amount: dealt, isCrit: false,
-      text: `${engineer.name}'s ${turret.isWarMachine ? 'War Machine' : 'Turret'} fires at ${target.name} for ${dealt} damage.` });
-    if (target.isDead) events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` });
+    let targetRow = null;
+    for (const row of ['front', 'middle', 'back']) {
+      if (enemies.some(e => e.position.row === row)) { targetRow = row; break; }
+    }
+    if (!targetRow) return;
+    const rowEnemies = enemies.filter(e => e.position.row === targetRow);
+    const label = turret.name;
+    const shoot = (target) => {
+      const { amount, isCrit } = CombatEngine.calculateDamage(turret, target, 1.0, { bypassProtection: true });
+      const dealt = CombatEngine.applyDamage(turret, target, amount);
+      events.push({ type: 'damage', actor: turret.id, target: target.id, amount: dealt, isCrit,
+        text: `${label} fires at ${target.name} for ${dealt} damage.` });
+      if (target.isDead) { events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` }); CharacterMechanics.registerDeath(target, allActors); }
+    };
+    if (isWarMachine) {
+      rowEnemies.forEach(shoot);
+    } else {
+      shoot(rowEnemies[Math.floor(Math.random() * rowEnemies.length)]);
+    }
+  },
+
+  /** Deploys a real, independently targetable Turret (see battle.createSummon) - enemies can
+   *  attack and destroy it directly; Engineer herself is untouched by hits aimed at the Turret. */
+  deployTurret(engineer, ctx) {
+    if (!ctx.battle) return null;
+    const maxHp = Math.round(engineer.maxHp * 0.42);
+    const attack = Math.round(CombatEngine.liveStat(engineer, 'attack') * 0.55);
+    const turret = ctx.battle.createSummon(engineer, { name: 'Turret', icon: '🛠️', color: '#c9c94a', hp: maxHp, attack, attackType: 'physical' }, ctx.chosenSlot);
+    if (turret) engineer.mech.turretId = turret.id;
+    return turret;
   },
 
   /** Finds an open grid slot for a new summon on `owner`'s side of the 12-slot battlefield
@@ -113,19 +157,14 @@ const CharacterMechanics = {
     return TargetingEngine.findOpenSlot(combined, owner.position ? owner.position.row : 'back');
   },
 
-  /** Collects every currently-active summon (Engineer's Turret/War Machine, Spirit Shaman's Totem)
-   *  across all actors into one normalized list for rendering - see buildSummonSlot() in ui.js. */
+  /** Collects every currently-active PURELY VISUAL summon (Spirit Shaman's Totems) across all
+   *  actors into one normalized list for rendering - see buildSummonSlot() in ui.js. Engineer's
+   *  Turret/War Machine is NOT listed here anymore: it's a real actor in battle.actors now (see
+   *  battle.createSummon), so it's already rendered through the normal actor-slot path. */
   getActiveSummons(allActors) {
     const summons = [];
     allActors.forEach((a) => {
       if (!a.mech || a.isDead) return;
-      if (a.mech.turret && a.mech.turret.slot) {
-        summons.push({
-          id: `turret-${a.id}`, ownerId: a.id, side: a.side, row: a.mech.turret.slot.row, column: a.mech.turret.slot.column,
-          icon: '🛠️', name: a.mech.turret.isWarMachine ? 'War Machine' : 'Turret',
-          hp: a.mech.turret.hp, maxHp: a.mech.turret.maxHp, color: '#c9c94a',
-        });
-      }
       if (a.mech.activeTotems) {
         if (a.mech.activeTotems.healing && a.mech.totemSlots && a.mech.totemSlots.healing) {
           const s = a.mech.totemSlots.healing;
@@ -140,12 +179,6 @@ const CharacterMechanics = {
       }
     });
     return summons;
-  },
-
-  deployTurret(engineer, allActors, forcedSlot) {
-    const maxHp = Math.round(engineer.maxHp * 0.35);
-    const slot = forcedSlot || this.findSummonSlot(engineer, allActors || []);
-    engineer.mech.turret = { hp: maxHp, maxHp, attack: Math.round(CombatEngine.liveStat(engineer, 'attack') * 0.5), duration: 4, isWarMachine: false, slot };
   },
 
   // ---------------------------------------------------------------- RESOURCES (Ki / Rage / Dragon Gauge) ----
@@ -676,34 +709,76 @@ const CharacterMechanics = {
 
     // Engineer ---------------------------------------------------------------------------------
     deploy_turret_eng(actor, skillDef, targets, events, ctx) {
-      CharacterMechanics.deployTurret(actor, ctx.allActors, ctx.chosenSlot);
-      events.push({ type: 'special', actor: actor.id, text: `${actor.name} deploys a Turret.` });
+      const turret = CharacterMechanics.deployTurret(actor, ctx);
+      if (turret) events.push({ type: 'special', actor: actor.id, text: `${actor.name} deploys a Turret - enemies can target it directly.` });
+      else events.push({ type: 'special', actor: actor.id, text: `${actor.name} has no room to deploy a Turret.` });
     },
-    repair(actor, skillDef, targets, events) {
-      if (actor.mech.turret) {
-        const restore = Math.round(actor.mech.turret.maxHp * 0.5);
-        actor.mech.turret.hp = Math.min(actor.mech.turret.maxHp, actor.mech.turret.hp + restore);
-        events.push({ type: 'special', actor: actor.id, text: `${actor.name} repairs the Turret for ${restore} durability.` });
-      } else {
-        const target = targets[0];
-        if (target && !target.isDead) {
-          CombatEngine.applyShield(target, Math.round(target.maxHp * 0.22));
-          events.push({ type: 'shield', actor: actor.id, target: target.id, text: `${actor.name} shields ${target.name}.` });
-        }
+    repair(actor, skillDef, targets, events, ctx) {
+      const turret = ctx.allActors.find(a => a.id === actor.mech.turretId && !a.isDead);
+      if (!turret) {
+        events.push({ type: 'special', actor: actor.id, text: `${actor.name} has no Turret to repair.` });
+        return;
       }
+      const restore = Math.round(turret.maxHp * 0.5);
+      const healed = CombatEngine.applyHeal(actor, turret, restore);
+      events.push({ type: 'heal', actor: actor.id, target: turret.id, amount: healed, text: `${actor.name} repairs ${turret.name} for ${healed} HP.` });
     },
     war_machine(actor, skillDef, targets, events, ctx) {
-      const maxHp = Math.round(actor.maxHp * 0.55);
-      const carryOver = actor.mech.turret ? Math.round(maxHp * 0.4) : 0;
-      const slot = actor.mech.turret && actor.mech.turret.slot ? actor.mech.turret.slot : (ctx.chosenSlot || CharacterMechanics.findSummonSlot(actor, ctx.allActors));
-      actor.mech.turret = { hp: Math.min(maxHp, maxHp * 0.6 + carryOver), maxHp, attack: Math.round(CombatEngine.liveStat(actor, 'attack') * 0.85), duration: 4, isWarMachine: true, slot };
-      events.push({ type: 'special', actor: actor.id, text: `${actor.name} deploys a War Machine!` });
-      const enemies = ctx.allActors.filter(a => a.side !== actor.side && !a.isDead);
-      enemies.forEach(e => {
-        const { amount, isCrit } = CombatEngine.calculateDamage(actor, e, 0.55, { bypassProtection: true });
-        const dealt = CombatEngine.applyDamage(actor, e, amount);
-        events.push({ type: 'damage', actor: actor.id, target: e.id, amount: dealt, isCrit, text: `The War Machine's opening barrage hits ${e.name} for ${dealt} damage.` });
-        if (e.isDead) events.push({ type: 'death', actor: e.id, text: `${e.name} has fallen!` });
+      let turret = ctx.allActors.find(a => a.id === actor.mech.turretId && !a.isDead);
+      let justDeployed = false;
+      if (!turret) {
+        turret = CharacterMechanics.deployTurret(actor, ctx);
+        justDeployed = true;
+      }
+      if (!turret) {
+        events.push({ type: 'special', actor: actor.id, text: `${actor.name} has no room to deploy a War Machine.` });
+        return;
+      }
+      // Upgrade: bigger HP pool (healed proportionally, never less than 70%) and bigger Attack -
+      // this boost is permanent (a real upgrade), while the AoE fire pattern itself lasts 2 turns.
+      const hpRatio = justDeployed ? 1 : turret.hp / turret.maxHp;
+      turret.maxHp = Math.round(turret.maxHp * 1.7);
+      turret.hp = Math.min(turret.maxHp, Math.round(turret.maxHp * Math.max(hpRatio, 0.7)));
+      turret.stats.attack = Math.round(turret.stats.attack * 1.6);
+      turret.character.base.attack = turret.stats.attack;
+      turret.character.name = 'War Machine';
+      turret.name = 'War Machine';
+      actor.mech.isWarMachine = true;
+      actor.mech.warMachineTurnsLeft = 2;
+      events.push({ type: 'special', actor: actor.id, target: turret.id, text: `${justDeployed ? 'A freshly deployed Turret is' : "Engineer's Turret is"} upgraded into a War Machine!` });
+      // Fires immediately on activation, same row-fallback rule as the passive.
+      CharacterMechanics.fireTurret(actor, turret, ctx.allActors, events, true);
+    },
+
+    // Machinist ---------------------------------------------------------------------------------
+    // (Turret Attack passive - joining her Basic Attack on the same target - is handled inline in
+    //  skills.js right next to Beastmaster's Animal Bond, the closest existing analog.)
+    deploy_turret_mech(actor, skillDef, targets, events, ctx) {
+      const turret = CharacterMechanics.deployTurret(actor, ctx);
+      if (turret) events.push({ type: 'special', actor: actor.id, text: `${actor.name} deploys a Turret - enemies can target it directly.` });
+      else events.push({ type: 'special', actor: actor.id, text: `${actor.name} has no room to deploy a Turret.` });
+    },
+    throw_mines(actor, skillDef, targets, events, ctx) {
+      const target = targets[0];
+      if (!target || target.isDead) return;
+      const turret = ctx.allActors.find(a => a.id === actor.mech.turretId && !a.isDead);
+      if (!turret) return;
+      const { amount, isCrit } = CombatEngine.calculateDamage(turret, target, 0.9, { bypassProtection: true });
+      const dealt = CombatEngine.applyDamage(turret, target, amount);
+      events.push({ type: 'damage', actor: turret.id, target: target.id, amount: dealt, isCrit,
+        text: `${turret.name} joins the strike on ${target.name} for ${dealt} damage.` });
+      if (target.isDead) { events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` }); CharacterMechanics.registerDeath(target, ctx.allActors); }
+    },
+    mechanical_overload(actor, skillDef, targets, events, ctx) {
+      const turret = ctx.allActors.find(a => a.id === actor.mech.turretId && !a.isDead);
+      if (!turret) return;
+      targets.forEach((t) => {
+        if (t.isDead) return;
+        const { amount, isCrit } = CombatEngine.calculateDamage(turret, t, 0.7, { bypassProtection: true });
+        const dealt = CombatEngine.applyDamage(turret, t, amount);
+        events.push({ type: 'damage', actor: turret.id, target: t.id, amount: dealt, isCrit,
+          text: `${turret.name} unloads on ${t.name} for ${dealt} damage.` });
+        if (t.isDead) { events.push({ type: 'death', actor: t.id, text: `${t.name} has fallen!` }); CharacterMechanics.registerDeath(t, ctx.allActors); }
       });
     },
 

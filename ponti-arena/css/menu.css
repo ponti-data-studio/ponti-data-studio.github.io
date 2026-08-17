@@ -141,3 +141,13 @@
 .rune-pick-btn.rune-fire:hover, .rune-pick-btn.rune-fire:active { border-color: #d9524f; }
 .rune-pick-btn.rune-guard:hover, .rune-pick-btn.rune-guard:active { border-color: #7fb3e0; }
 .rune-pick-btn.rune-wind:hover, .rune-pick-btn.rune-wind:active { border-color: #8fd6a0; }
+/* ---------- Ranked: visible ban strip (both sides see every ban as it happens) ---------- */
+.banned-strip {
+  display: flex; gap: 8px; flex-wrap: wrap; min-height: 46px; margin-bottom: 10px;
+  padding: 8px; border-radius: 10px; background: var(--bg-panel-2); border: 1px solid var(--border);
+}
+.banned-chip { position: relative; width: 42px; height: 42px; border-radius: 50%; overflow: hidden; opacity: 0.85; }
+.banned-chip::after {
+  content: '✕'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--crimson-light); font-weight: 800; font-size: 1.1rem; background: rgba(11,14,20,0.45); text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}

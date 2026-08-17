@@ -219,19 +219,12 @@ const CombatEngine = {
   },
 
   applyDamage(attacker, target, amount) {
-    // Engineer's Turret: a durability pool that absorbs damage aimed at its owner before HP is
-    // touched, exactly like a shield - this is how the Turret "gets destroyed" without needing a
-    // separate targetable battle-object entity (keeps the turn/targeting engine untouched, see #15).
-    let remaining = amount;
-    if (target.mech && target.mech.turret && target.mech.turret.hp > 0) {
-      const absorb = Math.min(target.mech.turret.hp, remaining);
-      target.mech.turret.hp -= absorb;
-      remaining -= absorb;
-      if (target.mech.turret.hp <= 0) target.mech.turret = null;
-    }
-    const afterShield = StatusEngine.consumeShield(target, remaining);
+    // Engineer's Turret/War Machine is now a real, independently targetable unit (see
+    // battle.createSummon) - it takes its OWN hits directly, and Engineer takes hers directly too.
+    // No more damage redirection here (that's the old pre-summon design).
+    const afterShield = StatusEngine.consumeShield(target, amount);
     // Frost Knight's Ice Wall: whoever lands the hit that fully breaks it gets Slowed.
-    if (target.character.id === 'frost_knight' && StatusEngine.totalShield(target) <= 0 && afterShield < remaining) {
+    if (target.character.id === 'frost_knight' && StatusEngine.totalShield(target) <= 0 && afterShield < amount) {
       StatusEngine.apply(attacker, 'slow', 2, target.id);
     }
     const actualHpLoss = Math.min(target.hp, afterShield);

@@ -1,9 +1,11 @@
 /**
  * PONTI ARENA - Audio System
- * Uses the Web Audio API to synthesize all sound effects and a simple ambient
- * music loop, so the game never depends on external audio assets. If the
- * AudioContext fails to initialize (unsupported browser, autoplay lock),
- * every call becomes a safe no-op - audio failure never crashes the game.
+ * Uses the Web Audio API to synthesize every sound effect (so SFX never depend
+ * on external assets), and plays real music files via HTMLAudioElement when
+ * available (assets/audio/menu-theme.mp3, assets/audio/battle-theme.mp3 - see
+ * ASSET_GUIDE.md for how to add them). If a track file is missing or fails to
+ * load, playback is silently skipped - music is always optional, the game
+ * never depends on it, and it never crashes from a missing/corrupt file.
  */
 
 const AudioSystem = {
@@ -27,7 +29,13 @@ const AudioSystem = {
     try { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); } catch (e) { /* noop */ }
   },
 
-  updateSettings(settings) { this.settings = settings; },
+  updateSettings(settings) {
+    this.settings = settings;
+    // Live-adjust the currently playing track's volume without restarting it.
+    if (this.musicNodes && this.musicNodes.element) {
+      try { this.musicNodes.element.volume = this._gain('musicVolume'); } catch (e) { /* noop */ }
+    }
+  },
 
   _gain(volumeKey) {
     if (this.settings.muted) return 0;
@@ -67,23 +75,27 @@ const AudioSystem = {
   playDeath() { this._tone(160, 0.3, 'sawtooth', 'sfxVolume', 0.2); },
   playStatus() { this._tone(300, 0.1, 'triangle', 'sfxVolume', 0.15); },
 
+  /** Plays assets/audio/<track>.mp3 on loop. Safe if the file doesn't exist (see ASSET_GUIDE.md) -
+   *  the game ships with no bundled music by default, so this silently does nothing until you add
+   *  menu-theme.mp3 / battle-theme.mp3 yourself. */
   startMusic(track = 'menu-theme') {
-     this.stopMusic();
-     try {
-       const el = new Audio(`assets/audio/${track}.mp3`);
-       el.loop = true;
-       el.volume = this._gain('musicVolume');
-       el.play().catch(() => {}); // autoplay can be blocked until the user interacts once
-       this.musicNodes = { element: el };
-     } catch (err) {
-       console.warn('[Audio] Music failed to load - continuing without it.', err);
-     }
-   },
+    this.stopMusic();
+    try {
+      const el = new Audio(`assets/audio/${track}.mp3`);
+      el.loop = true;
+      el.volume = this._gain('musicVolume');
+      el.play().catch(() => {}); // missing file / autoplay lock - fail silently, never fatal
+      this.musicNodes = { element: el, track };
+    } catch (err) {
+      console.warn('[Audio] Music failed to load - continuing without it.', err);
+      this.musicNodes = null;
+    }
+  },
 
-   stopMusic() {
-     if (this.musicNodes && this.musicNodes.element) {
-       this.musicNodes.element.pause();
-     }
-     this.musicNodes = null;
-   },
+  stopMusic() {
+    if (this.musicNodes && this.musicNodes.element) {
+      try { this.musicNodes.element.pause(); } catch (e) { /* noop */ }
+    }
+    this.musicNodes = null;
+  },
 };

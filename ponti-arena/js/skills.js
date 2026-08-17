@@ -167,6 +167,17 @@ const SkillSystem = {
             if (target.isDead) { events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` }); CharacterMechanics.registerDeath(target, ctx.allActors); }
           }
         }
+        // Machinist's Turret Attack: her Turret strikes the same target as her Basic Attack.
+        if (actor.character.id === 'machinist' && skillDef.id === 'pistol_shot' && actor.mech.turretId && !target.isDead) {
+          const turret = ctx.allActors.find(a => a.id === actor.mech.turretId && !a.isDead);
+          if (turret) {
+            const { amount: turAmt, isCrit: turCrit } = CombatEngine.calculateDamage(turret, target, 1.0, { bypassProtection: true });
+            const turDealt = CombatEngine.applyDamage(turret, target, turAmt);
+            events.push({ type: 'damage', actor: turret.id, target: target.id, amount: turDealt, isCrit: turCrit,
+              text: `${turret.name} fires at ${target.name} alongside her for ${turDealt} damage.` });
+            if (target.isDead) { events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` }); CharacterMechanics.registerDeath(target, ctx.allActors); }
+          }
+        }
 
         this.applyStatuses(actor, target, skillDef, events);
 

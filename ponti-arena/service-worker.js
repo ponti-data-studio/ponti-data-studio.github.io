@@ -38,6 +38,8 @@ const APP_SHELL = [
   './icons/icon-maskable-512.png',
   './icons/icon-apple-touch.png',
   './icons/favicon.png',
+  './assets/audio/menu-theme.mp3',
+  './assets/audio/battle-theme.mp3',
 ];
 
 self.addEventListener('install', (event) => {

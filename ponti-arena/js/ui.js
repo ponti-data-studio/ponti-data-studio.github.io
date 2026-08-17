@@ -239,7 +239,10 @@ const UI = {
       const names = [active.healing ? 'Healing' : null, active.spirit ? 'Spirit' : null].filter(Boolean);
       return { label: 'TOTEMS', text: names.length ? names.join(' + ') : 'None', pct: names.length * 50, cls: 'res-totem', textOnly: true };
     }
-    if (id === 'engineer' && mech.turret) return { label: mech.turret.isWarMachine ? 'WAR MACHINE' : 'TURRET', text: `${mech.turret.hp}/${mech.turret.maxHp}`, pct: (mech.turret.hp / mech.turret.maxHp) * 100, cls: 'res-turret' };
+    if (id === 'engineer') {
+      const active = !!mech.turretId;
+      return { label: 'TURRET', text: active ? (mech.isWarMachine ? 'War Machine' : 'Deployed') : 'None', pct: active ? 100 : 0, cls: 'res-turret', textOnly: true };
+    }
     if (id === 'fencer') {
       const fw = actor.statuses.find(s => s.id === 'footwork');
       return { label: 'FOOTWORK', text: `${fw ? fw.stacks : 0}/3`, pct: fw ? (fw.stacks / 3) * 100 : 0, cls: 'res-footwork' };
@@ -381,7 +384,7 @@ const UI = {
     dragon_knight: (a) => StatusEngine.has(a, 'dragon_form') || (a.mech && a.mech.dragonGauge > 0),
     monk: (a) => a.mech && a.mech.ki > 0,
     soul_reaper: (a) => a.mech && a.mech.soul > 0,
-    engineer: (a) => a.mech && !!a.mech.turret,
+    engineer: (a) => a.mech && !!a.mech.turretId,
     beast_rider: (a) => a.mech && a.mech.mounted,
     demon_hunter: (a) => false, // Hunter's Mark is applied to enemies, not self-triggered
     void_walker: (a) => StatusEngine.has(a, 'void_step'),

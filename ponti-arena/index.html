@@ -103,12 +103,14 @@
   <header class="screen-header">
     <button class="btn btn-ghost btn-back" type="button" data-nav="main-menu">← Back</button>
     <h2>Ranked - Ban Phase</h2>
-    <span class="header-spacer" id="ranked-ban-count">0/3</span>
+    <span class="header-spacer" id="ranked-ban-count">0/6</span>
   </header>
-  <p class="screen-hint">Pick up to 3 characters to ban - they'll be unavailable to both sides this match. Your opponent bans 3 of their own at the same time.</p>
+  <p id="ranked-ban-turn" class="screen-hint draft-turn-hint">Your ban.</p>
+  <div id="ranked-banned-strip" class="banned-strip"></div>
+  <div id="ranked-ban-class-filter" class="class-filter-row"></div>
   <div id="ranked-ban-grid" class="char-grid"></div>
   <div class="sticky-footer">
-    <button id="btn-ranked-ban-confirm" class="btn btn-primary btn-big" type="button">Confirm Bans</button>
+    <button id="btn-ranked-ban-confirm" class="btn btn-primary btn-big" type="button" disabled>Continue to Draft</button>
   </div>
 </section>
 
@@ -130,6 +132,7 @@
       <div id="ranked-ai-picks" class="draft-team-slots"></div>
     </div>
   </div>
+  <div id="ranked-draft-class-filter" class="class-filter-row"></div>
   <div id="ranked-draft-grid" class="char-grid"></div>
 </section>
 

@@ -49,7 +49,7 @@ const App = {
     } else {
       UI.showScreen('screen-main-menu');
     }
-    AudioSystem.startMusic('battle-theme');
+    AudioSystem.startMusic('menu-theme');
   },
 
   // ---------------------------------------------------------------- NAV ----
@@ -140,62 +140,106 @@ const App = {
   },
 
   // ---------------------------------------------------------- RANKED MODE ----
-  // A MOBA-style Ban + alternating Draft against the AI: 3 bans per side (pool-wide, both sides'
-  // bans remove a character from both drafts), then 5 alternating picks per side. The AI's team
-  // is whatever it drafted, not the usual random/Master-draft pool - see the arena-select handler.
+  // A MOBA-style Ban + alternating Draft against the AI: 3 bans per side, ALTERNATING one at a
+  // time (both sides see every ban live as it happens, exactly like a MOBA ranked ban phase),
+  // then 5 alternating picks per side. The AI's team is whatever it drafted, not the usual
+  // random/Master-draft pool - see the arena-select handler.
   wireRankedMode() {
-    UI.el('btn-ranked-ban-confirm').addEventListener('click', () => this.confirmRankedBans());
+    UI.el('btn-ranked-ban-confirm').addEventListener('click', () => this.openRankedDraft());
   },
 
   openRankedBan() {
-    this.rankedState = { bannedIds: [], playerBans: [], playerPicks: [], aiPicks: [], turnOrder: [], turnIndex: 0 };
+    const first = Math.random() < 0.5 ? 'player' : 'ai';
+    const second = first === 'player' ? 'ai' : 'player';
+    this.rankedState = {
+      bannedIds: [], playerBans: [], aiBans: [], playerPicks: [], aiPicks: [],
+      banTurnOrder: [first, second, first, second, first, second], banTurnIndex: 0,
+      turnOrder: [], turnIndex: 0,
+    };
+    this.banClassFilter = null;
     this.renderRankedBanScreen();
     UI.showScreen('screen-ranked-ban');
+    this.advanceRankedBanIfAI();
   },
 
   renderRankedBanScreen() {
+    const state = this.rankedState;
+    const isPlayerTurn = state.banTurnIndex < state.banTurnOrder.length && state.banTurnOrder[state.banTurnIndex] === 'player';
+    const banDone = state.banTurnIndex >= state.banTurnOrder.length;
+
+    UI.el('ranked-ban-count').textContent = `${state.bannedIds.length}/6`;
+    UI.el('ranked-ban-turn').textContent = banDone ? 'Bans complete!' : isPlayerTurn ? 'Your ban.' : "Opponent is banning...";
+    UI.el('btn-ranked-ban-confirm').disabled = !banDone;
+
+    // Both sides can see every ban as it happens - a live strip, not a surprise reveal at the end.
+    const strip = UI.el('ranked-banned-strip');
+    strip.innerHTML = '';
+    state.bannedIds.forEach((id) => {
+      const c = getCharacterById(id);
+      const chip = document.createElement('div');
+      chip.className = 'banned-chip';
+      chip.title = `${c.name} (banned by ${state.playerBans.includes(id) ? 'you' : 'opponent'})`;
+      chip.appendChild(AssetManager.buildAvatarElement(c, 'small'));
+      strip.appendChild(chip);
+    });
+
+    UI.renderClassFilter(UI.el('ranked-ban-class-filter'), this.banClassFilter, (role) => {
+      this.banClassFilter = role;
+      this.renderRankedBanScreen();
+    });
+
     const grid = UI.el('ranked-ban-grid');
     grid.innerHTML = '';
-    const state = this.rankedState;
-    CHARACTERS.forEach(c => {
-      const card = UI.buildCharacterCard(c, { selected: state.playerBans.includes(c.id) });
-      card.addEventListener('click', () => {
-        AudioSystem.playUIClick();
-        const idx = state.playerBans.indexOf(c.id);
-        if (idx >= 0) {
-          state.playerBans.splice(idx, 1);
-        } else {
-          if (state.playerBans.length >= 3) { UI.toast('You can only ban 3 characters.', 'warn'); return; }
-          state.playerBans.push(c.id);
-        }
-        this.renderRankedBanScreen();
-      });
+    if (banDone) return;
+    const pool = this.banClassFilter ? CHARACTERS.filter(c => c.role === this.banClassFilter) : CHARACTERS;
+    pool.forEach((c) => {
+      const alreadyBanned = state.bannedIds.includes(c.id);
+      const card = UI.buildCharacterCard(c, { disabled: alreadyBanned || !isPlayerTurn });
+      if (!alreadyBanned && isPlayerTurn) {
+        card.addEventListener('click', () => {
+          AudioSystem.playUIClick();
+          this.pickRankedBan(c.id, 'player');
+        });
+      }
       grid.appendChild(card);
     });
-    UI.el('ranked-ban-count').textContent = `${state.playerBans.length}/3`;
   },
 
-  confirmRankedBans() {
-    AudioSystem.playUIClick();
+  pickRankedBan(id, who) {
     const state = this.rankedState;
-    // The opponent bans 3 of their own, independently - the highest power-scoring characters
-    // still available (a transparent, always-reproducible heuristic, same one Master AI drafting
-    // already uses - see AISystem.characterPowerScore).
-    const aiBanPool = CHARACTERS.filter(c => !state.playerBans.includes(c.id))
-      .map(c => ({ id: c.id, power: AISystem.characterPowerScore(c) }))
-      .sort((a, b) => b.power - a.power);
-    const aiBans = aiBanPool.slice(0, 3).map(c => c.id);
-    state.bannedIds = [...new Set([...state.playerBans, ...aiBans])];
-    UI.toast(`Opponent banned: ${aiBans.map(id => getCharacterById(id).name).join(', ')}`, 'info');
-    // Randomize who picks first, then alternate for all 10 picks (5v5) - simple, fair MOBA draft.
+    if (who === 'player') state.playerBans.push(id); else state.aiBans.push(id);
+    state.bannedIds.push(id);
+    state.banTurnIndex += 1;
+    this.renderRankedBanScreen();
+    if (state.banTurnIndex >= state.banTurnOrder.length) {
+      UI.toast('All bans locked in - press Continue to Draft.', 'info');
+      return;
+    }
+    this.advanceRankedBanIfAI();
+  },
+
+  advanceRankedBanIfAI() {
+    const state = this.rankedState;
+    if (state.banTurnIndex >= state.banTurnOrder.length) return;
+    if (state.banTurnOrder[state.banTurnIndex] !== 'ai') return;
+    setTimeout(() => {
+      // Same transparent power-scoring heuristic Master AI drafting already uses.
+      const pool = CHARACTERS.filter(c => !state.bannedIds.includes(c.id))
+        .map(c => ({ id: c.id, power: AISystem.characterPowerScore(c) }))
+        .sort((a, b) => b.power - a.power);
+      if (pool.length === 0) return;
+      this.pickRankedBan(pool[0].id, 'ai');
+    }, 600);
+  },
+
+  openRankedDraft() {
+    const state = this.rankedState;
+    // Draft turn order is decided independently from who banned first - still random, still fair.
     const first = Math.random() < 0.5 ? 'player' : 'ai';
     const second = first === 'player' ? 'ai' : 'player';
     state.turnOrder = [first, second, first, second, first, second, first, second, first, second];
     state.turnIndex = 0;
-    this.openRankedDraft();
-  },
-
-  openRankedDraft() {
+    this.draftClassFilter = null;
     UI.showScreen('screen-ranked-draft');
     this.renderRankedDraft();
     this.advanceRankedDraftIfAI();
@@ -232,10 +276,17 @@ const App = {
     renderTeamSlots('ranked-player-picks', state.playerPicks);
     renderTeamSlots('ranked-ai-picks', state.aiPicks);
 
+    UI.renderClassFilter(UI.el('ranked-draft-class-filter'), this.draftClassFilter, (role) => {
+      this.draftClassFilter = role;
+      this.renderRankedDraft();
+    });
+
     const grid = UI.el('ranked-draft-grid');
     grid.innerHTML = '';
     if (draftDone) return;
-    this.rankedAvailablePool().forEach(c => {
+    const pool = this.rankedAvailablePool();
+    const filtered = this.draftClassFilter ? pool.filter(c => c.role === this.draftClassFilter) : pool;
+    filtered.forEach(c => {
       const card = UI.buildCharacterCard(c, { disabled: !isPlayerTurn });
       if (isPlayerTurn) {
         card.addEventListener('click', () => {
@@ -562,8 +613,6 @@ const App = {
 
   // ------------------------------------------------------------ BATTLE ----
   launchBattle(playerIds, enemyIds, isCharacterTest) {
-    AudioSystem.stopMusic();
-    AudioSystem.startMusic('battle-theme');
     this.battle = new BattleEngine(playerIds, enemyIds, isCharacterTest ? 'normal' : this.difficulty, this.arenaId);
     this.battle.isCharacterTest = !!isCharacterTest;
     const arena = ARENAS.find(a => a.id === this.arenaId) || ARENAS[0];
@@ -626,7 +675,7 @@ const App = {
 
   // Skills where the player chooses an empty grid slot to place a new summon into, instead of
   // auto-placing in the first open slot - see #12 Engineer / #7 Necromancer / #11 Beastmaster.
-  SLOT_PICK_SKILLS: ['deploy_turret_eng', 'war_machine', 'summon_skeleton', 'summon_beast', 'blink'],
+  SLOT_PICK_SKILLS: ['deploy_turret_eng', 'war_machine', 'deploy_turret_mech', 'summon_skeleton', 'summon_beast', 'blink'],
   // Skills where the player picks a sacrifice amount before confirming - see #5 Shadow Priest.
   AMOUNT_PICK_SKILLS: {
     shadow_heal: { label: 'HP to sacrifice (heals the ally for 2x this amount)', ratio: 2 },
@@ -814,7 +863,6 @@ const App = {
 
   endBattle(result) {
     AudioSystem.stopMusic();
-    AudioSystem.startMusic('menu-theme');
     const battle = this.battle;
     const victory = result === 'victory';
     this.save.totalBattles += 1;
