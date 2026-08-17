@@ -203,9 +203,9 @@ const UI = {
             e.preventDefault();
             empty.classList.remove('drop-hover');
             const id = e.dataTransfer.getData('text/plain');
-            if (id) onRowDrop(id, row);
+            if (id) onRowDrop(id, row, col);
           };
-          empty.addEventListener('click', (e) => { e.stopPropagation(); if (selectedId) onRowClick(row); });
+          empty.addEventListener('click', (e) => { e.stopPropagation(); if (selectedId) onRowClick(row, col); });
           container.appendChild(empty);
         }
       }

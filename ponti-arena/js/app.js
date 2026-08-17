@@ -464,11 +464,11 @@ const App = {
         }
         this.refreshFormationEditor();
       },
-      onRowClick: (row) => {
+      onRowClick: (row, column) => {
         if (!this.formationSelectedId) return;
-        this.placeInRow(this.formationSelectedId, row);
+        this.placeInRow(this.formationSelectedId, row, column);
       },
-      onRowDrop: (id, row) => this.placeInRow(id, row),
+      onRowDrop: (id, row, column) => this.placeInRow(id, row, column),
       onSwap: (draggedId, targetId) => this.swapFormationSlots(draggedId, targetId),
     });
     UI.el('btn-formation-continue').disabled = this.buildFormation.length < this.buildTeam.length;
@@ -495,20 +495,24 @@ const App = {
     this.refreshFormationEditor();
   },
 
-  /** Places a character into a specific row. The row is a fixed 4-slot bank (see #5 in the
-   *  formation spec) - if all 4 slots are already taken, the placement is rejected with a toast
-   *  rather than silently overflowing into another row the player didn't choose. */
-  placeInRow(id, row) {
+  /** Places a character into a specific row - and, if `column` is given (the player clicked/dropped
+   *  onto one exact empty slot rather than the row in general), into that exact slot, so placement
+   *  is never forced to always fill left-to-right. Falls back to the first open column if no exact
+   *  column was specified. Rejected with a toast if the row (or that exact slot) is already full. */
+  placeInRow(id, row, column) {
     AudioSystem.playUIClick();
     const takenCols = new Set(this.buildFormation.filter(p => p.row === row && p.id !== id).map(p => p.column));
     if (takenCols.size >= TargetingEngine.MAX_PER_ROW) {
       UI.toast(`${row[0].toUpperCase() + row.slice(1)} row is full (4/4). Choose another row.`, 'warn');
       return;
     }
-    let column = 0;
-    while (takenCols.has(column)) column++;
+    let targetColumn = column;
+    if (targetColumn === undefined || targetColumn === null || takenCols.has(targetColumn)) {
+      targetColumn = 0;
+      while (takenCols.has(targetColumn)) targetColumn++;
+    }
     this.buildFormation = this.buildFormation.filter(p => p.id !== id);
-    this.buildFormation.push({ id, row, column });
+    this.buildFormation.push({ id, row, column: targetColumn });
     this.formationSelectedId = null;
     this.refreshFormationEditor();
   },
@@ -558,6 +562,7 @@ const App = {
 
   // ------------------------------------------------------------ BATTLE ----
   launchBattle(playerIds, enemyIds, isCharacterTest) {
+    AudioSystem.startMusic('battle-theme');
     this.battle = new BattleEngine(playerIds, enemyIds, isCharacterTest ? 'normal' : this.difficulty, this.arenaId);
     this.battle.isCharacterTest = !!isCharacterTest;
     const arena = ARENAS.find(a => a.id === this.arenaId) || ARENAS[0];
@@ -808,6 +813,7 @@ const App = {
 
   endBattle(result) {
     AudioSystem.stopMusic();
+    AudioSystem.startMusic('menu-theme');
     const battle = this.battle;
     const victory = result === 'victory';
     this.save.totalBattles += 1;

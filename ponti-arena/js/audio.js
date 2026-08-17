@@ -67,36 +67,23 @@ const AudioSystem = {
   playDeath() { this._tone(160, 0.3, 'sawtooth', 'sfxVolume', 0.2); },
   playStatus() { this._tone(300, 0.1, 'triangle', 'sfxVolume', 0.15); },
 
-  startMusic() {
-    if (!this.ctx || this.musicNodes) return;
-    try {
-      const notes = [220, 261.6, 329.6, 246.9];
-      let index = 0;
-      const gainNode = this.ctx.createGain();
-      gainNode.gain.value = 0.0001;
-      gainNode.connect(this.ctx.destination);
-      const play = () => {
-        if (!this.ctx || !this.musicNodes) return;
-        const g = this._gain('musicVolume') * 0.06;
-        gainNode.gain.setTargetAtTime(Math.max(0.0001, g), this.ctx.currentTime, 0.5);
-        const osc = this.ctx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.value = notes[index % notes.length];
-        osc.connect(gainNode);
-        osc.start();
-        osc.stop(this.ctx.currentTime + 1.8);
-        index++;
-      };
-      play();
-      const interval = setInterval(play, 2000);
-      this.musicNodes = { gainNode, interval };
-    } catch (err) { this.musicNodes = null; }
-  },
+  startMusic(track = 'menu-theme') {
+     this.stopMusic();
+     try {
+       const el = new Audio(`assets/audio/${track}.mp3`);
+       el.loop = true;
+       el.volume = this._gain('musicVolume');
+       el.play().catch(() => {}); // autoplay can be blocked until the user interacts once
+       this.musicNodes = { element: el };
+     } catch (err) {
+       console.warn('[Audio] Music failed to load - continuing without it.', err);
+     }
+   },
 
-  stopMusic() {
-    if (this.musicNodes) {
-      try { clearInterval(this.musicNodes.interval); } catch (e) { /* noop */ }
-      this.musicNodes = null;
-    }
-  },
+   stopMusic() {
+     if (this.musicNodes && this.musicNodes.element) {
+       this.musicNodes.element.pause();
+     }
+     this.musicNodes = null;
+   },
 };
