@@ -557,6 +557,25 @@ Untuk memicu summon ini menyerang bersamaan dengan pemiliknya, gunakan
 `CombatEngine.calculateDamage`/`CombatEngine.applyDamage` dengan `source` = summon tersebut (lihat
 contoh lengkap fungsi `skeleton_attack` atau `command_beast` di `character-mechanics.js`).
 
+### Summon yang mati bisa langsung di-summon ulang
+
+Ini **sudah otomatis** untuk summon jenis B (`createSummon`) — tidak perlu kode tambahan. Alasannya:
+`findSummonSlot()`/`TargetingEngine.findOpenSlot()` hanya menganggap slot terisi kalau ada actor
+hidup (`!a.isDead`) di situ. Begitu summon lama mati (baik kena serangan musuh, atau di-hapus manual
+lewat handler kayak `summon_beast`'s replace-logic), slotnya otomatis dianggap kosong lagi dan bisa
+dipakai summon baru — walau actor lamanya sendiri masih ada di `battle.actors` (memang sengaja
+tidak dihapus dari array, cuma ditandai `isDead: true`, supaya tidak mengacaukan index/referensi
+lain yang mungkin masih menunjuk ke situ).
+
+**Yang perlu kamu jaga saat menulis handler cast baru**: kalau karaktermu punya field referensi ke
+summon-nya sendiri (pola `owner.mech.xxxId = summon.id`, seperti `beastId` milik Beastmaster),
+JANGAN asumsikan field itu selalu menunjuk ke summon yang masih hidup. Selalu cek ulang:
+```js
+const summon = ctx.allActors.find(a => a.id === owner.mech.xxxId && !a.isDead);
+if (!summon) { /* sudah mati atau belum pernah disummon - tangani dengan aman */ }
+```
+Lihat contoh nyata di handler `command_beast` dan hook passive Beastmaster di `skills.js`.
+
 ---
 
 ## 11. Menambah Achievement

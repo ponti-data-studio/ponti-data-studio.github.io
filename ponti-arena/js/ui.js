@@ -304,7 +304,10 @@ const UI = {
       ['player', 'enemy'].forEach(side => {
         const container = side === 'player' ? allyContainer : enemyContainer;
         if (!container) return;
-        const actorsHere = allActors.filter(a => a.side === side && a.position.row === row).sort((a, b) => a.position.column - b.position.column);
+        // Fallen units vanish from their slot (see #reposition/#summon spec: a dead character or
+        // summon frees up its box immediately, becoming a valid empty target for a new summon or
+        // for Blink) - only living actors still occupy a spot here.
+        const actorsHere = allActors.filter(a => a.side === side && !a.isDead && a.position.row === row).sort((a, b) => a.position.column - b.position.column);
         const summonsHere = allSummons.filter(s => s.side === side && s.row === row);
         const byColumn = new Map();
         actorsHere.forEach(a => byColumn.set(a.position.column, { kind: 'actor', data: a }));

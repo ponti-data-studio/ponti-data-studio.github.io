@@ -49,7 +49,7 @@ const App = {
     } else {
       UI.showScreen('screen-main-menu');
     }
-    AudioSystem.startMusic();
+    AudioSystem.startMusic('battle-theme');
   },
 
   // ---------------------------------------------------------------- NAV ----
@@ -562,6 +562,7 @@ const App = {
 
   // ------------------------------------------------------------ BATTLE ----
   launchBattle(playerIds, enemyIds, isCharacterTest) {
+    AudioSystem.stopMusic();
     AudioSystem.startMusic('battle-theme');
     this.battle = new BattleEngine(playerIds, enemyIds, isCharacterTest ? 'normal' : this.difficulty, this.arenaId);
     this.battle.isCharacterTest = !!isCharacterTest;
