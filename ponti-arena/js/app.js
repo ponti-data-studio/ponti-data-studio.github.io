@@ -19,7 +19,6 @@ const App = {
   arenaId: 'medieval-castle',
   campaignStageIndex: 0,
   battle: null,
-  pendingItem: null,         // item id awaiting a target
   awaitingPlayerResolve: null, // resolves the player's turn promise
   battleBusy: false,
   battleRunToken: 0,
@@ -37,9 +36,13 @@ const App = {
     this.wireSettings();
     this.wireResult();
     this.wirePWA();
+    this.wireRankedMode();
     this.registerServiceWorker();
 
     document.body.addEventListener('click', () => AudioSystem.resume(), { once: true });
+    // Game-wide: no native "Save/Copy" long-press or right-click menu, no text selection drag.
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
+    document.addEventListener('selectstart', (e) => e.preventDefault());
 
     if (!this.save.onboardingSeen) {
       UI.showScreen('screen-onboarding');
@@ -65,6 +68,7 @@ const App = {
     if (target === 'practice') { this.startModeSetup('practice'); return; }
     if (target === 'campaign') { this.openCampaign(); return; }
     if (target === 'characters') { this.openCharacterTest(); return; }
+    if (target === 'ranked') { this.openRankedBan(); return; }
     if (target === 'achievements') { this.openAchievements(); return; }
     if (target === 'settings') { UI.showScreen('screen-settings'); return; }
   },
@@ -133,6 +137,156 @@ const App = {
       container.appendChild(card);
     });
     UI.showScreen('screen-achievements');
+  },
+
+  // ---------------------------------------------------------- RANKED MODE ----
+  // A MOBA-style Ban + alternating Draft against the AI: 3 bans per side (pool-wide, both sides'
+  // bans remove a character from both drafts), then 5 alternating picks per side. The AI's team
+  // is whatever it drafted, not the usual random/Master-draft pool - see the arena-select handler.
+  wireRankedMode() {
+    UI.el('btn-ranked-ban-confirm').addEventListener('click', () => this.confirmRankedBans());
+  },
+
+  openRankedBan() {
+    this.rankedState = { bannedIds: [], playerBans: [], playerPicks: [], aiPicks: [], turnOrder: [], turnIndex: 0 };
+    this.renderRankedBanScreen();
+    UI.showScreen('screen-ranked-ban');
+  },
+
+  renderRankedBanScreen() {
+    const grid = UI.el('ranked-ban-grid');
+    grid.innerHTML = '';
+    const state = this.rankedState;
+    CHARACTERS.forEach(c => {
+      const card = UI.buildCharacterCard(c, { selected: state.playerBans.includes(c.id) });
+      card.addEventListener('click', () => {
+        AudioSystem.playUIClick();
+        const idx = state.playerBans.indexOf(c.id);
+        if (idx >= 0) {
+          state.playerBans.splice(idx, 1);
+        } else {
+          if (state.playerBans.length >= 3) { UI.toast('You can only ban 3 characters.', 'warn'); return; }
+          state.playerBans.push(c.id);
+        }
+        this.renderRankedBanScreen();
+      });
+      grid.appendChild(card);
+    });
+    UI.el('ranked-ban-count').textContent = `${state.playerBans.length}/3`;
+  },
+
+  confirmRankedBans() {
+    AudioSystem.playUIClick();
+    const state = this.rankedState;
+    // The opponent bans 3 of their own, independently - the highest power-scoring characters
+    // still available (a transparent, always-reproducible heuristic, same one Master AI drafting
+    // already uses - see AISystem.characterPowerScore).
+    const aiBanPool = CHARACTERS.filter(c => !state.playerBans.includes(c.id))
+      .map(c => ({ id: c.id, power: AISystem.characterPowerScore(c) }))
+      .sort((a, b) => b.power - a.power);
+    const aiBans = aiBanPool.slice(0, 3).map(c => c.id);
+    state.bannedIds = [...new Set([...state.playerBans, ...aiBans])];
+    UI.toast(`Opponent banned: ${aiBans.map(id => getCharacterById(id).name).join(', ')}`, 'info');
+    // Randomize who picks first, then alternate for all 10 picks (5v5) - simple, fair MOBA draft.
+    const first = Math.random() < 0.5 ? 'player' : 'ai';
+    const second = first === 'player' ? 'ai' : 'player';
+    state.turnOrder = [first, second, first, second, first, second, first, second, first, second];
+    state.turnIndex = 0;
+    this.openRankedDraft();
+  },
+
+  openRankedDraft() {
+    UI.showScreen('screen-ranked-draft');
+    this.renderRankedDraft();
+    this.advanceRankedDraftIfAI();
+  },
+
+  rankedAvailablePool() {
+    const state = this.rankedState;
+    const taken = new Set([...state.bannedIds, ...state.playerPicks, ...state.aiPicks]);
+    return CHARACTERS.filter(c => !taken.has(c.id));
+  },
+
+  renderRankedDraft() {
+    const state = this.rankedState;
+    const isPlayerTurn = state.turnIndex < state.turnOrder.length && state.turnOrder[state.turnIndex] === 'player';
+    const draftDone = state.turnIndex >= state.turnOrder.length;
+
+    UI.el('ranked-draft-count').textContent = `${state.playerPicks.length}/5`;
+    UI.el('ranked-draft-turn').textContent = draftDone ? 'Draft complete!' : isPlayerTurn ? 'Your pick.' : "Opponent is picking...";
+
+    const renderTeamSlots = (containerId, picks) => {
+      const el = UI.el(containerId);
+      el.innerHTML = '';
+      for (let i = 0; i < 5; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'draft-slot' + (picks[i] ? ' filled' : '');
+        if (picks[i]) {
+          const c = getCharacterById(picks[i]);
+          slot.appendChild(AssetManager.buildAvatarElement(c, 'small'));
+          slot.title = c.name;
+        }
+        el.appendChild(slot);
+      }
+    };
+    renderTeamSlots('ranked-player-picks', state.playerPicks);
+    renderTeamSlots('ranked-ai-picks', state.aiPicks);
+
+    const grid = UI.el('ranked-draft-grid');
+    grid.innerHTML = '';
+    if (draftDone) return;
+    this.rankedAvailablePool().forEach(c => {
+      const card = UI.buildCharacterCard(c, { disabled: !isPlayerTurn });
+      if (isPlayerTurn) {
+        card.addEventListener('click', () => {
+          AudioSystem.playUIClick();
+          this.pickRankedCharacter(c.id, 'player');
+        });
+      }
+      grid.appendChild(card);
+    });
+  },
+
+  pickRankedCharacter(id, who) {
+    const state = this.rankedState;
+    if (who === 'player') state.playerPicks.push(id);
+    else state.aiPicks.push(id);
+    state.turnIndex += 1;
+    this.renderRankedDraft();
+    if (state.turnIndex >= state.turnOrder.length) {
+      setTimeout(() => this.finishRankedDraft(), 500);
+      return;
+    }
+    this.advanceRankedDraftIfAI();
+  },
+
+  advanceRankedDraftIfAI() {
+    const state = this.rankedState;
+    if (state.turnIndex >= state.turnOrder.length) return;
+    if (state.turnOrder[state.turnIndex] !== 'ai') return;
+    setTimeout(() => {
+      const pool = this.rankedAvailablePool();
+      if (pool.length === 0) return;
+      // Fill the archetype the AI's draft is missing most (frontline/sustain), else best power score.
+      const scored = pool.map(c => ({ character: c, power: AISystem.characterPowerScore(c), archetype: AISystem.draftArchetype(c.role) }))
+        .sort((a, b) => b.power - a.power);
+      const hasFrontline = state.aiPicks.some(id => AISystem.draftArchetype(getCharacterById(id).role) === 'frontline');
+      const hasSustain = state.aiPicks.some(id => AISystem.draftArchetype(getCharacterById(id).role) === 'sustain');
+      let choice = null;
+      if (!hasFrontline) choice = scored.find(c => c.archetype === 'frontline');
+      if (!choice && !hasSustain) choice = scored.find(c => c.archetype === 'sustain');
+      if (!choice) choice = scored[0];
+      this.pickRankedCharacter(choice.character.id, 'ai');
+    }, 650);
+  },
+
+  finishRankedDraft() {
+    const state = this.rankedState;
+    this.mode = 'ranked';
+    this.buildTeam = [...state.playerPicks];
+    this.rankedEnemyTeam = [...state.aiPicks];
+    this.difficulty = 'expert'; // Ranked always faces a sharp, competitive AI
+    this.openFormationScreen(() => this.openArenaSelect());
   },
 
   openCharacterTest() {
@@ -341,45 +495,21 @@ const App = {
     this.refreshFormationEditor();
   },
 
+  /** Places a character into a specific row. The row is a fixed 4-slot bank (see #5 in the
+   *  formation spec) - if all 4 slots are already taken, the placement is rejected with a toast
+   *  rather than silently overflowing into another row the player didn't choose. */
   placeInRow(id, row) {
     AudioSystem.playUIClick();
+    const takenCols = new Set(this.buildFormation.filter(p => p.row === row && p.id !== id).map(p => p.column));
+    if (takenCols.size >= TargetingEngine.MAX_PER_ROW) {
+      UI.toast(`${row[0].toUpperCase() + row.slice(1)} row is full (4/4). Choose another row.`, 'warn');
+      return;
+    }
+    let column = 0;
+    while (takenCols.has(column)) column++;
     this.buildFormation = this.buildFormation.filter(p => p.id !== id);
-    const column = this.buildFormation.filter(p => p.row === row).length;
     this.buildFormation.push({ id, row, column });
     this.formationSelectedId = null;
-    this.refreshFormationEditor();
-  },
-
-  /** Moves an already-placed character directly to the row above (-1) or below (+1) - Back<->Middle<->Front -
-   *  without needing to unplace it back to the pool first. Appended at the end of the target row. */
-  moveCharacterRow(id, delta) {
-    const ROW_ORDER = ['front', 'middle', 'back'];
-    const entry = this.buildFormation.find(p => p.id === id);
-    if (!entry) return;
-    const currentIndex = ROW_ORDER.indexOf(entry.row);
-    const newIndex = currentIndex + delta;
-    if (newIndex < 0 || newIndex >= ROW_ORDER.length) return; // already at the boundary
-    AudioSystem.playUIClick();
-    const newRow = ROW_ORDER[newIndex];
-    this.buildFormation = this.buildFormation.filter(p => p.id !== id);
-    const column = this.buildFormation.filter(p => p.row === newRow).length;
-    this.buildFormation.push({ id, row: newRow, column });
-    this.refreshFormationEditor();
-  },
-
-  /** Swaps an already-placed character with its left (-1) or right (+1) neighbor within the same row. */
-  moveCharacterColumn(id, delta) {
-    const entry = this.buildFormation.find(p => p.id === id);
-    if (!entry) return;
-    const rowMembers = this.buildFormation.filter(p => p.row === entry.row).sort((a, b) => a.column - b.column);
-    const index = rowMembers.findIndex(p => p.id === id);
-    const swapIndex = index + delta;
-    if (swapIndex < 0 || swapIndex >= rowMembers.length) return; // already at the edge of the row
-    AudioSystem.playUIClick();
-    const neighbor = rowMembers[swapIndex];
-    const tmpColumn = entry.column;
-    entry.column = neighbor.column;
-    neighbor.column = tmpColumn;
     this.refreshFormationEditor();
   },
 
@@ -406,11 +536,17 @@ const App = {
       card.addEventListener('click', () => {
         AudioSystem.playUIClick();
         this.arenaId = arena.id;
-        const pool = CHARACTERS.map(c => c.id).filter(id => !this.buildTeam.includes(id));
-        // Master AI doesn't pick its team at random - it drafts the strongest available combination.
-        const enemyTeam = this.difficulty === 'master'
-          ? AISystem.draftPowerfulTeam(pool)
-          : pool.sort(() => Math.random() - 0.5).slice(0, 5);
+        let enemyTeam;
+        if (this.mode === 'ranked' && this.rankedEnemyTeam) {
+          // Ranked: the enemy team was decided during the Draft phase, not drawn at random here.
+          enemyTeam = this.rankedEnemyTeam;
+        } else {
+          const pool = CHARACTERS.map(c => c.id).filter(id => !this.buildTeam.includes(id));
+          // Master AI doesn't pick its team at random - it drafts the strongest available combination.
+          enemyTeam = this.difficulty === 'master'
+            ? AISystem.draftPowerfulTeam(pool)
+            : pool.sort(() => Math.random() - 0.5).slice(0, 5);
+        }
         const strategy = AISystem.chooseFormationStrategy(this.difficulty, this.buildFormation);
         const enemyFormation = TargetingEngine.buildFormationFromTemplate(enemyTeam, strategy);
         this.launchBattle(this.buildFormation, enemyFormation);
@@ -475,19 +611,35 @@ const App = {
 
   playerTurn(actor) {
     return new Promise(resolve => {
-      this.pendingItem = null;
       this.renderBattleFrame(actor.id);
       const actions = this.battle.getUsableActions(actor.id);
-      UI.renderActionMenu(UI.el('action-menu'), actions, (action) => this.onActionPicked(action, resolve));
+      UI.renderActionMenu(UI.el('action-menu'), actions, (action) => this.onActionPicked(action, resolve), actor);
       UI.el('action-menu-hint').textContent = `${actor.name}'s turn - choose an action.`;
     });
+  },
+
+  // Skills where the player chooses an empty grid slot to place a new summon into, instead of
+  // auto-placing in the first open slot - see #12 Engineer / #7 Necromancer / #11 Beastmaster.
+  SLOT_PICK_SKILLS: ['deploy_turret_eng', 'war_machine', 'summon_skeleton', 'summon_beast', 'blink'],
+  // Skills where the player picks a sacrifice amount before confirming - see #5 Shadow Priest.
+  AMOUNT_PICK_SKILLS: {
+    shadow_heal: { label: 'HP to sacrifice (heals the ally for 2x this amount)', ratio: 2 },
+    soul_sacrifice: { label: 'HP to sacrifice (the enemy loses this much HP)', ratio: 1 },
   },
 
   onActionPicked(action, resolveTurn) {
     AudioSystem.playUIClick();
     const actor = this.battle.currentActor;
-    if (action.key === 'item') { this.openItemPicker(resolveTurn); return; }
     if (action.key === 'defend') { this.finishPlayerAction('defend', null, resolveTurn); return; }
+
+    if (this.SLOT_PICK_SKILLS.includes(action.def.id)) {
+      this.enterSlotPickMode((slot) => this.finishPlayerAction(action.key, `slot:${slot.row}:${slot.column}`, resolveTurn));
+      return;
+    }
+    if (action.def.id === 'inscribe') {
+      this.openRunePicker((rune) => this.finishPlayerAction(action.key, `rune:${rune}`, resolveTurn));
+      return;
+    }
 
     const targetType = action.def.targetType;
     if (['self', 'all_enemy', 'all_ally', 'front_row', 'middle_row', 'back_row'].includes(targetType)) {
@@ -499,34 +651,65 @@ const App = {
     if (legalTargets.length === 0) {
       UI.toast(`No valid target for ${action.def.name} right now.`, 'warn');
       const actions = this.battle.getUsableActions(actor.id);
-      UI.renderActionMenu(UI.el('action-menu'), actions, (a2) => this.onActionPicked(a2, resolveTurn));
+      UI.renderActionMenu(UI.el('action-menu'), actions, (a2) => this.onActionPicked(a2, resolveTurn), actor);
       return;
     }
     const targetSide = targetType === 'single_ally' ? 'player' : 'enemy';
     UI.el('action-menu-hint').textContent = `Select a target for ${action.def.name}.`;
-    this.enterTargetingMode(targetSide, (targetId) => this.finishPlayerAction(action.key, targetId, resolveTurn), action.def);
+    const amountConfig = this.AMOUNT_PICK_SKILLS[action.def.id];
+    this.enterTargetingMode(targetSide, (targetId) => {
+      if (amountConfig) {
+        this.openAmountPicker(actor, amountConfig, (amount) => {
+          this.finishPlayerAction(action.key, `${targetId}|${amount}`, resolveTurn);
+        });
+      } else {
+        this.finishPlayerAction(action.key, targetId, resolveTurn);
+      }
+    }, action.def);
   },
 
-  openItemPicker(resolveTurn) {
-    // Items are self-applied to the acting character (keeps targeting simple and unambiguous).
-    const modal = UI.el('item-modal');
-    const list = UI.el('item-list');
-    list.innerHTML = '';
-    Object.values(ITEM_DEFS).forEach(item => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'item-option';
-      btn.disabled = this.battle.itemsRemaining <= 0;
-      btn.innerHTML = `<b>${item.name}</b><span>${item.desc}</span>`;
-      btn.addEventListener('click', () => {
-        modal.classList.remove('open');
-        this.finishPlayerAction('item', item.id, resolveTurn);
-      });
-      list.appendChild(btn);
+  /** Empty-slot picker for placing a new summon (Turret/War Machine/Skeleton/Beast) - highlights
+   *  the caster's own empty grid slots and waits for a click, reusing the same battle-frame render. */
+  enterSlotPickMode(onPick) {
+    UI.el('action-menu').innerHTML = '';
+    UI.el('action-menu-hint').textContent = 'Choose an empty slot to place it.';
+    UI.renderFormation(this.battle.actors, {
+      activeId: this.battle.currentActor.id,
+      summons: CharacterMechanics.getActiveSummons(this.battle.actors),
+      slotPickMode: true,
+      onSlotPick: (slot) => onPick(slot),
     });
-    UI.el('item-remaining').textContent = `Items remaining this battle: ${this.battle.itemsRemaining}`;
+  },
+
+  /** Simple slider modal for Shadow Priest's player-chosen HP-sacrifice amount (1 to her HP-1). */
+  /** Rune Master's Inscribe: player picks exactly which Rune (Fire/Guard/Wind) to inscribe. */
+  openRunePicker(onConfirm) {
+    const modal = UI.el('rune-picker-modal');
     modal.classList.add('open');
-    UI.el('item-modal-close').onclick = () => { modal.classList.remove('open'); resolveTurn ? null : null; };
+    ['fire', 'guard', 'wind'].forEach((rune) => {
+      UI.el(`rune-pick-${rune}`).onclick = () => {
+        modal.classList.remove('open');
+        onConfirm(rune);
+      };
+    });
+  },
+
+  openAmountPicker(actor, config, onConfirm) {
+    const modal = UI.el('amount-picker-modal');
+    const max = Math.max(1, actor.hp - 1);
+    const slider = UI.el('amount-picker-slider');
+    const label = UI.el('amount-picker-label');
+    const valueEl = UI.el('amount-picker-value');
+    slider.min = 1; slider.max = max; slider.value = Math.min(max, Math.ceil(max / 2));
+    label.textContent = config.label;
+    const updateValue = () => { valueEl.textContent = `${slider.value} HP  →  ${slider.value * config.ratio} HP effect`; };
+    slider.oninput = updateValue;
+    updateValue();
+    modal.classList.add('open');
+    UI.el('amount-picker-confirm').onclick = () => {
+      modal.classList.remove('open');
+      onConfirm(parseInt(slider.value, 10));
+    };
   },
 
   enterTargetingMode(side, onPick, skillDef) {
@@ -538,6 +721,7 @@ const App = {
     UI.renderFormation(this.battle.actors, {
       activeId: this.battle.currentActor.id,
       targetableIds,
+      summons: CharacterMechanics.getActiveSummons(this.battle.actors),
       onSelectTarget: (id) => {
         this.exitTargetingMode();
         onPick(id);
@@ -550,7 +734,6 @@ const App = {
   },
 
   finishPlayerAction(actionKey, targetId, resolveTurn) {
-    // For actionKey === 'item', targetId carries the chosen item id (see openItemPicker).
     UI.el('action-menu').innerHTML = '';
     UI.el('action-menu-hint').textContent = '';
     (async () => {
@@ -619,7 +802,7 @@ const App = {
 
   renderBattleFrame(activeId) {
     if (!this.battle) return;
-    UI.renderFormation(this.battle.actors, { activeId });
+    UI.renderFormation(this.battle.actors, { activeId, summons: CharacterMechanics.getActiveSummons(this.battle.actors) });
     UI.renderTimeline(UI.el('turn-timeline'), this.battle.getTimelinePreview(6), activeId);
   },
 

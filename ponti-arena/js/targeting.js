@@ -95,15 +95,33 @@ const TargetingEngine = {
     return 'back'; // Mage, Ranged, Support
   },
 
+  /** The battle grid is a fixed 12 slots per side: 4 Front + 4 Middle + 4 Back - one unit
+   *  (character or summon) per slot, never stacked. See #5 in the formation spec. */
+  MAX_PER_ROW: 4,
+
+  /** Finds the first open slot for a preferred row, cascading to the other rows (nearest first)
+   *  if the preferred row is already full. Returns null only if the whole 12-slot side is full. */
+  findOpenSlot(formation, preferredRow) {
+    const order = preferredRow === 'front' ? ['front', 'middle', 'back']
+      : preferredRow === 'back' ? ['back', 'middle', 'front']
+      : ['middle', 'front', 'back'];
+    for (const row of order) {
+      const taken = new Set(formation.filter(p => p.row === row).map(p => p.column));
+      for (let col = 0; col < this.MAX_PER_ROW; col++) {
+        if (!taken.has(col)) return { row, column: col };
+      }
+    }
+    return null; // all 12 slots full
+  },
+
   buildAutoFormation(characterIds) {
-    const buckets = { front: [], middle: [], back: [] };
+    const formation = [];
     characterIds.forEach(id => {
       const character = getCharacterById(id) || (id === TRAINING_DUMMY.id ? TRAINING_DUMMY : null);
-      const row = this.autoArrangeRow(character.role);
-      buckets[row].push(id);
+      const preferred = this.autoArrangeRow(character.role);
+      const slot = this.findOpenSlot(formation, preferred);
+      if (slot) formation.push({ id, row: slot.row, column: slot.column });
     });
-    const formation = [];
-    ROWS.forEach(row => buckets[row].forEach((id, col) => formation.push({ id, row, column: col })));
     return formation;
   },
 
@@ -111,7 +129,11 @@ const TargetingEngine = {
   buildFormationFromTemplate(characterIds, templateName) {
     const template = AI_FORMATION_TEMPLATES[templateName] || AI_FORMATION_TEMPLATES.balanced;
     const remaining = [...characterIds];
-    const buckets = { front: [], middle: [], back: [] };
+    const formation = [];
+    const placeIn = (id, preferredRow) => {
+      const slot = this.findOpenSlot(formation, preferredRow);
+      if (slot) formation.push({ id, row: slot.row, column: slot.column });
+    };
     ROWS.forEach(row => {
       const wanted = template[row] || [];
       wanted.forEach(role => {
@@ -119,16 +141,14 @@ const TargetingEngine = {
           const c = getCharacterById(id);
           return c && c.role === role;
         });
-        if (idx !== -1) buckets[row].push(remaining.splice(idx, 1)[0]);
+        if (idx !== -1) placeIn(remaining.splice(idx, 1)[0], row);
       });
     });
     // Anything left over (role didn't match template) falls back to auto-arrange by role.
     remaining.forEach(id => {
       const character = getCharacterById(id);
-      buckets[this.autoArrangeRow(character.role)].push(id);
+      placeIn(id, this.autoArrangeRow(character.role));
     });
-    const formation = [];
-    ROWS.forEach(row => buckets[row].forEach((id, col) => formation.push({ id, row, column: col })));
     return formation;
   },
 };

@@ -165,44 +165,89 @@ const UI = {
     });
 
     const ROW_ORDER = ['front', 'middle', 'back'];
+    const MAX_PER_ROW = (typeof TargetingEngine !== 'undefined' && TargetingEngine.MAX_PER_ROW) || 4;
     ROW_ORDER.forEach((row) => {
       const container = this.el(`formation-row-${row}`);
       container.innerHTML = '';
-      container.ondragover = (e) => { e.preventDefault(); container.classList.add('drop-hover'); };
-      container.ondragleave = () => container.classList.remove('drop-hover');
-      container.ondrop = (e) => {
-        e.preventDefault();
-        container.classList.remove('drop-hover');
-        const id = e.dataTransfer.getData('text/plain');
-        if (id) onRowDrop(id, row);
-      };
-      container.addEventListener('click', (e) => {
-        if (e.target === container) onRowClick(row);
-      });
+      container.classList.add('fixed-slots');
       const rowMembers = formation.filter(p => p.row === row).sort((a, b) => a.column - b.column);
-      rowMembers.forEach((p) => {
-        const chip = this.buildFormationChip(p.id, { placed: true, selected: selectedId === p.id });
-        // Drag-and-drop is the primary way to rearrange: drop on a row to move a character
-        // there directly (no need to remove it back to the pool first), or drop it straight
-        // onto another placed character to swap the two.
-        chip.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', p.id); onDragStart && onDragStart(p.id); });
-        chip.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); chip.classList.add('drop-hover'); });
-        chip.addEventListener('dragleave', () => chip.classList.remove('drop-hover'));
-        chip.addEventListener('drop', (e) => {
-          e.preventDefault(); e.stopPropagation();
-          chip.classList.remove('drop-hover');
-          const draggedId = e.dataTransfer.getData('text/plain');
-          if (draggedId && draggedId !== p.id) onSwap(draggedId, p.id);
-        });
-        // Touch-friendly fallback (no mouse): tap to select, tap another chip to swap.
-        chip.addEventListener('click', (e) => { e.stopPropagation(); onChipClick(p.id, row); });
-        container.appendChild(chip);
-      });
-      container.addEventListener('click', () => { if (selectedId) onRowClick(row); });
+      const countEl = this.el(`row-count-${row}`);
+      if (countEl) countEl.textContent = `${rowMembers.length}/${MAX_PER_ROW}`;
+      const byColumn = new Map(rowMembers.map(p => [p.column, p]));
+
+      for (let col = 0; col < MAX_PER_ROW; col++) {
+        const entry = byColumn.get(col);
+        if (entry) {
+          const chip = this.buildFormationChip(entry.id, { placed: true, selected: selectedId === entry.id });
+          chip.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', entry.id); onDragStart && onDragStart(entry.id); });
+          chip.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); chip.classList.add('drop-hover'); });
+          chip.addEventListener('dragleave', () => chip.classList.remove('drop-hover'));
+          chip.addEventListener('drop', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            chip.classList.remove('drop-hover');
+            const draggedId = e.dataTransfer.getData('text/plain');
+            if (draggedId && draggedId !== entry.id) onSwap(draggedId, entry.id);
+          });
+          // Touch-friendly fallback (no mouse): tap to select, tap another chip to swap.
+          chip.addEventListener('click', (e) => { e.stopPropagation(); onChipClick(entry.id, row); });
+          container.appendChild(chip);
+        } else {
+          // Empty slot placeholder - always visible (never stacked, exactly one unit per slot),
+          // and itself a drop target / tap target for placing the selected character here.
+          const empty = document.createElement('div');
+          empty.className = 'formation-slot-empty';
+          empty.dataset.row = row; empty.dataset.column = String(col);
+          empty.ondragover = (e) => { e.preventDefault(); empty.classList.add('drop-hover'); };
+          empty.ondragleave = () => empty.classList.remove('drop-hover');
+          empty.ondrop = (e) => {
+            e.preventDefault();
+            empty.classList.remove('drop-hover');
+            const id = e.dataTransfer.getData('text/plain');
+            if (id) onRowDrop(id, row);
+          };
+          empty.addEventListener('click', (e) => { e.stopPropagation(); if (selectedId) onRowClick(row); });
+          container.appendChild(empty);
+        }
+      }
     });
   },
 
   // ---------- Battle UI (3-row formation, Ally=Left / Enemy=Right) ----------
+  /** Returns a small resource display descriptor for characters with a special battle resource
+   *  (Ki, Rage, Dragon Gauge, Runes, Soul, Mounted state, active Stance, active Turret/Totem), or
+   *  null for characters without one. Used to render the resource readout on their battle slot. */
+  getResourceDisplay(actor) {
+    const id = actor.character.id;
+    const mech = actor.mech;
+    if (!mech) return null;
+    if (id === 'monk') return { label: 'KI', text: `${mech.ki}/100`, pct: mech.ki, cls: 'res-ki' };
+    if (id === 'gladiator' || id === 'berserker_lord') return { label: 'RAGE', text: `${mech.rage}/100`, pct: mech.rage, cls: 'res-rage' };
+    if (id === 'dragon_knight') return { label: 'GAUGE', text: `${mech.dragonGauge}/100`, pct: mech.dragonGauge, cls: 'res-dragon' };
+    if (id === 'soul_reaper') return { label: 'SOUL', text: `${mech.soul}/5`, pct: mech.soul * 20, cls: 'res-soul' };
+    if (id === 'rune_master') {
+      const icons = { fire: '🔥', guard: '🛡️', wind: '🌬️' };
+      const runeText = mech.runes.length > 0 ? mech.runes.map(r => icons[r] || r).join(' ') : '—';
+      return { label: 'RUNES', text: runeText, pct: (mech.runes.length / 3) * 100, cls: 'res-rune', textOnly: true };
+    }
+    if (id === 'beast_rider') return { label: 'STATE', text: mech.mounted ? 'Mounted' : 'Dismounted', pct: mech.mounted ? 100 : 30, cls: 'res-mount', textOnly: true };
+    if (id === 'bard') return { label: 'STANCE', text: mech.stance ? (mech.stance === 'battle_song' ? 'Battle Song' : 'War Drum') : 'None', pct: mech.stance ? 100 : 0, cls: 'res-stance', textOnly: true };
+    if (id === 'alchemist') return { label: 'BOTTLES', text: `${mech.bottles}/10`, pct: (mech.bottles / 10) * 100, cls: 'res-reagent' };
+    if (id === 'necromancer') return { label: 'SKELETONS LOST', text: `${mech.skeletonsLost}`, pct: Math.min(100, mech.skeletonsLost * 20), cls: 'res-soul', textOnly: true };
+    if (id === 'beastmaster') return { label: 'BEAST', text: mech.beastId ? 'Active' : 'None', pct: mech.beastId ? 100 : 0, cls: 'res-totem', textOnly: true };
+    if (id === 'spirit_shaman') {
+      const active = mech.activeTotems || {};
+      const names = [active.healing ? 'Healing' : null, active.spirit ? 'Spirit' : null].filter(Boolean);
+      return { label: 'TOTEMS', text: names.length ? names.join(' + ') : 'None', pct: names.length * 50, cls: 'res-totem', textOnly: true };
+    }
+    if (id === 'engineer' && mech.turret) return { label: mech.turret.isWarMachine ? 'WAR MACHINE' : 'TURRET', text: `${mech.turret.hp}/${mech.turret.maxHp}`, pct: (mech.turret.hp / mech.turret.maxHp) * 100, cls: 'res-turret' };
+    if (id === 'fencer') {
+      const fw = actor.statuses.find(s => s.id === 'footwork');
+      return { label: 'FOOTWORK', text: `${fw ? fw.stacks : 0}/3`, pct: fw ? (fw.stacks / 3) * 100 : 0, cls: 'res-footwork' };
+    }
+    if (id === 'duelist' && mech.duelStacks > 0) return { label: 'DUEL', text: `x${mech.duelStacks}`, pct: (mech.duelStacks / 3) * 100, cls: 'res-duel' };
+    return null;
+  },
+
   buildBattleSlot(actor, opts) {
     const isValidTarget = opts.targetableIds ? opts.targetableIds.has(actor.id) : false;
     const inTargetingMode = !!opts.targetableIds;
@@ -218,6 +263,7 @@ const UI = {
     const hpPct = Math.max(0, Math.round((actor.hp / actor.maxHp) * 100));
     const energyPct = Math.round(actor.energy);
     const shieldAmt = StatusEngine.totalShield(actor);
+    const resource = actor.isDead ? null : this.getResourceDisplay(actor);
 
     slot.innerHTML = `
       <div class="battle-slot-avatar"></div>
@@ -225,6 +271,7 @@ const UI = {
         <div class="battle-slot-name">${actor.name}</div>
         <div class="bar hp-bar"><div class="bar-fill" style="width:${hpPct}%"></div><span class="bar-label">${Math.max(0, Math.round(actor.hp))}/${actor.maxHp}</span></div>
         <div class="bar energy-bar"><div class="bar-fill" style="width:${energyPct}%"></div></div>
+        ${resource ? `<div class="resource-badge ${resource.cls}" title="${resource.label}">${resource.textOnly ? resource.text : `${resource.label} ${resource.text}`}</div>` : ''}
         ${shieldAmt > 0 ? `<div class="shield-badge">🔷 ${shieldAmt}</div>` : ''}
         <div class="status-icons">${actor.statuses.map(s => `<span class="status-icon" title="${STATUS_DEFS[s.id].name}">${STATUS_DEFS[s.id].icon}</span>`).join('')}</div>
       </div>
@@ -246,16 +293,60 @@ const UI = {
    */
   renderFormation(allActors, opts = {}) {
     const ROWS_LOCAL = ['front', 'middle', 'back'];
+    const MAX_PER_ROW = (typeof TargetingEngine !== 'undefined' && TargetingEngine.MAX_PER_ROW) || 4;
+    const allSummons = opts.summons || [];
     ROWS_LOCAL.forEach(row => {
       const allyContainer = this.el(`battle-ally-${row}`);
       const enemyContainer = this.el(`battle-enemy-${row}`);
-      if (allyContainer) allyContainer.innerHTML = '';
-      if (enemyContainer) enemyContainer.innerHTML = '';
-      const allyActors = allActors.filter(a => a.side === 'player' && a.position.row === row).sort((a, b) => a.position.column - b.position.column);
-      const enemyActors = allActors.filter(a => a.side === 'enemy' && a.position.row === row).sort((a, b) => a.position.column - b.position.column);
-      allyActors.forEach(actor => allyContainer && allyContainer.appendChild(this.buildBattleSlot(actor, opts)));
-      enemyActors.forEach(actor => enemyContainer && enemyContainer.appendChild(this.buildBattleSlot(actor, opts)));
+      if (allyContainer) { allyContainer.innerHTML = ''; allyContainer.classList.add('fixed-slots'); }
+      if (enemyContainer) { enemyContainer.innerHTML = ''; enemyContainer.classList.add('fixed-slots'); }
+
+      ['player', 'enemy'].forEach(side => {
+        const container = side === 'player' ? allyContainer : enemyContainer;
+        if (!container) return;
+        const actorsHere = allActors.filter(a => a.side === side && a.position.row === row).sort((a, b) => a.position.column - b.position.column);
+        const summonsHere = allSummons.filter(s => s.side === side && s.row === row);
+        const byColumn = new Map();
+        actorsHere.forEach(a => byColumn.set(a.position.column, { kind: 'actor', data: a }));
+        summonsHere.forEach(s => byColumn.set(s.column, { kind: 'summon', data: s }));
+        for (let col = 0; col < MAX_PER_ROW; col++) {
+          const entry = byColumn.get(col);
+          if (entry && entry.kind === 'actor') {
+            container.appendChild(this.buildBattleSlot(entry.data, opts));
+          } else if (entry && entry.kind === 'summon') {
+            container.appendChild(this.buildSummonSlot(entry.data));
+          } else {
+            const empty = document.createElement('div');
+            empty.className = 'battle-slot-empty';
+            if (opts.slotPickMode && side === 'player') {
+              empty.classList.add('slot-pickable');
+              empty.addEventListener('click', () => opts.onSlotPick({ row, column: col }));
+            }
+            container.appendChild(empty);
+          }
+        }
+      });
     });
+  },
+
+  /** A Turret or Totem's visible battle-grid occupant - lighter than a full character slot (no
+   *  Energy bar, no status icons, no targeting - see #4 in the formation spec: summons are shown,
+   *  but stay a non-targetable visual representation of the existing durability/aura mechanic). */
+  buildSummonSlot(summon) {
+    const slot = document.createElement('div');
+    slot.className = 'battle-slot summon-slot';
+    slot.style.setProperty('--summon-color', summon.color || '#c9a227');
+    const hpRow = summon.maxHp
+      ? `<div class="bar hp-bar"><div class="bar-fill" style="width:${Math.round((summon.hp / summon.maxHp) * 100)}%"></div><span class="bar-label">${Math.max(0, Math.round(summon.hp))}/${summon.maxHp}</span></div>`
+      : `<div class="summon-perpetual">Active</div>`;
+    slot.innerHTML = `
+      <div class="battle-slot-avatar summon-icon">${summon.icon}</div>
+      <div class="battle-slot-info">
+        <div class="battle-slot-name">${summon.name}</div>
+        ${hpRow}
+      </div>
+    `;
+    return slot;
   },
 
   renderTimeline(container, preview, activeId) {
@@ -270,7 +361,46 @@ const UI = {
     });
   },
 
-  renderActionMenu(container, actions, onPick) {
+  // Characters whose Passive has a clear, checkable on/off condition (HP threshold, stance, a
+  // status being present, etc). Characters not listed here still show the Passive button and its
+  // description, just without an ACTIVE/INACTIVE badge, since their passive is continuous rather
+  // than a discrete toggle (e.g. flat stat bonuses, always-on lifesteal).
+  PASSIVE_ACTIVE_CHECK: {
+    knight: (a) => a.hp / a.maxHp < 0.4,
+    'blood-knight': (a) => true,
+    samurai: (a) => a.defending === true || StatusEngine.has(a, 'iaido_stance') || StatusEngine.has(a, 'parry_stance'),
+    shadow_priest: (a) => a.hp / a.maxHp < 0.45,
+    frost_knight: (a) => StatusEngine.has(a, 'ice_stack'),
+    mirror_knight: (a) => true,
+    fencer: (a) => StatusEngine.has(a, 'footwork'),
+    gladiator: (a) => a.mech && a.mech.rage > 0,
+    berserker_lord: (a) => a.mech && a.mech.rage > 0,
+    dragon_knight: (a) => StatusEngine.has(a, 'dragon_form') || (a.mech && a.mech.dragonGauge > 0),
+    monk: (a) => a.mech && a.mech.ki > 0,
+    soul_reaper: (a) => a.mech && a.mech.soul > 0,
+    engineer: (a) => a.mech && !!a.mech.turret,
+    beast_rider: (a) => a.mech && a.mech.mounted,
+    demon_hunter: (a) => false, // Hunter's Mark is applied to enemies, not self-triggered
+    void_walker: (a) => StatusEngine.has(a, 'void_step'),
+    ninja: (a) => true,
+    assassin: (a) => true,
+    archer: (a) => true,
+    vampire: (a) => true,
+    duelist: (a) => a.mech && a.mech.duelStacks > 0,
+    plague_doctor: (a) => a.mech && a.mech.spreadCooldown === 0,
+    witch: (a) => true,
+    alchemist: (a) => a.mech && a.mech.bottles >= 7,
+  },
+
+  /** Returns true/false if this character's Passive has a known active/inactive condition right
+   *  now, or null if their passive is continuous (no discrete on/off to show). */
+  getPassiveActiveState(actor) {
+    const check = this.PASSIVE_ACTIVE_CHECK[actor.character.id];
+    if (!check) return null;
+    try { return !!check(actor); } catch (err) { return null; }
+  },
+
+  renderActionMenu(container, actions, onPick, actor) {
     container.innerHTML = '';
     const labels = { basicAttack: 'Basic', skill1: 'Skill 1', skill2: 'Skill 2', ultimate: 'Ultimate', defend: 'Defend' };
     actions.forEach(a => {
@@ -288,13 +418,22 @@ const UI = {
       btn.addEventListener('click', () => { if (held.value) return; onPick(a); });
       container.appendChild(btn);
     });
-    const itemBtn = document.createElement('button');
-    itemBtn.type = 'button';
-    itemBtn.className = 'action-btn action-item';
-    itemBtn.innerHTML = `<span class="action-btn-label">Item</span><span class="action-btn-sub">Use consumable</span>`;
-    const itemHeld = this.attachHoldDescription(itemBtn, 'Use a Small/Large Potion, Energy Potion, or Antidote - limited uses per battle.');
-    itemBtn.addEventListener('click', () => { if (itemHeld.value) return; onPick({ key: 'item', def: null, ready: true }); });
-    container.appendChild(itemBtn);
+
+    // Passive info button - purely informational (does not consume the turn). Hold to read the
+    // full description like any other skill; tapping shows an ACTIVE/INACTIVE badge when this
+    // character's passive has a clear on/off condition.
+    if (actor && actor.character.passive) {
+      const passiveBtn = document.createElement('button');
+      passiveBtn.type = 'button';
+      passiveBtn.className = 'action-btn action-passive';
+      const state = this.getPassiveActiveState(actor);
+      const badge = state === true ? '<span class="passive-state active">ACTIVE</span>'
+        : state === false ? '<span class="passive-state inactive">INACTIVE</span>' : '';
+      passiveBtn.innerHTML = `<span class="action-btn-label">Passive</span><span class="action-btn-sub">${actor.character.passive.name}</span>${badge}`;
+      const passiveHeld = this.attachHoldDescription(passiveBtn, actor.character.passive.desc);
+      passiveBtn.addEventListener('click', () => { if (passiveHeld.value) return; /* informational only - never consumes the turn */ });
+      container.appendChild(passiveBtn);
+    }
   },
 
   /** Shows a tooltip with `text` after the element is held (mouse or touch) past a short delay,

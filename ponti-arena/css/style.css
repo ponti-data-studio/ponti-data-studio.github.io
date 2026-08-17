@@ -36,6 +36,11 @@ body {
   font-family: var(--font-body);
   overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
+  /* This is a game, not a document - no selectable/copyable text anywhere, and no native
+     "Save Image / Copy" long-press menu on any element (see also assets.js for the per-image
+     contextmenu guard, which this backs up game-wide). */
+  -webkit-user-select: none; -moz-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
 }
 img { max-width: 100%; display: block; }
 button { font-family: inherit; }

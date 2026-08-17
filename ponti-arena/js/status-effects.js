@@ -42,8 +42,8 @@ const STATUS_DEFS = {
   duel_bond_self:  { name: 'Dueling',         icon: '🤺', kind: 'special', stackable: false, maxStacks: 1, category: 'buff' },   // Duelist ultimate (caster side)
   duel_bond_enemy: { name: 'Duel Bound',      icon: '🤺', kind: 'special', stackable: false, maxStacks: 1, category: 'debuff' }, // Duelist ultimate (target side)
   wanted_mark:     { name: 'Wanted',          icon: '☠️', kind: 'special', stackable: false, maxStacks: 1, category: 'debuff' }, // Pirate Captain
-  healing_totem_aura: { name: 'Healing Totem', icon: '🌀', kind: 'hot',    stackable: false, maxStacks: 1, category: 'buff', tickPercent: 5 },
-  spirit_totem_aura:  { name: 'Spirit Totem',  icon: '🌪️', kind: 'stat',   stackable: false, maxStacks: 1, category: 'buff', stat: 'speed', percent: 15 },
+  healing_totem_aura: { name: 'Healing Totem', icon: '🌀', kind: 'hot',    stackable: false, maxStacks: 1, category: 'buff', tickPercent: 7 },
+  spirit_totem_aura:  { name: 'Spirit Totem',  icon: '🌪️', kind: 'stat',   stackable: false, maxStacks: 1, category: 'buff', stat: 'speed', percent: 20 },
   gravity_weight:  { name: 'Gravity Weight',  icon: '🌑', kind: 'stat',    stackable: false, maxStacks: 1, category: 'debuff', stat: 'speed', percent: -12 },
 
   // ---- New statuses for the 40-character roster expansion ----
@@ -55,9 +55,9 @@ const STATUS_DEFS = {
   alter_fate:      { name: 'Altered Fate',    icon: '🍀', kind: 'special', stackable: false, maxStacks: 1, category: 'buff' },   // Oracle ultimate: prevents one lethal hit (same handling as divine_shield)
   void_step:       { name: 'Void Step',       icon: '🌀', kind: 'ward',    stackable: false, maxStacks: 1, category: 'buff' },   // Void Walker: blocks the next hit after teleporting
   disease:         { name: 'Disease',         icon: '🦠', kind: 'dot',     stackable: true,  maxStacks: 3, tickPercent: 3, category: 'debuff' },
-  battle_song_buff:{ name: 'Battle Song',     icon: '🎵', kind: 'stat',    stackable: false, maxStacks: 1, category: 'buff', stat: 'attack', percent: 18 },
-  war_drum_buff:   { name: 'War Drum',        icon: '🥁', kind: 'stat',    stackable: false, maxStacks: 1, category: 'buff', stat: 'speed', percent: 18 },
-  lullaby_debuff:  { name: 'Lullaby',         icon: '💤', kind: 'stat',    stackable: false, maxStacks: 1, category: 'debuff', stat: 'attack', percent: -18 },
+  battle_song_buff:{ name: 'Battle Song',     icon: '🎵', kind: 'stat',    stackable: false, maxStacks: 1, category: 'buff', stat: 'attack', percent: 24 },
+  war_drum_buff:   { name: 'War Drum',        icon: '🥁', kind: 'stat',    stackable: false, maxStacks: 1, category: 'buff', stat: 'speed', percent: 24 },
+  lullaby_debuff:  { name: 'Lullaby',         icon: '💤', kind: 'stat',    stackable: false, maxStacks: 1, category: 'debuff', stat: 'attack', percent: -22 },
   rage_shield:     { name: "Champion's Grit", icon: '🛡️', kind: 'special', stackable: false, maxStacks: 1, category: 'buff' }, // Gladiator ultimate: flat damage-taken reduction, magnitude set on cast
   hunter_mark:     { name: "Hunter's Mark",   icon: '🎯', kind: 'special', stackable: false, maxStacks: 1, category: 'debuff' }, // Demon Hunter
 
@@ -66,6 +66,11 @@ const STATUS_DEFS = {
   aim_stance:      { name: 'Aim',             icon: '🎯', kind: 'special', stackable: false, maxStacks: 1, category: 'buff' },   // Sniper: bonus crit/damage, extra vulnerability
   mirror_boost:    { name: 'Mirror Boost',    icon: '🪞', kind: 'special', stackable: false, maxStacks: 1, category: 'buff' },   // Mirror Knight: temporary extra reflect %
   soul_mark_status:{ name: 'Soul Mark',       icon: '💀', kind: 'special', stackable: false, maxStacks: 1, category: 'debuff' }, // Soul Reaper
+
+  // ---- New statuses for the skill revision pass ----
+  evasion_up:      { name: 'Foresight',       icon: '🌀', kind: 'stat',    stackable: false, maxStacks: 1, category: 'buff', stat: 'evasion', percent: 50 },   // Oracle's Prophecy
+  evasion_down:    { name: 'Ill Omen',        icon: '🌑', kind: 'stat',    stackable: false, maxStacks: 1, category: 'debuff', stat: 'evasion', percent: -35 }, // Oracle's Fate Seal
+  crit_up_team:    { name: "Fate's Favor",    icon: '🍀', kind: 'stat',    stackable: false, maxStacks: 1, category: 'buff', stat: 'critRate', percent: 40 },  // Oracle's Alter Fate
 };
 
 const StatusEngine = {

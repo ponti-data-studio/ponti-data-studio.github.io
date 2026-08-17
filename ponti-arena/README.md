@@ -8,13 +8,16 @@ No pay-to-win, no ads, no accounts, no backend. Strategy beats grinding.
 ## Features
 
 - Turn-Based Strategy RPG — Speed-based turn order, manual targeting, cooldowns, Energy/Ultimate system
-- **3-row tactical formations** — freely place your 5 characters into Front / Middle / Back; position is an optional strategic advantage, never a mandatory class restriction
+- **3-row tactical formations** — freely place your 5 characters into a fixed 12-slot grid (4 Front / 4 Middle / 4 Back); position is an optional strategic advantage, never a mandatory class restriction
 - 5v5 Battles with **50** fully data-driven characters, each with a distinct kit (not just re-skinned numbers)
 - AI opponents with 4 real difficulty levels (Easy / Normal / Hard / Extreme) — no stat cheating, ever — and 3 formation strategies (Balanced / Aggressive / Ranged) that Extreme AI picks to counter your own formation
+- **Ranked Mode** — a MOBA-style Ban (3-per-side) + alternating Draft against the AI, then straight into Formation and an Expert-tier battle
 - Fully offline after first load, installable as a PWA on Android, iOS, Windows, macOS, and Linux
 - Fully responsive to **both Portrait and Landscape** on smartphones - the battle arena re-flows between a left/right layout (landscape) and a stacked top/bottom layout (portrait), always fitting on one screen with zero scrolling
-- Character Mastery, Campaign (5 stages), Achievements, and Quick Battle / Practice / Character Test modes
+- Character Mastery, Campaign (5 stages), Achievements, and Quick Battle / Practice / Character Test / Ranked modes
 - No Shop, no ads, no premium currency, no loot boxes — see "Fair by Design" below
+- Want to add real music, per-skill sound effects, or custom skill animations? See **[ASSET_GUIDE.md](./ASSET_GUIDE.md)**.
+- Want to extend the game itself - new characters, arenas, campaign stages, game modes, or features? See **[DEVELOPMENT.md](./DEVELOPMENT.md)**.
 
 ## The Extended Roster (21-30)
 
@@ -158,9 +161,11 @@ full description in a tooltip - releasing after a hold never accidentally trigge
 
 ## Formations & Positioning
 
-Ally slots render on the **left**, enemy slots on the **right** in Landscape (or **bottom**/**top**
-in Portrait), both split into three bands: **Front**, **Middle**, **Back**. You place your own 5
-characters — there is no forced "Tank front / DPS middle / Healer back" rule.
+The battlefield is a **fixed 12-slot grid per side**: 4 Front + 4 Middle + 4 Back, one unit per
+slot, never stacked. Ally slots render on the **left**, enemy slots on the **right** in Landscape
+(or **bottom**/**top** in Portrait). You place your own 5 characters — there is no forced
+"Tank front / DPS middle / Healer back" rule, and there's no requirement to fill every row before
+continuing (unused slots just stay empty).
 
 - **Front Row** is the default target for Basic Attacks and most generic skills, and suits
   Tanks/Fighters who want to soak hits.
@@ -170,10 +175,53 @@ characters — there is no forced "Tank front / DPS middle / Healer back" rule.
 - A handful of characters get an explicit **row synergy** bonus for standing in their preferred row
   (e.g. Knight/Guardian gain bonus Defense in the Front Row; Archer gains bonus Crit and Cleric
   gains bonus Healing in the Back Row) — shown on their Character Detail screen.
-- On the **Formation** screen (shown after picking your 5 characters for Quick Battle or Campaign),
-  tap a character then tap Front/Middle/Back to place them, tap a placed character to send them back
-  to the pool, or use **Auto Arrange** for a sensible default. Desktop also supports drag-and-drop.
+- On the **Formation** screen (shown after picking your 5 characters for Quick Battle, Campaign, or
+  Ranked), tap a character then tap a row to place them into its next open slot, tap a placed
+  character to send them back to the pool, drag any character onto a row or straight onto another
+  character to swap them, or use **Auto Arrange** for a sensible default (it never overflows a row
+  past 4 - a 5th character preferring a full row automatically spills into the next row).
+- **Turrets and Totems appear as real occupants of the grid** (Engineer's Turret/War Machine,
+  Spirit Shaman's Healing/Spirit Totem) — each claims one of the 12 slots on its owner's side the
+  moment it's summoned, shown with its own icon and (for the Turret) an HP bar, and the slot frees
+  up automatically when it expires or is replaced. They're a visual representation of the existing
+  durability/aura mechanic rather than an independent turn-taking or targetable unit, keeping the
+  turn order and targeting systems exactly as stable as the rest of the roster.
+
+## Ranked Mode
+
+A MOBA-style **Ban + Draft** flow against the AI, from the Main Menu's **Ranked** button:
+
+1. **Ban Phase** — pick up to 3 characters to ban. The AI independently bans its own 3 (the
+   highest power-scoring characters still available, using the same transparent scoring Master AI
+   drafting already uses). Both sets of bans are removed from the pool for the whole match.
+2. **Draft Phase** — a fair alternating pick order (randomly decided who goes first, then
+   strictly alternating) until both sides have 5 characters. The AI prioritizes covering a
+   frontline anchor and a Support pick first, then the highest-scoring character available.
+3. Straight into **Formation** with your drafted 5, then **Arena** select — Ranked always faces
+   **Expert**-tier AI (not player-selectable, matching how a ranked opponent's skill isn't
+   something you'd choose yourself), and the opponent's team is exactly what it drafted, not a
+   random or separately-drafted pool.
+
 - Practice and Character Test skip the formation step and auto-arrange for speed.
+
+## Real Summons: Skeletons & Beasts
+
+Necromancer's Skeletons and Beastmaster's Beasts (Tiger/Wolf/Eagle) are **real, targetable battle
+actors**, not decorative icons - see `BattleEngine.createSummon()`. They occupy one of the 12 grid
+slots, have their own HP, and can be attacked and killed by either side, but they never take an
+independent turn in the initiative order and never count toward victory/defeat on their own - they
+only act when their owner's skill explicitly triggers them (Skeleton Attack, Command Beast, Primal
+Fury). Engineer's Turret/War Machine and Spirit Shaman's Totems remain the lighter, visual-only
+summon representation introduced earlier (a durability pool / team aura shown in a grid slot,
+without independent targetability), since they were never meant to be directly attackable.
+
+Several skills let the player freely choose *which* empty grid slot a new summon appears in, or
+where a character teleports to, instead of always auto-placing: Engineer's Deploy Turret/War
+Machine, Necromancer's Summon Skeleton, Beastmaster's Summon Beast, and Void Walker's Blink (which
+can now teleport to any open slot on the battlefield, not just one row forward, and grants a burst
+of Speed on top of its post-teleport ward). Picking a slot highlights every open box on your own
+side in gold - tap one to confirm.
+
 
 ### Portrait vs Landscape
 

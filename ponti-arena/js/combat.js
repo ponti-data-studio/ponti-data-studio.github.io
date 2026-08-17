@@ -53,6 +53,8 @@ const CombatEngine = {
     let cr = actor.stats.critRate;
     const rs = actor.character.rowSynergy;
     if (rs && rs.stat === 'critRate' && actor.position && actor.position.row === rs.row) cr += rs.percent;
+    const critStatus = StatusEngine.get(actor, 'crit_up_team');
+    if (critStatus) cr += STATUS_DEFS.crit_up_team.percent;
     return cr;
   },
   liveCritDmg(actor) { return actor.stats.critDamage; },
@@ -67,6 +69,9 @@ const CombatEngine = {
     let targetEvasion = (target.character.base && target.character.base.evasion) || 0;
     const footwork = StatusEngine.get(target, 'footwork');
     if (footwork) targetEvasion += footwork.stacks * (STATUS_DEFS.footwork.percent || 0);
+    if (StatusEngine.has(target, 'evasion_up')) targetEvasion += STATUS_DEFS.evasion_up.percent;
+    if (StatusEngine.has(target, 'evasion_down')) targetEvasion += STATUS_DEFS.evasion_down.percent;
+    targetEvasion = Math.max(0, targetEvasion);
     if (!estimate && !options.skipEvasion && targetEvasion > 0 && Math.random() * 100 < targetEvasion) {
       return { amount: 0, isCrit: false, evaded: true };
     }
@@ -174,9 +179,10 @@ const CombatEngine = {
       const stacks = attacker.arcaneStacks || 0;
       raw *= (1 + stacks * 0.10);
     }
-    // Necromancer Necrotic Power - scales with fallen units on the field
-    if (attacker.character.id === 'necromancer' && options.fallenCount) {
-      raw *= (1 + options.fallenCount * 0.05);
+    // Necromancer Necrotic Power - scales with fallen units on the field, plus his own fallen Skeletons.
+    if (attacker.character.id === 'necromancer') {
+      if (options.fallenCount) raw *= (1 + options.fallenCount * 0.05);
+      if (attacker.mech && attacker.mech.skeletonsLost) raw *= (1 + attacker.mech.skeletonsLost * 0.01);
     }
     // Stormcaller Static Charge bonus flagged by caller
     if (options.staticChargeBonus) raw *= 1.5;
@@ -188,6 +194,7 @@ const CombatEngine = {
 
     let isCrit = false;
     let critChance = this.liveCritRate(attacker);
+    if (options.critChanceFloor) critChance = Math.max(critChance, options.critChanceFloor);
     if (attacker.character.id === 'archer' && (target.hp / target.maxHp) > 0.5) {
       critChance += 10;
     }

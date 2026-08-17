@@ -13,14 +13,25 @@
  */
 
 const CharacterMechanics = {
+  BEAST_TYPES: [
+    { name: 'Tiger', icon: '🐅', hpMult: 0.22, atkMult: 0.55 },
+    { name: 'Wolf', icon: '🐺', hpMult: 0.16, atkMult: 0.45 },
+    { name: 'Eagle', icon: '🦅', hpMult: 0.10, atkMult: 0.65 },
+  ],
+
   /** Per-actor custom state, initialized once when the battle actor is created (see battle.js). */
   initActorState(actor) {
     actor.mech = {
       protectedAllyId: null,     // Paladin
       counteredThisTurn: false,  // Samurai / Duelist / Fencer
-      reagents: { healing: 0, toxic: 0, swift: 0, purifying: 0 }, // Alchemist
+      reagents: { healing: 0, toxic: 0, swift: 0, purifying: 0 }, // legacy field, unused (kept only for save-compat)
+      bottles: 10,                // Alchemist (0-10)
       duelTarget: null, duelStacks: 0, // Duelist
-      activeTotem: null,         // Spirit Shaman ('healing' | 'spirit')
+      activeTotems: { healing: false, spirit: false }, // Spirit Shaman - both can be active at once
+      totemSlots: { healing: null, spirit: null },     // Spirit Shaman - {row, column} per active Totem
+      skeletonsLost: 0,           // Necromancer - count of his own fallen Skeletons this battle
+      beastCycle: 0,               // Beastmaster - which beast type is next (0=Tiger,1=Wolf,2=Eagle)
+      beastId: null,                // Beastmaster - actor id of her current living Beast, if any
       ki: 0,                     // Monk (0-100)
       rage: 0,                   // Gladiator / Berserker Lord (0-100)
       turret: null,              // Engineer: { hp, maxHp, attack, duration, isWarMachine }
@@ -47,7 +58,6 @@ const CharacterMechanics = {
     if (actor.isDead) return events;
 
     if (actor.character.id === 'paladin') this.refreshProtection(actor, allActors);
-    if (actor.character.id === 'alchemist') this.generateReagent(actor);
     if (actor.character.id === 'engineer') this.tickTurret(actor, allActors, events);
     if (actor.mech.spreadCooldown > 0) actor.mech.spreadCooldown -= 1;
     return events;
@@ -64,6 +74,11 @@ const CharacterMechanics = {
       if (mark && mark.source === reaper.id) gain += 1;
       reaper.mech.soul = Math.min(5, reaper.mech.soul + gain);
     });
+    // Necromancer's Necrotic Power also strengthens with his own fallen Skeletons.
+    if (deadActor.isSummon && deadActor.ownerId) {
+      const owner = allActors.find(a => a.id === deadActor.ownerId);
+      if (owner && owner.character.id === 'necromancer' && owner.mech) owner.mech.skeletonsLost += 1;
+    }
   },
 
   // ---------------------------------------------------------------- ENGINEER ----
@@ -87,9 +102,50 @@ const CharacterMechanics = {
     if (target.isDead) events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` });
   },
 
-  deployTurret(engineer) {
+  /** Finds an open grid slot for a new summon on `owner`'s side of the 12-slot battlefield
+   *  (combining living characters AND any other active summon already occupying a slot there) -
+   *  see #4/#5 in the formation spec: every summon takes exactly one visible battle slot. */
+  findSummonSlot(owner, allActors) {
+    if (typeof TargetingEngine === 'undefined') return null;
+    const occupied = allActors.filter(a => a.side === owner.side && !a.isDead).map(a => ({ row: a.position.row, column: a.position.column }));
+    const otherSummons = this.getActiveSummons(allActors).filter(s => s.side === owner.side);
+    const combined = [...occupied, ...otherSummons];
+    return TargetingEngine.findOpenSlot(combined, owner.position ? owner.position.row : 'back');
+  },
+
+  /** Collects every currently-active summon (Engineer's Turret/War Machine, Spirit Shaman's Totem)
+   *  across all actors into one normalized list for rendering - see buildSummonSlot() in ui.js. */
+  getActiveSummons(allActors) {
+    const summons = [];
+    allActors.forEach((a) => {
+      if (!a.mech || a.isDead) return;
+      if (a.mech.turret && a.mech.turret.slot) {
+        summons.push({
+          id: `turret-${a.id}`, ownerId: a.id, side: a.side, row: a.mech.turret.slot.row, column: a.mech.turret.slot.column,
+          icon: '🛠️', name: a.mech.turret.isWarMachine ? 'War Machine' : 'Turret',
+          hp: a.mech.turret.hp, maxHp: a.mech.turret.maxHp, color: '#c9c94a',
+        });
+      }
+      if (a.mech.activeTotems) {
+        if (a.mech.activeTotems.healing && a.mech.totemSlots && a.mech.totemSlots.healing) {
+          const s = a.mech.totemSlots.healing;
+          summons.push({ id: `totem-healing-${a.id}`, ownerId: a.id, side: a.side, row: s.row, column: s.column,
+            icon: '🌀', name: 'Healing Totem', hp: null, maxHp: null, color: '#6fc9d9' });
+        }
+        if (a.mech.activeTotems.spirit && a.mech.totemSlots && a.mech.totemSlots.spirit) {
+          const s = a.mech.totemSlots.spirit;
+          summons.push({ id: `totem-spirit-${a.id}`, ownerId: a.id, side: a.side, row: s.row, column: s.column,
+            icon: '🌪️', name: 'Spirit Totem', hp: null, maxHp: null, color: '#c9a9e0' });
+        }
+      }
+    });
+    return summons;
+  },
+
+  deployTurret(engineer, allActors, forcedSlot) {
     const maxHp = Math.round(engineer.maxHp * 0.35);
-    engineer.mech.turret = { hp: maxHp, maxHp, attack: Math.round(CombatEngine.liveStat(engineer, 'attack') * 0.5), duration: 4, isWarMachine: false };
+    const slot = forcedSlot || this.findSummonSlot(engineer, allActors || []);
+    engineer.mech.turret = { hp: maxHp, maxHp, attack: Math.round(CombatEngine.liveStat(engineer, 'attack') * 0.5), duration: 4, isWarMachine: false, slot };
   },
 
   // ---------------------------------------------------------------- RESOURCES (Ki / Rage / Dragon Gauge) ----
@@ -106,10 +162,15 @@ const CharacterMechanics = {
     'wind+wind': 'Haste', 'guard+guard': 'Fortress', 'guard+wind': 'Mobility',
   },
   /** Adds the next Rune in a fixed Fire -> Guard -> Wind rotation (keeps skill UI simple - see #5/#31). */
-  inscribeRune(actor) {
+  /** Inscribes `chosen` (a player-picked 'fire'|'guard'|'wind'), or falls back to a fixed
+   *  Fire->Guard->Wind rotation for AI-controlled casters / anywhere no choice was made. */
+  inscribeRune(actor, chosen) {
     const order = ['fire', 'guard', 'wind'];
-    const last = actor.mech.runes.length > 0 ? actor.mech.runes[actor.mech.runes.length - 1] : null;
-    const next = order[(order.indexOf(last) + 1) % order.length];
+    let next = chosen && order.includes(chosen) ? chosen : null;
+    if (!next) {
+      const last = actor.mech.runes.length > 0 ? actor.mech.runes[actor.mech.runes.length - 1] : null;
+      next = order[(order.indexOf(last) + 1) % order.length];
+    }
     actor.mech.runes.push(next);
     if (actor.mech.runes.length > 3) actor.mech.runes.shift(); // FIFO cap - never unbounded
     return next;
@@ -265,18 +326,11 @@ const CharacterMechanics = {
   },
 
   // ---------------------------------------------------------------- ALCHEMIST ----
-  generateReagent(alchemist) {
-    const types = ['healing', 'toxic', 'swift', 'purifying'];
-    const r = alchemist.mech.reagents;
-    const total = types.reduce((sum, t) => sum + r[t], 0);
-    if (total >= 8) return; // overall cap so it can't stockpile forever
-    const pick = types[Math.floor(Math.random() * types.length)];
-    r[pick] = Math.min(4, r[pick] + 1);
-  },
-
-  consumeReagent(alchemist, type) {
-    if (alchemist.mech.reagents[type] > 0) { alchemist.mech.reagents[type] -= 1; return true; }
-    return false;
+  /** A single unified bottle rack (max 10) replaces the old 4-type reagent system. */
+  spendBottles(alchemist, amount) {
+    if (alchemist.mech.bottles < amount) return false;
+    alchemist.mech.bottles -= amount;
+    return true;
   },
 
   // ---------------------------------------------------------------- DUELIST ----
@@ -294,27 +348,49 @@ const CharacterMechanics = {
   },
 
   // ---------------------------------------------------------------- SPIRIT SHAMAN ----
-  /** Only one totem aura may be active at a time - casting a new one clears the old (#Spirit Bond). */
+  /** Only one totem aura may be active at a time - casting a new one clears the old (#Spirit Bond).
+   *  The totem also claims a visible battle slot on the Shaman's side (freed automatically once
+   *  replaced, since a new call here reassigns `totemSlot` before the old one is ever read again). */
+  /** Both Totems can now be active at once (not mutually exclusive) - each claims its own grid
+   *  slot and its own aura, and re-casting the SAME totem just refreshes its duration. */
   applyTotem(shaman, allies, totemKey, statusId, duration) {
-    if (shaman.mech.activeTotem) {
-      const prevStatusId = shaman.mech.activeTotem === 'healing' ? 'healing_totem_aura' : 'spirit_totem_aura';
-      allies.forEach(a => StatusEngine.remove(a, prevStatusId));
+    if (!shaman.mech.activeTotems) shaman.mech.activeTotems = {};
+    if (!shaman.mech.totemSlots) shaman.mech.totemSlots = {};
+    shaman.mech.activeTotems[totemKey] = true;
+    if (!shaman.mech.totemSlots[totemKey]) {
+      shaman.mech.totemSlots[totemKey] = this.findSummonSlot(shaman, allies);
     }
-    shaman.mech.activeTotem = totemKey;
     allies.forEach(a => StatusEngine.apply(a, statusId, duration, shaman.id));
   },
 
   // ---------------------------------------------------------------- GRAVITY MAGE / PIRATE CAPTAIN ----
   /** Repositions an actor one row toward `direction` ('forward' = back->middle->front,
    *  'backward' = front->middle->back). No-op (safe) if already at the boundary - see #25. */
-  reposition(actor, direction) {
+  /** Repositions an actor one row toward `direction` ('forward' = back->middle->front,
+   *  'backward' = front->middle->back). No-op (safe) if already at the boundary - see #25.
+   *  If `allActors` is provided, finds a genuinely open column in the destination row (the fixed
+   *  12-slot grid caps each row at 4 - see #5) instead of blindly keeping the old column index,
+   *  which could otherwise land two units on the exact same slot. */
+  reposition(actor, direction, allActors) {
     if (!actor.position) return false;
     const order = ['back', 'middle', 'front'];
     const idx = order.indexOf(actor.position.row);
     if (idx === -1) return false;
     const newIdx = direction === 'forward' ? idx + 1 : idx - 1;
     if (newIdx < 0 || newIdx > 2) return false; // already at the boundary - stays put
-    actor.position = { row: order[newIdx], column: actor.position.column };
+    const newRow = order[newIdx];
+    if (allActors) {
+      const occupied = new Set(allActors.filter(a => a !== actor && !a.isDead && a.side === actor.side && a.position.row === newRow).map(a => a.position.column));
+      let col = actor.position.column;
+      if (occupied.has(col)) {
+        col = 0;
+        while (occupied.has(col) && col < 4) col++;
+        if (col >= 4) return false; // destination row is completely full - can't move there
+      }
+      actor.position = { row: newRow, column: col };
+    } else {
+      actor.position = { row: newRow, column: actor.position.column };
+    }
     return true;
   },
 
@@ -370,14 +446,6 @@ const CharacterMechanics = {
       CharacterMechanics.advanceReadiness(target, fraction);
       events.push({ type: 'special', actor: actor.id, target: target.id, text: `${target.name}'s next turn draws closer.` });
     },
-    time_slow(actor, skillDef, targets, events) {
-      const target = targets[0];
-      if (!target || target.isDead) return;
-      if (target.energy >= 100) {
-        CharacterMechanics.delayReadiness(target, 0.25);
-        events.push({ type: 'special', actor: actor.id, target: target.id, text: `${target.name}'s Ultimate-charged momentum is disrupted!` });
-      }
-    },
     rewind(actor, skillDef, targets, events) {
       const target = targets[0];
       if (!target) return;
@@ -385,54 +453,149 @@ const CharacterMechanics = {
       events.push({ type: 'heal', actor: actor.id, target: target.id, amount: result.healed,
         text: `${actor.name} rewinds time for ${target.name}: +${result.healed} HP, +${result.energyRestored} Energy, ${result.cleansed} debuff(s) undone.` });
     },
+    freezing_time(actor, skillDef, targets, events, ctx) {
+      if (!ctx.battle) return;
+      ctx.battle.globalFreeze = { side: actor.side === 'player' ? 'enemy' : 'player', turnsRemaining: 3 };
+      events.push({ type: 'special', actor: actor.id, text: `${actor.name} freezes time itself - the enemy team cannot act for the next 3 turns!` });
+    },
 
-    // Illusionist ---------------------------------------------------------------------------
-    // (Decoy and Confusion are pure status applications - already handled by applyStatuses.)
+    // Shadow Priest -------------------------------------------------------------------------------
+    shadow_heal(actor, skillDef, targets, events, ctx) {
+      const target = targets[0];
+      if (!target || target.isDead || target.id === actor.id) {
+        events.push({ type: 'special', actor: actor.id, text: `${actor.name} cannot target herself with Shadow Heal.` });
+        return;
+      }
+      // AI (or any caller without a player-chosen amount) defaults to a sensible fixed fraction.
+      let amount = ctx.sacrificeAmount;
+      if (!amount || amount <= 0) amount = Math.round(actor.maxHp * 0.18);
+      amount = Math.max(1, Math.min(actor.hp - 1, amount));
+      actor.hp -= amount;
+      let healAmt = amount * 2;
+      // Dark Blessing: extra healing effectiveness while her own HP is critically low.
+      if (actor.hp / actor.maxHp < 0.4) healAmt = Math.round(healAmt * 1.15);
+      const healed = CombatEngine.applyHeal(actor, target, healAmt);
+      events.push({ type: 'heal', actor: actor.id, target: target.id, amount: healed,
+        text: `${actor.name} sacrifices ${amount} HP - ${target.name} is healed for ${healed}.` });
+    },
+    life_taker(actor, skillDef, targets, events) {
+      const target = targets[0];
+      if (!target || target.isDead) return;
+      let pct = 0.14;
+      if (actor.hp / actor.maxHp < 0.4) pct *= 1.15; // Dark Blessing
+      const healAmt = Math.round(target.maxHp * pct);
+      const healed = CombatEngine.applyHeal(actor, actor, healAmt);
+      events.push({ type: 'heal', actor: actor.id, target: actor.id, amount: healed,
+        text: `${actor.name} siphons life from ${target.name} without harming them, healing for ${healed}.` });
+    },
+    soul_sacrifice(actor, skillDef, targets, events, ctx) {
+      const target = targets[0];
+      if (!target || target.isDead) return;
+      let amount = ctx.sacrificeAmount;
+      if (!amount || amount <= 0) amount = Math.round(actor.maxHp * 0.2);
+      amount = Math.max(1, Math.min(actor.hp - 1, amount));
+      actor.hp -= amount;
+      target.hp = Math.max(0, target.hp - amount);
+      if (target.hp <= 0) { target.isDead = true; }
+      events.push({ type: 'damage', actor: actor.id, target: target.id, amount, isCrit: false,
+        text: `${actor.name} sacrifices ${amount} HP - ${target.name} loses the same amount!` });
+      if (target.isDead) { events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` }); CharacterMechanics.registerDeath(target, ctx.allActors); }
+    },
+
+    // Necromancer -------------------------------------------------------------------------------
+    summon_skeleton(actor, skillDef, targets, events, ctx) {
+      if (!ctx.battle) return;
+      const attack = Math.round(CombatEngine.liveStat(actor, 'attack') * 0.4);
+      const skeleton = ctx.battle.createSummon(actor, { name: 'Skeleton', icon: '💀', color: '#c9c9c9', hp: 1, attack, attackType: 'physical' }, ctx.chosenSlot);
+      if (skeleton) events.push({ type: 'special', actor: actor.id, text: `${actor.name} raises a Skeleton (1 HP)!` });
+      else events.push({ type: 'special', actor: actor.id, text: `${actor.name} has no room left to raise another Skeleton.` });
+    },
+    skeleton_attack(actor, skillDef, targets, events, ctx) {
+      const primary = targets[0];
+      if (!primary || primary.isDead) return;
+      const skeletons = ctx.battle ? ctx.battle.livingSummonsOf(actor.id) : [];
+      skeletons.forEach((sk) => {
+        if (primary.isDead) return;
+        const { amount, isCrit } = CombatEngine.calculateDamage(sk, primary, 1.0, {});
+        const dealt = CombatEngine.applyDamage(sk, primary, amount);
+        events.push({ type: 'damage', actor: sk.id, target: primary.id, amount: dealt, isCrit,
+          text: `${sk.name} claws at ${primary.name} for ${dealt} damage.` });
+        if (primary.isDead) {
+          events.push({ type: 'death', actor: primary.id, text: `${primary.name} has fallen!` });
+          CharacterMechanics.registerDeath(primary, ctx.allActors);
+        }
+      });
+    },
+
+    // Beastmaster ---------------------------------------------------------------------------------
+    summon_beast(actor, skillDef, targets, events, ctx) {
+      if (!ctx.battle) return;
+      // Replaceable: casting again removes whatever Beast she already had.
+      if (actor.mech.beastId) {
+        const old = ctx.allActors.find(a => a.id === actor.mech.beastId);
+        if (old && !old.isDead) { old.isDead = true; old.hp = 0; }
+      }
+      const type = CharacterMechanics.BEAST_TYPES[actor.mech.beastCycle % 3];
+      actor.mech.beastCycle += 1;
+      const hp = Math.max(60, Math.round(actor.maxHp * type.hpMult));
+      const attack = Math.round(CombatEngine.liveStat(actor, 'attack') * type.atkMult);
+      const beast = ctx.battle.createSummon(actor, { name: type.name, icon: type.icon, color: '#a67c52', hp, attack, attackType: 'physical' }, ctx.chosenSlot);
+      if (beast) {
+        actor.mech.beastId = beast.id;
+        events.push({ type: 'special', actor: actor.id, text: `${actor.name} summons a ${type.name}!` });
+      } else {
+        actor.mech.beastId = null;
+        events.push({ type: 'special', actor: actor.id, text: `${actor.name} has no room to summon a Beast.` });
+      }
+    },
+    command_beast(actor, skillDef, targets, events, ctx) {
+      const target = targets[0];
+      if (!target || target.isDead) return;
+      const beast = ctx.allActors.find(a => a.id === actor.mech.beastId && !a.isDead);
+      if (!beast) {
+        events.push({ type: 'special', actor: actor.id, text: `${actor.name} has no Beast to command.` });
+        return;
+      }
+      // She, her Beast, and two more animals all strike the same target together.
+      const strikes = [{ source: actor, power: 0.55 }, { source: beast, power: 0.9 }, { source: beast, power: 0.5 }, { source: beast, power: 0.5 }];
+      strikes.forEach(({ source, power }, i) => {
+        if (target.isDead) return;
+        const { amount, isCrit } = CombatEngine.calculateDamage(source, target, power, {});
+        const dealt = CombatEngine.applyDamage(source, target, amount);
+        const label = i === 0 ? `${actor.name} strikes` : i === 1 ? `${beast.name} pounces on` : 'A called animal strikes';
+        events.push({ type: 'damage', actor: source.id, target: target.id, amount: dealt, isCrit,
+          text: `${label} ${target.name} for ${dealt} damage.` });
+        if (target.isDead) { events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` }); CharacterMechanics.registerDeath(target, ctx.allActors); }
+      });
+    },
+    primal_fury(actor, skillDef, targets, events, ctx) {
+      const beast = ctx.allActors.find(a => a.id === actor.mech.beastId && !a.isDead);
+      if (!beast) return;
+      targets.forEach((t) => {
+        if (t.isDead) return;
+        const { amount, isCrit } = CombatEngine.calculateDamage(beast, t, 0.8, {});
+        const dealt = CombatEngine.applyDamage(beast, t, amount);
+        events.push({ type: 'damage', actor: beast.id, target: t.id, amount: dealt, isCrit,
+          text: `${beast.name} joins the assault on ${t.name} for ${dealt} damage.` });
+        if (t.isDead) { events.push({ type: 'death', actor: t.id, text: `${t.name} has fallen!` }); CharacterMechanics.registerDeath(t, ctx.allActors); }
+      });
+    },
+
 
     // Alchemist -------------------------------------------------------------------------------
-    // (Healing Potion / Toxic Flask reagent consumption happens up-front in SkillSystem.resolve
-    //  so the power scaling applies to the same cast - see skills.js.)
-    forbidden_mixture(actor, skillDef, targets, events, ctx) {
-      const r = actor.mech.reagents;
-      const allies = ctx.allActors.filter(a => a.side === actor.side && !a.isDead);
-      const enemies = ctx.allActors.filter(a => a.side !== actor.side && !a.isDead);
-      let used = false;
-      if (r.healing > 0 && r.swift > 0) {
-        r.healing--; r.swift--; used = true;
-        const target = [...allies].sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
-        if (target) {
-          const healed = CombatEngine.applyHeal(actor, target, target.maxHp * 0.3);
-          StatusEngine.apply(target, 'speed_up', 2, actor.id);
-          events.push({ type: 'heal', actor: actor.id, target: target.id, amount: healed, text: `${actor.name} mixes Healing + Swift: +${healed} HP and Speed Up for ${target.name}.` });
-        }
-      } else if (r.purifying > 0 && r.healing > 0) {
-        r.purifying--; r.healing--; used = true;
-        const target = [...allies].sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
-        if (target) {
-          const healed = CombatEngine.applyHeal(actor, target, target.maxHp * 0.25);
-          StatusEngine.removeAllDebuffs(target);
-          events.push({ type: 'heal', actor: actor.id, target: target.id, amount: healed, text: `${actor.name} mixes Purifying + Healing: +${healed} HP and cleanses ${target.name}.` });
-        }
-      } else if (r.toxic > 0) {
-        r.toxic--; used = true;
-        const target = enemies[0];
-        if (target) {
-          const { amount } = CombatEngine.calculateDamage(actor, target, 1.1, {});
-          const dealt = CombatEngine.applyDamage(actor, target, amount);
-          StatusEngine.apply(target, 'poison', 3, actor.id);
-          events.push({ type: 'damage', actor: actor.id, target: target.id, amount: dealt, text: `${actor.name} hurls a Toxic Mixture at ${target.name} for ${dealt} damage and heavy Poison.` });
-          if (target.isDead) events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` });
-        }
+    // (Bottle consumption for the basic attack / skills happens up-front in skills.js so the
+    //  power scaling and gating apply to the same cast.)
+    healing_potion(actor, skillDef, targets, events) {
+      const target = targets[0];
+      if (target && !target.isDead && StatusEngine.has(target, 'poison')) {
+        StatusEngine.remove(target, 'poison');
+        events.push({ type: 'cleanse', actor: actor.id, target: target.id, text: `${target.name}'s Poison is washed away.` });
       }
-      if (!used) {
-        // No reagents at all - a minor, guaranteed fallback so the Ultimate is never a dead button.
-        const target = enemies[0];
-        if (target) {
-          const { amount } = CombatEngine.calculateDamage(actor, target, 0.6, {});
-          const dealt = CombatEngine.applyDamage(actor, target, amount);
-          events.push({ type: 'damage', actor: actor.id, target: target.id, amount: dealt, text: `${actor.name} improvises a weak mixture, dealing ${dealt} damage.` });
-        }
-      }
+    },
+    compounding_chemicals(actor, skillDef, targets, events) {
+      const gained = 10 - actor.mech.bottles;
+      actor.mech.bottles = 10;
+      events.push({ type: 'special', actor: actor.id, text: `${actor.name} brews a fresh batch, gaining ${gained} bottles (10/10).` });
     },
 
     // Spirit Shaman -----------------------------------------------------------------------------
@@ -448,27 +611,34 @@ const CharacterMechanics = {
     },
 
     // Pirate Captain / Gravity Mage: position manipulation --------------------------------------
-    explosive_barrel(actor, skillDef, targets, events) {
+    explosive_barrel(actor, skillDef, targets, events, ctx) {
       targets.forEach(t => {
         if (t.isDead) return;
-        const moved = CharacterMechanics.reposition(t, 'backward');
+        const moved = CharacterMechanics.reposition(t, 'backward', ctx.allActors);
         if (moved) events.push({ type: 'special', actor: actor.id, target: t.id, text: `${t.name} is knocked back to the ${t.position.row} row!` });
       });
     },
-    gravity_pull(actor, skillDef, targets, events) {
+    gravity_pull(actor, skillDef, targets, events, ctx) {
       targets.forEach(t => {
         if (t.isDead) return;
-        const moved = CharacterMechanics.reposition(t, 'forward');
+        const moved = CharacterMechanics.reposition(t, 'forward', ctx.allActors);
         if (moved) events.push({ type: 'special', actor: actor.id, target: t.id, text: `${t.name} is pulled forward to the ${t.position.row} row!` });
       });
     },
-    singularity(actor, skillDef, targets, events) {
+    gravity_push(actor, skillDef, targets, events, ctx) {
+      targets.forEach(t => {
+        if (t.isDead) return;
+        const moved = CharacterMechanics.reposition(t, 'backward', ctx.allActors);
+        if (moved) events.push({ type: 'special', actor: actor.id, target: t.id, text: `${t.name} is shoved back to the ${t.position.row} row!` });
+      });
+    },
+    singularity(actor, skillDef, targets, events, ctx) {
       const livingHits = targets.filter(t => !t.isDead);
       if (livingHits.length < 2) return;
       // Converge everyone caught into the Middle Row, unless they're already there.
       livingHits.forEach(t => {
-        if (t.position.row === 'front') CharacterMechanics.reposition(t, 'backward');
-        else if (t.position.row === 'back') CharacterMechanics.reposition(t, 'forward');
+        if (t.position.row === 'front') CharacterMechanics.reposition(t, 'backward', ctx.allActors);
+        else if (t.position.row === 'back') CharacterMechanics.reposition(t, 'forward', ctx.allActors);
       });
       events.push({ type: 'special', actor: actor.id, text: `The singularity drags ${livingHits.length} enemies together!` });
     },
@@ -505,8 +675,8 @@ const CharacterMechanics = {
     },
 
     // Engineer ---------------------------------------------------------------------------------
-    deploy_turret_eng(actor, skillDef, targets, events) {
-      CharacterMechanics.deployTurret(actor);
+    deploy_turret_eng(actor, skillDef, targets, events, ctx) {
+      CharacterMechanics.deployTurret(actor, ctx.allActors, ctx.chosenSlot);
       events.push({ type: 'special', actor: actor.id, text: `${actor.name} deploys a Turret.` });
     },
     repair(actor, skillDef, targets, events) {
@@ -525,7 +695,8 @@ const CharacterMechanics = {
     war_machine(actor, skillDef, targets, events, ctx) {
       const maxHp = Math.round(actor.maxHp * 0.55);
       const carryOver = actor.mech.turret ? Math.round(maxHp * 0.4) : 0;
-      actor.mech.turret = { hp: Math.min(maxHp, maxHp * 0.6 + carryOver), maxHp, attack: Math.round(CombatEngine.liveStat(actor, 'attack') * 0.85), duration: 4, isWarMachine: true };
+      const slot = actor.mech.turret && actor.mech.turret.slot ? actor.mech.turret.slot : (ctx.chosenSlot || CharacterMechanics.findSummonSlot(actor, ctx.allActors));
+      actor.mech.turret = { hp: Math.min(maxHp, maxHp * 0.6 + carryOver), maxHp, attack: Math.round(CombatEngine.liveStat(actor, 'attack') * 0.85), duration: 4, isWarMachine: true, slot };
       events.push({ type: 'special', actor: actor.id, text: `${actor.name} deploys a War Machine!` });
       const enemies = ctx.allActors.filter(a => a.side !== actor.side && !a.isDead);
       enemies.forEach(e => {
@@ -537,8 +708,8 @@ const CharacterMechanics = {
     },
 
     // Fencer -------------------------------------------------------------------------------------
-    lunge(actor, skillDef, targets, events) {
-      const moved = CharacterMechanics.reposition(actor, 'forward');
+    lunge(actor, skillDef, targets, events, ctx) {
+      const moved = CharacterMechanics.reposition(actor, 'forward', ctx.allActors);
       if (moved) events.push({ type: 'special', actor: actor.id, text: `${actor.name} lunges forward to the ${actor.position.row} row.` });
     },
     thousand_thrusts(actor, skillDef, targets, events) {
@@ -567,8 +738,12 @@ const CharacterMechanics = {
     war_drum(actor, skillDef, targets, events, ctx) {
       CharacterMechanics.setStance(actor, 'war_drum');
       const allies = ctx.allActors.filter(a => a.side === actor.side && !a.isDead);
-      allies.forEach(a => { StatusEngine.apply(a, 'war_drum_buff', 3, actor.id); CombatEngine.gainEnergy(a, 8); });
-      events.push({ type: 'buff', actor: actor.id, text: `${actor.name} beats the War Drum - the team quickens!` });
+      allies.forEach(a => {
+        StatusEngine.apply(a, 'war_drum_buff', 3, actor.id);
+        StatusEngine.apply(a, 'regeneration', 3, actor.id);
+        CombatEngine.gainEnergy(a, 8);
+      });
+      events.push({ type: 'buff', actor: actor.id, text: `${actor.name} beats the War Drum - the team quickens and mends!` });
     },
     grand_performance(actor, skillDef, targets, events, ctx) {
       const allies = ctx.allActors.filter(a => a.side === actor.side && !a.isDead);
@@ -607,10 +782,20 @@ const CharacterMechanics = {
     },
 
     // Void Walker -------------------------------------------------------------------------------
-    blink(actor, skillDef, targets, events) {
-      const moved = CharacterMechanics.reposition(actor, 'forward');
+    blink(actor, skillDef, targets, events, ctx) {
+      let moved = false;
+      if (ctx.chosenSlot) {
+        // Player-chosen destination - any open slot on her own side of the 12-slot grid.
+        const occupied = ctx.allActors.some(a => a !== actor && !a.isDead && a.side === actor.side
+          && a.position.row === ctx.chosenSlot.row && a.position.column === ctx.chosenSlot.column);
+        if (!occupied) { actor.position = { row: ctx.chosenSlot.row, column: ctx.chosenSlot.column }; moved = true; }
+      } else {
+        // AI (or no choice made) falls back to a simple forward hop.
+        moved = CharacterMechanics.reposition(actor, 'forward', ctx.allActors);
+      }
       StatusEngine.apply(actor, 'void_step', 2, actor.id, 1);
-      events.push({ type: 'special', actor: actor.id, text: moved ? `${actor.name} blinks forward to the ${actor.position.row} row.` : `${actor.name} blinks in place, ready to strike.` });
+      StatusEngine.apply(actor, 'speed_up', 2, actor.id);
+      events.push({ type: 'special', actor: actor.id, text: moved ? `${actor.name} blinks to the ${actor.position.row} row, quickened by the void.` : `${actor.name} blinks in place, ready to strike.` });
     },
     void_strike(actor, skillDef, targets, events) {
       StatusEngine.apply(actor, 'void_step', 2, actor.id, 1);
@@ -640,13 +825,42 @@ const CharacterMechanics = {
     // (Aim / Long Range / Headshot bonuses are handled inline in combat.js/skills.js.)
 
     // Rune Master --------------------------------------------------------------------------------------
-    inscribe(actor, skillDef, targets, events) {
-      const rune = CharacterMechanics.inscribeRune(actor);
+    inscribe(actor, skillDef, targets, events, ctx) {
+      const rune = CharacterMechanics.inscribeRune(actor, ctx.chosenRune);
       events.push({ type: 'special', actor: actor.id, text: `${actor.name} inscribes the ${rune.toUpperCase()} Rune. (${actor.mech.runes.length}/3 active)` });
     },
-    rune_fusion(actor, skillDef, targets, events) {
+    rune_fusion(actor, skillDef, targets, events, ctx) {
+      const target = targets[0];
       const result = CharacterMechanics.runeFusionResult(actor);
-      if (result) events.push({ type: 'special', actor: actor.id, text: `${actor.name} fuses her Runes into a ${result} effect!` });
+      if (!result) return; // fewer than 2 runes - the base damage from the 'damage' branch still lands
+      // Consume the two most recent runes that produced this fusion.
+      actor.mech.runes.splice(-2, 2);
+      events.push({ type: 'special', actor: actor.id, text: `${actor.name} fuses her Runes into a ${result} effect!` });
+      if (target && !target.isDead) {
+        if (result === 'Burst') {
+          const { amount, isCrit } = CombatEngine.calculateDamage(actor, target, 0.7, {});
+          const dealt = CombatEngine.applyDamage(actor, target, amount);
+          events.push({ type: 'damage', actor: actor.id, target: target.id, amount: dealt, isCrit, text: `Burst detonates on ${target.name} for ${dealt} extra damage!` });
+          if (target.isDead) { events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` }); CharacterMechanics.registerDeath(target, ctx.allActors); }
+        } else if (result === 'Rapid') {
+          const { amount, isCrit } = CombatEngine.calculateDamage(actor, target, 0.55, {});
+          const dealt = CombatEngine.applyDamage(actor, target, amount);
+          events.push({ type: 'damage', actor: actor.id, target: target.id, amount: dealt, isCrit, text: `A second Rapid bolt hits ${target.name} for ${dealt} more damage!` });
+          if (target.isDead) { events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` }); CharacterMechanics.registerDeath(target, ctx.allActors); }
+        } else if (result === 'Barrier') {
+          CombatEngine.applyShield(actor, Math.round(actor.maxHp * 0.16));
+          events.push({ type: 'shield', actor: actor.id, target: actor.id, text: `${actor.name} raises a Barrier of Shield.` });
+        } else if (result === 'Haste') {
+          StatusEngine.apply(actor, 'speed_up', 2, actor.id);
+          events.push({ type: 'buff', actor: actor.id, target: actor.id, text: `${actor.name} is hastened by the Wind.` });
+        } else if (result === 'Fortress') {
+          CombatEngine.applyShield(actor, Math.round(actor.maxHp * 0.26));
+          events.push({ type: 'shield', actor: actor.id, target: actor.id, text: `${actor.name} becomes a Fortress of Shield.` });
+        } else if (result === 'Mobility') {
+          CharacterMechanics.reposition(actor, 'backward', ctx.allActors);
+          events.push({ type: 'special', actor: actor.id, text: `${actor.name} repositions to the ${actor.position.row} row.` });
+        }
+      }
     },
     grand_rune(actor, skillDef, targets, events, ctx) {
       const runes = actor.mech.runes;
@@ -694,8 +908,8 @@ const CharacterMechanics = {
     charge(actor, skillDef, targets, events) {
       const target = targets[0];
       if (!target || target.isDead) return;
-      const moved = CharacterMechanics.reposition(target, 'backward');
-      if (moved) events.push({ type: 'special', actor: actor.id, target: target.id, text: `${target.name} is knocked back to the ${target.position.row} row!` });
+      StatusEngine.apply(target, 'stun', 1, actor.id);
+      events.push({ type: 'status', actor: actor.id, target: target.id, statusId: 'stun', text: `${target.name} is trampled and stunned!` });
     },
     dismount(actor, skillDef, targets, events) {
       actor.mech.mounted = false;
@@ -711,6 +925,8 @@ const CharacterMechanics = {
         events.push({ type: 'special', actor: actor.id, text: `${actor.name} sacrifices ${cost} HP in a Blood Roar.` });
       }
       CharacterMechanics.gainRage(actor, 30);
+      StatusEngine.apply(actor, 'attack_up', 2, actor.id);
+      events.push({ type: 'buff', actor: actor.id, target: actor.id, text: `${actor.name} is emboldened, gaining Attack Up.` });
     },
     wrath_unleashed(actor, skillDef, targets, events) {
       CharacterMechanics.spendRage(actor, 70); // drops sharply afterward - prevents back-to-back nukes (#29)

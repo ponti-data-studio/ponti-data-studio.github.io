@@ -58,6 +58,7 @@
     </div>
     <nav class="main-menu-nav">
       <button class="btn btn-primary btn-big" type="button" data-nav="quick-battle">Play</button>
+      <button class="btn btn-secondary" type="button" data-nav="ranked">Ranked</button>
       <button class="btn btn-secondary" type="button" data-nav="campaign">Campaign</button>
       <button class="btn btn-secondary" type="button" data-nav="practice">Practice</button>
       <button class="btn btn-secondary" type="button" data-nav="characters">Characters</button>
@@ -97,6 +98,41 @@
   </div>
 </section>
 
+<!-- ============ RANKED: BAN PHASE ============ -->
+<section id="screen-ranked-ban" class="screen">
+  <header class="screen-header">
+    <button class="btn btn-ghost btn-back" type="button" data-nav="main-menu">← Back</button>
+    <h2>Ranked - Ban Phase</h2>
+    <span class="header-spacer" id="ranked-ban-count">0/3</span>
+  </header>
+  <p class="screen-hint">Pick up to 3 characters to ban - they'll be unavailable to both sides this match. Your opponent bans 3 of their own at the same time.</p>
+  <div id="ranked-ban-grid" class="char-grid"></div>
+  <div class="sticky-footer">
+    <button id="btn-ranked-ban-confirm" class="btn btn-primary btn-big" type="button">Confirm Bans</button>
+  </div>
+</section>
+
+<!-- ============ RANKED: DRAFT PHASE ============ -->
+<section id="screen-ranked-draft" class="screen">
+  <header class="screen-header">
+    <button class="btn btn-ghost btn-back" type="button" data-nav="main-menu">← Back</button>
+    <h2>Ranked - Draft</h2>
+    <span class="header-spacer" id="ranked-draft-count">0/5</span>
+  </header>
+  <p id="ranked-draft-turn" class="screen-hint draft-turn-hint">Your pick.</p>
+  <div class="draft-teams-row">
+    <div class="draft-team-col">
+      <div class="draft-team-label">YOU</div>
+      <div id="ranked-player-picks" class="draft-team-slots"></div>
+    </div>
+    <div class="draft-team-col">
+      <div class="draft-team-label">OPPONENT</div>
+      <div id="ranked-ai-picks" class="draft-team-slots"></div>
+    </div>
+  </div>
+  <div id="ranked-draft-grid" class="char-grid"></div>
+</section>
+
 <!-- ============ FORMATION EDITOR ============ -->
 <section id="screen-formation" class="screen">
   <header class="screen-header">
@@ -110,15 +146,15 @@
 
   <div class="formation-rows">
     <div class="formation-row-block">
-      <div class="formation-row-label">FRONT <span class="row-hint">More easily targeted · best for Tanks/Fighters</span></div>
+      <div class="formation-row-label">FRONT <span class="row-hint">More easily targeted · best for Tanks/Fighters</span><span class="row-count" id="row-count-front"></span></div>
       <div id="formation-row-front" class="formation-row-slots" data-row="front"></div>
     </div>
     <div class="formation-row-block">
-      <div class="formation-row-label">MIDDLE <span class="row-hint">Balanced exposure</span></div>
+      <div class="formation-row-label">MIDDLE <span class="row-hint">Balanced exposure</span><span class="row-count" id="row-count-middle"></span></div>
       <div id="formation-row-middle" class="formation-row-slots" data-row="middle"></div>
     </div>
     <div class="formation-row-block">
-      <div class="formation-row-label">BACK <span class="row-hint">Protected from basic attacks · not immune to backline skills</span></div>
+      <div class="formation-row-label">BACK <span class="row-hint">Protected from basic attacks · not immune to backline skills</span><span class="row-count" id="row-count-back"></span></div>
       <div id="formation-row-back" class="formation-row-slots" data-row="back"></div>
     </div>
   </div>
@@ -276,12 +312,24 @@
   </div>
 </div>
 
-<div id="item-modal" class="modal">
+<div id="rune-picker-modal" class="modal">
   <div class="modal-panel">
-    <button id="item-modal-close" class="modal-close" type="button" aria-label="Close">✕</button>
-    <h3>Use Item</h3>
-    <p id="item-remaining" class="item-remaining"></p>
-    <div id="item-list" class="item-list"></div>
+    <h3>Inscribe a Rune</h3>
+    <div class="rune-picker-options">
+      <button id="rune-pick-fire" class="rune-pick-btn rune-fire" type="button">🔥<span>Fire</span></button>
+      <button id="rune-pick-guard" class="rune-pick-btn rune-guard" type="button">🛡️<span>Guard</span></button>
+      <button id="rune-pick-wind" class="rune-pick-btn rune-wind" type="button">🌬️<span>Wind</span></button>
+    </div>
+  </div>
+</div>
+
+<div id="amount-picker-modal" class="modal">
+  <div class="modal-panel">
+    <h3>Choose Amount</h3>
+    <p id="amount-picker-label" class="amount-picker-label"></p>
+    <input id="amount-picker-slider" type="range" class="amount-picker-slider" min="1" max="10" value="1" />
+    <p id="amount-picker-value" class="amount-picker-value"></p>
+    <button id="amount-picker-confirm" class="btn btn-primary btn-big" type="button">Confirm</button>
   </div>
 </div>
 

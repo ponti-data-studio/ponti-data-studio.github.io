@@ -44,11 +44,11 @@ const ATTACK_TYPE_MAP = {
   pirate_captain: 'physical', monk: 'physical', demon_hunter: 'physical', engineer: 'physical',
   fencer: 'physical', gladiator: 'physical', frost_knight: 'physical', dragon_knight: 'physical',
   sniper: 'physical', berserker_lord: 'physical', beast_rider: 'physical', mirror_knight: 'physical',
-  soul_reaper: 'physical', battle_medic: 'physical',
+  soul_reaper: 'physical', battle_medic: 'physical', alchemist: 'physical',
   // Magical attackers
   wizard: 'magical', warlock: 'magical', 'frost-mage': 'magical', pyromancer: 'magical',
   stormcaller: 'magical', necromancer: 'magical', cleric: 'magical', druid: 'magical',
-  chronomancer: 'magical', illusionist: 'magical', alchemist: 'magical', spirit_shaman: 'magical',
+  chronomancer: 'magical', illusionist: 'magical', spirit_shaman: 'magical',
   gravity_mage: 'magical', oracle: 'magical', bard: 'magical', plague_doctor: 'magical',
   void_walker: 'magical', shadow_priest: 'magical', rune_master: 'magical', witch: 'magical',
 };
@@ -75,15 +75,15 @@ const DEFENSE_LEAN = {
   berserker: 0.08, 'sky-lancer': -0.04, samurai: 0.05, monk: -0.06, fencer: -0.10,
   berserker_lord: 0.10, beast_rider: 0.02,
   // Assassins
-  assassin: 0.04, ninja: -0.06, vampire: 0.08, duelist: 0.02, demon_hunter: -0.04,
-  void_walker: -0.10, soul_reaper: 0.00,
+  assassin: 0.04, ninja: -0.06, vampire: 0.08, duelist: 0.02,
+  void_walker: -0.10, soul_reaper: 0.00, plague_doctor: 0.03,
   // Ranged
   archer: 0.02, ranger: -0.05, gunslinger: 0.06, machinist: 0.10, pirate_captain: 0.04,
-  engineer: -0.02, sniper: -0.08, beastmaster: 0.08,
+  engineer: -0.02, sniper: -0.08, beastmaster: 0.08, demon_hunter: -0.04,
   // Mages
   wizard: 0.00, warlock: -0.05, 'frost-mage': 0.02, pyromancer: -0.03, stormcaller: 0.04,
   necromancer: -0.06, illusionist: -0.10,
-  gravity_mage: -0.02, plague_doctor: 0.03, rune_master: 0.06, witch: -0.08,
+  gravity_mage: -0.02, rune_master: 0.06, witch: -0.08,
   // Supports
   cleric: -0.06, druid: 0.05, chronomancer: -0.10, alchemist: 0.02, oracle: -0.08,
   bard: 0.00, shadow_priest: -0.04, battle_medic: 0.08, spirit_shaman: 0.05,

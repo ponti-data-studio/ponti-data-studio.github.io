@@ -16,7 +16,9 @@ class TurnManager {
   }
 
   livingActors() {
-    return this.actors.filter(a => !a.isDead);
+    // Summons (Skeletons, Beasts, etc.) are real targetable actors but never take an independent
+    // turn in the initiative order - they only act when their owner's skill explicitly triggers them.
+    return this.actors.filter(a => !a.isDead && !a.isSummon);
   }
 
   /** Advance the action bar until exactly one actor is ready; return that actor. */
@@ -65,8 +67,10 @@ class TurnManager {
   }
 
   checkVictoryDefeat() {
-    const playerAlive = this.actors.some(a => a.side === 'player' && !a.isDead);
-    const enemyAlive = this.actors.some(a => a.side === 'enemy' && !a.isDead);
+    // Summons never count toward "still alive" - a team is only still in the fight if it has a
+    // real character standing, regardless of any Skeletons/Beasts/Turrets that might outlive them.
+    const playerAlive = this.actors.some(a => a.side === 'player' && !a.isDead && !a.isSummon);
+    const enemyAlive = this.actors.some(a => a.side === 'enemy' && !a.isDead && !a.isSummon);
     if (!enemyAlive) return 'victory';
     if (!playerAlive) return 'defeat';
     return null;

@@ -13,14 +13,6 @@
  *   battle.getTimelinePreview(n)
  */
 
-const ITEM_DEFS = {
-  small_potion:  { id: 'small_potion', name: 'Small Potion', desc: 'Restores 25% max HP.', healPercent: 25 },
-  large_potion:  { id: 'large_potion', name: 'Large Potion', desc: 'Restores 55% max HP.', healPercent: 55 },
-  energy_potion: { id: 'energy_potion', name: 'Energy Potion', desc: 'Restores 40 Energy.', energy: 40 },
-  antidote:      { id: 'antidote', name: 'Antidote', desc: 'Removes all debuffs.', cleanse: true },
-};
-const ITEM_USES_PER_BATTLE = 3; // shared pool per team, prevents item spam
-
 class BattleEngine {
   /**
    * @param {(string[]|{id,row,column}[])} playerFormation  Either a plain array of character ids
@@ -34,7 +26,7 @@ class BattleEngine {
     this.log = [];
     this.stats = { damageDealt: 0, damageReceived: 0, healing: 0, criticals: 0, skillsUsed: 0, turns: 0 };
     this._lastFatigueTurn = 0;
-    this.itemsRemaining = ITEM_USES_PER_BATTLE;
+    this.globalFreeze = null; // Chronomancer's Freezing Time: { side, turnsRemaining }
     this.status = 'active'; // active | victory | defeat
     const playerPlacements = this._normalizeFormation(playerFormation);
     const enemyPlacements = this._normalizeFormation(enemyFormation);
@@ -95,7 +87,44 @@ class BattleEngine {
   getActor(id) { return this.actors.find(a => a.id === id); }
   livingPlayer() { return this.actors.filter(a => a.side === 'player' && !a.isDead); }
   livingEnemy() { return this.actors.filter(a => a.side === 'enemy' && !a.isDead); }
-  fallenCount() { return this.actors.filter(a => a.isDead).length; }
+  fallenCount() { return this.actors.filter(a => a.isDead && !a.isSummon).length; }
+
+  /**
+   * Creates a lightweight, REAL, targetable summon actor (Necromancer's Skeleton, Beastmaster's
+   * Beast) - unlike the Turret/Totem's purely-visual representation, these join `this.actors`
+   * directly so they're automatically valid targets for both sides through the exact same
+   * targeting/combat/death code every character already uses. They never take an independent
+   * turn (see TurnManager.livingActors) and never count toward victory/defeat on their own (see
+   * TurnManager.checkVictoryDefeat) - they only act when their owner's skill explicitly triggers
+   * them (see e.g. CharacterMechanics for Skeleton Attack / Command Beast).
+   */
+  createSummon(owner, { name, icon, color, hp, attack, attackType }, forcedSlot) {
+    const slot = forcedSlot || CharacterMechanics.findSummonSlot(owner, this.actors);
+    if (!slot) return null; // battlefield is completely full (12/12) - no room to summon
+    this._summonSeq = (this._summonSeq || 0) + 1;
+    const fakeCharacter = {
+      id: `summon-${owner.id}-${this._summonSeq}`, name, icon, color: color || '#8a8a8a',
+      role: 'Summon', attackType: attackType || 'physical',
+      base: { hp, attack, physicalDefense: 15, magicalDefense: 15, speed: 0, critRate: 0, critDmg: 150, evasion: 0 },
+    };
+    const actor = {
+      id: fakeCharacter.id, name, character: fakeCharacter, side: owner.side,
+      position: { row: slot.row, column: slot.column },
+      stats: { attack, physicalDefense: 15, magicalDefense: 15, speed: 0, critRate: 0, critDamage: 150, evasion: 0 },
+      hp, maxHp: hp, energy: 0, isDead: false, defending: false, statuses: [],
+      cooldowns: { skill1: 0, skill2: 0 }, firstCastUsed: { skill1: false, skill2: false },
+      arcaneStacks: 0, staticCharge: 0, usedFirstShot: false, readiness: 0,
+      isSummon: true, ownerId: owner.id,
+    };
+    CharacterMechanics.initActorState(actor);
+    this.actors.push(actor);
+    return actor;
+  }
+
+  /** Every summon currently owned by `owner` and still alive. */
+  livingSummonsOf(ownerId) {
+    return this.actors.filter(a => a.isSummon && a.ownerId === ownerId && !a.isDead);
+  }
 
   _pushLog(text) { this.log.push({ turn: this.stats.turns, text }); }
 
@@ -187,6 +216,20 @@ class BattleEngine {
       return this.beginTurn(); // this actor died to DoT before acting; move on
     }
 
+    // Chronomancer's Freezing Time: counts down once per INDIVIDUAL turn (ally or enemy alike),
+    // not per status-holder's own turn like a normal CC - see #1 in the skill revision spec.
+    if (this.globalFreeze && this.globalFreeze.turnsRemaining > 0) {
+      const frozenNow = actor.side === this.globalFreeze.side;
+      this.globalFreeze.turnsRemaining -= 1;
+      if (this.globalFreeze.turnsRemaining <= 0) this.globalFreeze = null;
+      if (frozenNow) {
+        const t = `${actor.name} is frozen in time and cannot act!`;
+        this._pushLog(t); events.push({ type: 'skip', text: t });
+        StatusEngine.tickEndOfTurn(actor);
+        return { actor, skipped: true, events, result: null };
+      }
+    }
+
     if (StatusEngine.shouldSkipTurn(actor)) {
       const t = `${actor.name} cannot act this turn.`;
       this._pushLog(t); events.push({ type: 'skip', text: t });
@@ -201,10 +244,12 @@ class BattleEngine {
     const actor = this.getActor(actorId);
     if (!actor) return [];
     const c = actor.character;
+    // Alchemist's Skill 1/2 have no cooldown - they're gated purely by her bottle rack instead.
+    const alchemistGate = (key) => c.id !== 'alchemist' ? true : actor.mech.bottles >= 3;
     return [
       { key: 'basicAttack', def: c.basicAttack, ready: true },
-      { key: 'skill1', def: c.skill1, ready: actor.cooldowns.skill1 <= 0 },
-      { key: 'skill2', def: c.skill2, ready: actor.cooldowns.skill2 <= 0 },
+      { key: 'skill1', def: c.skill1, ready: actor.cooldowns.skill1 <= 0 && alchemistGate('skill1') },
+      { key: 'skill2', def: c.skill2, ready: actor.cooldowns.skill2 <= 0 && alchemistGate('skill2') },
       { key: 'ultimate', def: c.ultimate, ready: actor.energy >= 100 },
       { key: 'defend', def: DEFEND_ACTION, ready: true },
     ];
@@ -213,6 +258,25 @@ class BattleEngine {
   /** Resolve a chosen action for the current actor (player or programmatically for AI). */
   _resolveAction(actor, actionKey, targetId) {
     const events = [];
+
+    // Special targetId encodings for interactive skills:
+    //  - "slot:row:column" (Engineer/Necromancer/Beastmaster placing a new summon)
+    //  - "actualTargetId|amount" (Shadow Priest's player-chosen HP-sacrifice amount)
+    let chosenSlot = null;
+    let sacrificeAmount = null;
+    let chosenRune = null;
+    if (typeof targetId === 'string' && targetId.startsWith('slot:')) {
+      const [, row, column] = targetId.split(':');
+      chosenSlot = { row, column: parseInt(column, 10) };
+      targetId = null;
+    } else if (typeof targetId === 'string' && targetId.startsWith('rune:')) {
+      chosenRune = targetId.split(':')[1];
+      targetId = null;
+    } else if (typeof targetId === 'string' && targetId.includes('|')) {
+      const [realId, amt] = targetId.split('|');
+      targetId = realId;
+      sacrificeAmount = parseInt(amt, 10);
+    }
     const target = targetId ? this.getActor(targetId) : null;
 
     if (actionKey === 'defend') {
@@ -222,10 +286,6 @@ class BattleEngine {
       this._pushLog(t); events.push({ type: 'defend', actor: actor.id, text: t });
       StatusEngine.tickEndOfTurn(actor);
       return events;
-    }
-
-    if (actionKey === 'item') {
-      return this._resolveItem(actor, targetId, events);
     }
 
     const skillDef = actor.character[actionKey];
@@ -238,6 +298,10 @@ class BattleEngine {
       allActors: this.actors,
       fallenCount: this.fallenCount(),
       lowestDefenseId: this.lowestDefenseEnemyIdFor(actor),
+      battle: this,
+      chosenSlot,
+      sacrificeAmount,
+      chosenRune,
     };
     const result = SkillSystem.resolve(actor, skillDef, target, ctx);
     result.forEach(e => {
@@ -272,27 +336,8 @@ class BattleEngine {
   }
 
   _resolveItem(actor, itemId, events) {
-    const item = ITEM_DEFS[itemId];
-    if (!item || this.itemsRemaining <= 0) return events;
-    this.itemsRemaining -= 1;
-    if (item.healPercent) {
-      const amt = Math.round(actor.maxHp * (item.healPercent / 100));
-      const healed = CombatEngine.applyHeal(actor, actor, amt);
-      const t = `${actor.name} uses ${item.name}, healing ${healed} HP.`;
-      this._pushLog(t); events.push({ type: 'heal', actor: actor.id, target: actor.id, amount: healed, text: t });
-      this.stats.healing += healed;
-    }
-    if (item.energy) {
-      CombatEngine.gainEnergy(actor, item.energy);
-      const t = `${actor.name} uses ${item.name}, restoring ${item.energy} Energy.`;
-      this._pushLog(t); events.push({ type: 'energy', actor: actor.id, text: t });
-    }
-    if (item.cleanse) {
-      StatusEngine.removeAllDebuffs(actor);
-      const t = `${actor.name} uses ${item.name}, removing all debuffs.`;
-      this._pushLog(t); events.push({ type: 'cleanse', actor: actor.id, text: t });
-    }
-    StatusEngine.tickEndOfTurn(actor);
+    // Items were removed from the game (replaced by the Passive info button in the action menu) -
+    // this stub only remains so any stray legacy call is a safe no-op rather than a crash.
     return events;
   }
 

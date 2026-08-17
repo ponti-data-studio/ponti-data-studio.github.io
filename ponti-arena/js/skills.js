@@ -15,17 +15,6 @@ const SkillSystem = {
   resolve(actor, skillDef, chosenTarget, ctx) {
     const events = [];
 
-    // Alchemist: Healing Potion / Toxic Flask consume a reagent for full power, or run at reduced
-    // potency if the stockpile is empty (never a dead button - see #6 Alchemist / #25 Bug Prevention).
-    if (skillDef.id === 'healing_potion' || skillDef.id === 'toxic_flask') {
-      const reagentType = skillDef.id === 'healing_potion' ? 'healing' : 'toxic';
-      const hasReagent = CharacterMechanics.consumeReagent(actor, reagentType);
-      if (!hasReagent) {
-        skillDef = { ...skillDef, power: skillDef.power * 0.55 };
-        events.push({ type: 'special', actor: actor.id, text: `${actor.name} has no ${reagentType === 'healing' ? 'Healing' : 'Toxic'} Reagent on hand - improvising at reduced potency.` });
-      }
-    }
-
     // Monk: Palm Burst costs 15 Ki for full power, or runs at reduced power without it.
     if (skillDef.id === 'palm_burst') {
       if (actor.mech.ki >= 15) {
@@ -34,6 +23,28 @@ const SkillSystem = {
         skillDef = { ...skillDef, power: skillDef.power * 0.6 };
         events.push({ type: 'special', actor: actor.id, text: `${actor.name} doesn't have enough Ki - Palm Burst lands with less force.` });
       }
+    }
+
+    // Alchemist: every action spends bottles from her 10-bottle rack. Basic Attack still fires at
+    // reduced power if she's empty-handed; Skill 1/2 are hard-gated (see getUsableActions in
+    // battle.js, which greys the button out below 3 bottles) so this is a defensive fallback only.
+    if (skillDef.id === 'alchemy_bolt') {
+      if (CharacterMechanics.spendBottles(actor, 1)) {
+        // full power
+      } else {
+        skillDef = { ...skillDef, power: skillDef.power * 0.55 };
+        events.push({ type: 'special', actor: actor.id, text: `${actor.name} is out of bottles - the throw is weak.` });
+      }
+    }
+    if (['healing_potion', 'explosive_strike'].includes(skillDef.id)) {
+      if (!CharacterMechanics.spendBottles(actor, 3)) {
+        events.push({ type: 'special', actor: actor.id, text: `${actor.name} doesn't have enough bottles (needs 3).` });
+        return events;
+      }
+    }
+    // Alchemist's Volatile Mixtures: bonus damage while flush with bottles.
+    if (actor.character.id === 'alchemist' && actor.mech.bottles >= 7 && skillDef.type === 'damage') {
+      skillDef = { ...skillDef, power: skillDef.power * 1.15 };
     }
 
     const targets = this.resolveTargets(actor, skillDef, chosenTarget, ctx.allActors);
@@ -64,11 +75,11 @@ const SkillSystem = {
           alreadySlowedBonus: skillDef.id === 'absolute_zero_fk' && StatusEngine.has(target, 'slow'),
           skillId: skillDef.id,
           headshotBonus: skillDef.id === 'headshot',
-          rageScaled: ['raging_swing', 'wrath_unleashed'].includes(skillDef.id),
+          rageScaled: ['raging_swing', 'wrath_unleashed', 'blood_roar'].includes(skillDef.id),
           wrathArmorBreak: skillDef.id === 'wrath_unleashed',
           missingHpExecute: skillDef.id === 'reapers_cut',
-        };
-        if (options.guaranteedCrit) actor.usedFirstShot = true;
+          critChanceFloor: skillDef.id === 'dark_mass' ? 40 : undefined,
+        };        if (options.guaranteedCrit) actor.usedFirstShot = true;
         const { amount, isCrit, evaded } = CombatEngine.calculateDamage(actor, target, skillDef.power, options);
         if (evaded) {
           events.push({ type: 'evade', actor: actor.id, target: target.id, text: `${target.name} evaded the attack!` });
@@ -144,6 +155,18 @@ const SkillSystem = {
         if (target.character.id === 'berserker_lord' && !target.isDead) CharacterMechanics.gainRage(target, 6);
         // Battle Medic's Emergency Protocol tracker: remembers she attacked, for Combat Heal's bonus.
         if (actor.character.id === 'battle_medic' && skillDef.id === actor.character.basicAttack.id) actor.mech.attackedLastTurn = true;
+        // Beastmaster's Animal Bond: her active Beast strikes the same target at the same time
+        // whenever her Basic Attack lands (Skill 2 / Ultimate already involve the Beast directly).
+        if (actor.character.id === 'beastmaster' && skillDef.id === 'hunter_strike' && actor.mech.beastId && !target.isDead) {
+          const beast = ctx.allActors.find(a => a.id === actor.mech.beastId && !a.isDead);
+          if (beast) {
+            const { amount: bAmt, isCrit: bCrit } = CombatEngine.calculateDamage(beast, target, 0.7, {});
+            const bDealt = CombatEngine.applyDamage(beast, target, bAmt);
+            events.push({ type: 'damage', actor: beast.id, target: target.id, amount: bDealt, isCrit: bCrit,
+              text: `${beast.name} strikes ${target.name} alongside her for ${bDealt} damage.` });
+            if (target.isDead) { events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` }); CharacterMechanics.registerDeath(target, ctx.allActors); }
+          }
+        }
 
         this.applyStatuses(actor, target, skillDef, events);
 
@@ -189,24 +212,7 @@ const SkillSystem = {
         const healed = CombatEngine.applyHeal(actor, target, healAmt);
         events.push({ type: 'heal', actor: actor.id, target: target.id, amount: healed,
           text: `${actor.name} used ${skillDef.name} on ${target.name}, healing ${healed} HP.` });
-        // Shadow Priest's Shadow Heal: pays part of the cost with her own HP, never below 1.
-        if (skillDef.id === 'shadow_heal' && !actor.isDead) {
-          const cost = Math.min(actor.hp - 1, Math.round(actor.maxHp * 0.08));
-          if (cost > 0) {
-            actor.hp -= cost;
-            events.push({ type: 'special', actor: actor.id, text: `${actor.name} pays ${cost} HP to fuel Shadow Heal.` });
-          }
-        }
         this.applyStatuses(actor, target, skillDef, events);
-      }
-      // Shadow Priest's Dark Blessing: extra healing effectiveness while her own HP is low.
-      if (actor.character.id === 'shadow_priest' && (actor.hp / actor.maxHp) < 0.45 && targets.length > 0) {
-        targets.forEach(t => {
-          if (t.isDead) return;
-          const bonus = Math.round(t.maxHp * 0.10);
-          const extraHealed = CombatEngine.applyHeal(actor, t, bonus);
-          if (extraHealed > 0) events.push({ type: 'heal', actor: actor.id, target: t.id, amount: extraHealed, text: `${actor.name}'s Dark Blessing adds ${extraHealed} HP.` });
-        });
       }
     } else if (skillDef.type === 'shield') {
       for (const target of targets) {
@@ -217,14 +223,6 @@ const SkillSystem = {
           text: `${actor.name} used ${skillDef.name}, shielding ${target.name} for ${shieldAmt}.` });
       }
     } else if (skillDef.type === 'buff') {
-      // Shadow Priest's Soul Sacrifice: pays part of her own HP to power the team buff (never below 1).
-      if (skillDef.id === 'soul_sacrifice' && !actor.isDead) {
-        const cost = Math.min(actor.hp - 1, Math.round(actor.maxHp * 0.15));
-        if (cost > 0) {
-          actor.hp -= cost;
-          events.push({ type: 'special', actor: actor.id, text: `${actor.name} sacrifices ${cost} HP to empower the team.` });
-        }
-      }
       for (const target of targets) {
         if (target.isDead) continue;
         this.applyStatuses(actor, target, skillDef, events);

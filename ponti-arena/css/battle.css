@@ -104,6 +104,28 @@
 .battle-slot-info { width: 100%; position: relative; }
 .battle-slot-name { font-size: 0.56rem; text-align: center; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* Empty grid slot (unused of the 12 fixed battle boxes - see #5 in the formation spec) */
+.battle-slot-empty {
+  width: 100%; max-width: 58px; min-height: 46px; border-radius: 10px;
+  border: 1px dashed rgba(255,255,255,0.06); background: rgba(11,14,20,0.2);
+}
+.battle-slot-empty.slot-pickable {
+  border: 1.5px dashed var(--gold); background: rgba(201,162,39,0.14); cursor: pointer;
+  animation: slot-pulse 1.1s ease-in-out infinite;
+}
+@keyframes slot-pulse { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
+
+/* Turret / Totem summon occupant - lighter than a full character slot, not targetable */
+.summon-slot { cursor: default; opacity: 0.92; }
+.summon-icon {
+  width: 100%; aspect-ratio: 1; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; background: var(--bg-panel-3); border: 2px dashed var(--summon-color, var(--gold));
+}
+.summon-perpetual {
+  font-size: 0.5rem; text-align: center; color: var(--summon-color, var(--gold)); font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase; margin-top: 2px;
+}
+
 .bar { position: relative; height: 7px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 2px; }
 .hp-bar .bar-fill { height: 100%; background: linear-gradient(90deg, var(--crimson), var(--crimson-light)); transition: width 0.4s ease; }
 .energy-bar { height: 4px; }
@@ -111,6 +133,23 @@
 .bar-label { position: absolute; inset: 0; font-size: 0.46rem; display: flex; align-items: center; justify-content: center; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
 
 .shield-badge { position: absolute; top: -8px; right: -2px; font-size: 0.56rem; background: var(--ice); color: #052a33; padding: 1px 4px; border-radius: 999px; }
+.resource-badge {
+  font-size: 0.5rem; font-weight: 700; letter-spacing: 0.02em; text-align: center;
+  padding: 1px 3px; border-radius: 4px; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.12);
+}
+.resource-badge.res-ki { color: #e0b84a; border-color: #e0b84a; }
+.resource-badge.res-rage { color: #d9524f; border-color: #d9524f; }
+.resource-badge.res-dragon { color: #e07a4a; border-color: #e07a4a; }
+.resource-badge.res-soul { color: #9a7fd9; border-color: #9a7fd9; }
+.resource-badge.res-rune { color: #7fb3e0; border-color: #7fb3e0; }
+.resource-badge.res-mount { color: #c9a05e; border-color: #c9a05e; }
+.resource-badge.res-stance { color: #e0a0c9; border-color: #e0a0c9; }
+.resource-badge.res-reagent { color: #6fbf6f; border-color: #6fbf6f; }
+.resource-badge.res-totem { color: #6fc9d9; border-color: #6fc9d9; }
+.resource-badge.res-turret { color: #c9c94a; border-color: #c9c94a; }
+.resource-badge.res-footwork { color: #8fd6a0; border-color: #8fd6a0; }
+.resource-badge.res-duel { color: #d98fa0; border-color: #d98fa0; }
 .status-icons { display: flex; justify-content: center; gap: 1px; flex-wrap: wrap; min-height: 12px; }
 .status-icon { font-size: 0.6rem; }
 
@@ -166,6 +205,14 @@
 .action-btn.locked { opacity: 0.45; }
 .action-ultimate .action-btn-label { color: var(--crimson-light); }
 .action-ultimate { border-color: var(--crimson); }
+.action-passive { border-color: var(--ice); position: relative; }
+.action-passive .action-btn-label { color: var(--ice); }
+.passive-state {
+  position: absolute; top: 3px; right: 4px; font-size: 0.5rem; font-weight: 800;
+  padding: 1px 4px; border-radius: 999px; letter-spacing: 0.02em;
+}
+.passive-state.active { background: var(--teal); color: #06231d; }
+.passive-state.inactive { background: var(--bg-panel); color: var(--text-dim); border: 1px solid var(--border); }
 
 /* ---------- Hold-to-view skill description tooltip ---------- */
 .skill-hold-tooltip {
