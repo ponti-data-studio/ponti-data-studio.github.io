@@ -80,7 +80,7 @@ const SkillSystem = {
           missingHpExecute: skillDef.id === 'reapers_cut',
           critChanceFloor: skillDef.id === 'dark_mass' ? 40 : undefined,
         };        if (options.guaranteedCrit) actor.usedFirstShot = true;
-        const { amount, isCrit, evaded } = CombatEngine.calculateDamage(actor, target, skillDef.power, options);
+        const { amount, isCrit, evaded, ignoreShield } = CombatEngine.calculateDamage(actor, target, skillDef.power, options);
         if (evaded) {
           events.push({ type: 'evade', actor: actor.id, target: target.id, text: `${target.name} evaded the attack!` });
           if (target.character.id === 'fencer') StatusEngine.apply(target, 'footwork', 3, target.id);
@@ -105,7 +105,7 @@ const SkillSystem = {
           if (redirect.redirectedTo.isDead) { events.push({ type: 'death', actor: redirect.redirectedTo.id, text: `${redirect.redirectedTo.name} has fallen!` }); CharacterMechanics.registerDeath(redirect.redirectedTo, ctx.allActors); }
         }
 
-        const dealt = CombatEngine.applyDamage(actor, target, redirect.amount);
+        const dealt = CombatEngine.applyDamage(actor, target, redirect.amount, { ignoreShield });
         events.push({ type: 'damage', actor: actor.id, target: target.id, amount: dealt, isCrit,
           text: `${actor.name} used ${skillDef.name} on ${target.name} for ${dealt} damage${isCrit ? ' (CRITICAL!)' : ''}.` });
 

@@ -36,9 +36,21 @@ const TargetingEngine = {
       case 'single_middle': return this.livingByRow(allActors, enemySide, 'middle');
       case 'single_back': return this.livingByRow(allActors, enemySide, 'back');
       case 'adjacent_enemies': return this.livingSide(allActors, enemySide);
-      case 'single_ally': return this.livingSide(allActors, casterSide);
+      case 'single_ally': {
+        const allies = this.livingSide(allActors, casterSide);
+        // Turrets/Totems/Skeletons/Beasts can't be healed by generic Support heals - only a
+        // dedicated skill (like Repair, which targets its own Turret directly, bypassing this
+        // picker entirely) can restore their HP - see #8 in the skill revision spec.
+        return this.isHealLike(skillDef) ? allies.filter(a => !a.isSummon) : allies;
+      }
       default: return this.livingSide(allActors, enemySide);
     }
+  },
+
+  /** True for skills whose effect is fundamentally a heal, even ones implemented as a custom
+   *  'special' type (e.g. Shadow Priest's amount-picker Shadow Heal). */
+  isHealLike(skillDef) {
+    return skillDef.type === 'heal' || skillDef.id === 'shadow_heal';
   },
 
   /** For AoE-shaped targetTypes, resolve the full hit-list directly (no player pick needed). */
@@ -46,7 +58,10 @@ const TargetingEngine = {
     const enemySide = casterSide === 'player' ? 'enemy' : 'player';
     switch (skillDef.targetType) {
       case 'all_enemy': return this.livingSide(allActors, enemySide);
-      case 'all_ally': return this.livingSide(allActors, casterSide);
+      case 'all_ally': {
+        const allies = this.livingSide(allActors, casterSide);
+        return this.isHealLike(skillDef) ? allies.filter(a => !a.isSummon) : allies;
+      }
       case 'front_row': return this.livingByRow(allActors, enemySide, 'front');
       case 'middle_row': return this.livingByRow(allActors, enemySide, 'middle');
       case 'back_row': return this.livingByRow(allActors, enemySide, 'back');

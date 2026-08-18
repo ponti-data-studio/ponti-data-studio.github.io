@@ -55,9 +55,9 @@ const STATUS_DEFS = {
   alter_fate:      { name: 'Altered Fate',    icon: '🍀', kind: 'special', stackable: false, maxStacks: 1, category: 'buff' },   // Oracle ultimate: prevents one lethal hit (same handling as divine_shield)
   void_step:       { name: 'Void Step',       icon: '🌀', kind: 'ward',    stackable: false, maxStacks: 1, category: 'buff' },   // Void Walker: blocks the next hit after teleporting
   disease:         { name: 'Disease',         icon: '🦠', kind: 'dot',     stackable: true,  maxStacks: 3, tickPercent: 3, category: 'debuff' },
-  battle_song_buff:{ name: 'Battle Song',     icon: '🎵', kind: 'stat',    stackable: false, maxStacks: 1, category: 'buff', stat: 'attack', percent: 24 },
-  war_drum_buff:   { name: 'War Drum',        icon: '🥁', kind: 'stat',    stackable: false, maxStacks: 1, category: 'buff', stat: 'speed', percent: 24 },
-  lullaby_debuff:  { name: 'Lullaby',         icon: '💤', kind: 'stat',    stackable: false, maxStacks: 1, category: 'debuff', stat: 'attack', percent: -22 },
+  battle_song_buff:{ name: 'Battle Song',     icon: '🎵', kind: 'stat',    stackable: false, maxStacks: 1, category: 'buff', stat: 'attack', percent: 16 },
+  war_drum_buff:   { name: 'War Drum',        icon: '🥁', kind: 'stat',    stackable: false, maxStacks: 1, category: 'buff', stat: 'speed', percent: 16 },
+  lullaby_debuff:  { name: 'Lullaby',         icon: '💤', kind: 'stat',    stackable: false, maxStacks: 1, category: 'debuff', stat: 'attack', percent: -15 },
   rage_shield:     { name: "Champion's Grit", icon: '🛡️', kind: 'special', stackable: false, maxStacks: 1, category: 'buff' }, // Gladiator ultimate: flat damage-taken reduction, magnitude set on cast
   hunter_mark:     { name: "Hunter's Mark",   icon: '🎯', kind: 'special', stackable: false, maxStacks: 1, category: 'debuff' }, // Demon Hunter
 

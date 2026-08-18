@@ -246,11 +246,14 @@ class BattleEngine {
     const c = actor.character;
     // Alchemist's Skill 1/2 have no cooldown - they're gated purely by her bottle rack instead.
     const alchemistGate = (key) => c.id !== 'alchemist' ? true : actor.mech.bottles >= 3;
+    // Engineer's War Machine targets a Turret she's already deployed - no point offering it
+    // (and wasting 100 Energy) if there's nothing there to upgrade.
+    const ultimateReady = actor.energy >= 100 && (c.ultimate.id !== 'war_machine' || !!actor.mech.turretId);
     return [
       { key: 'basicAttack', def: c.basicAttack, ready: true },
       { key: 'skill1', def: c.skill1, ready: actor.cooldowns.skill1 <= 0 && alchemistGate('skill1') },
       { key: 'skill2', def: c.skill2, ready: actor.cooldowns.skill2 <= 0 && alchemistGate('skill2') },
-      { key: 'ultimate', def: c.ultimate, ready: actor.energy >= 100 },
+      { key: 'ultimate', def: c.ultimate, ready: ultimateReady },
       { key: 'defend', def: DEFEND_ACTION, ready: true },
     ];
   }

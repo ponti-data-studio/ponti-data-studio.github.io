@@ -28,7 +28,7 @@ const CharacterMechanics = {
       bottles: 10,                // Alchemist (0-10)
       duelTarget: null, duelStacks: 0, // Duelist
       activeTotems: { healing: false, spirit: false }, // Spirit Shaman - both can be active at once
-      totemSlots: { healing: null, spirit: null },     // Spirit Shaman - {row, column} per active Totem
+      totemIds: { healing: null, spirit: null },       // Spirit Shaman - actor id per active Totem (real, targetable units)
       skeletonsLost: 0,           // Necromancer - count of his own fallen Skeletons this battle
       turretId: null,              // Engineer - actor id of his current Turret/War Machine summon, if any
       isWarMachine: false,         // Engineer - whether the Turret is currently upgraded (AoE auto-fire)
@@ -85,6 +85,21 @@ const CharacterMechanics = {
       if (owner && owner.character.id === 'engineer' && owner.mech && owner.mech.turretId === deadActor.id) {
         owner.mech.turretId = null;
         owner.mech.isWarMachine = false;
+      }
+      // Machinist's Turret destroyed - clear the reference (her passive/skills stop triggering it).
+      if (owner && owner.character.id === 'machinist' && owner.mech && owner.mech.turretId === deadActor.id) {
+        owner.mech.turretId = null;
+      }
+      // Spirit Shaman's Totem destroyed - the aura ends immediately for everyone it was on.
+      if (owner && owner.character.id === 'spirit_shaman' && owner.mech && owner.mech.totemIds) {
+        ['healing', 'spirit'].forEach((key) => {
+          if (owner.mech.totemIds[key] === deadActor.id) {
+            owner.mech.totemIds[key] = null;
+            owner.mech.activeTotems[key] = false;
+            const statusId = key === 'healing' ? 'healing_totem_aura' : 'spirit_totem_aura';
+            allActors.forEach(a => StatusEngine.remove(a, statusId));
+          }
+        });
       }
     }
   },
@@ -157,28 +172,12 @@ const CharacterMechanics = {
     return TargetingEngine.findOpenSlot(combined, owner.position ? owner.position.row : 'back');
   },
 
-  /** Collects every currently-active PURELY VISUAL summon (Spirit Shaman's Totems) across all
-   *  actors into one normalized list for rendering - see buildSummonSlot() in ui.js. Engineer's
-   *  Turret/War Machine is NOT listed here anymore: it's a real actor in battle.actors now (see
-   *  battle.createSummon), so it's already rendered through the normal actor-slot path. */
+  /** All of Ponti Arena's summons (Turret/War Machine, Totems, Skeletons, Beasts) are now real,
+   *  independently targetable actors in battle.actors, so they render through the normal
+   *  actor-slot path automatically - nothing is purely-visual anymore. Kept as a stub (always
+   *  empty) so existing callers (app.js's renderFormation/enterTargetingMode) don't need changing. */
   getActiveSummons(allActors) {
-    const summons = [];
-    allActors.forEach((a) => {
-      if (!a.mech || a.isDead) return;
-      if (a.mech.activeTotems) {
-        if (a.mech.activeTotems.healing && a.mech.totemSlots && a.mech.totemSlots.healing) {
-          const s = a.mech.totemSlots.healing;
-          summons.push({ id: `totem-healing-${a.id}`, ownerId: a.id, side: a.side, row: s.row, column: s.column,
-            icon: '🌀', name: 'Healing Totem', hp: null, maxHp: null, color: '#6fc9d9' });
-        }
-        if (a.mech.activeTotems.spirit && a.mech.totemSlots && a.mech.totemSlots.spirit) {
-          const s = a.mech.totemSlots.spirit;
-          summons.push({ id: `totem-spirit-${a.id}`, ownerId: a.id, side: a.side, row: s.row, column: s.column,
-            icon: '🌪️', name: 'Spirit Totem', hp: null, maxHp: null, color: '#c9a9e0' });
-        }
-      }
-    });
-    return summons;
+    return [];
   },
 
   // ---------------------------------------------------------------- RESOURCES (Ki / Rage / Dragon Gauge) ----
@@ -386,13 +385,23 @@ const CharacterMechanics = {
    *  replaced, since a new call here reassigns `totemSlot` before the old one is ever read again). */
   /** Both Totems can now be active at once (not mutually exclusive) - each claims its own grid
    *  slot and its own aura, and re-casting the SAME totem just refreshes its duration. */
-  applyTotem(shaman, allies, totemKey, statusId, duration) {
+  /** Both Totems can be active at once (not mutually exclusive). Each is now a REAL, targetable
+   *  summon (see battle.createSummon) - enemies can attack and destroy it directly, which also
+   *  immediately ends the aura it grants (see registerDeath). Re-casting the SAME totem type just
+   *  refreshes the aura's duration without spawning a duplicate unit. */
+  applyTotem(shaman, allies, totemKey, statusId, duration, ctx) {
     if (!shaman.mech.activeTotems) shaman.mech.activeTotems = {};
-    if (!shaman.mech.totemSlots) shaman.mech.totemSlots = {};
-    shaman.mech.activeTotems[totemKey] = true;
-    if (!shaman.mech.totemSlots[totemKey]) {
-      shaman.mech.totemSlots[totemKey] = this.findSummonSlot(shaman, allies);
+    if (!shaman.mech.totemIds) shaman.mech.totemIds = {};
+    const existingId = shaman.mech.totemIds[totemKey];
+    const alreadyAlive = existingId && ctx && ctx.allActors.some(a => a.id === existingId && !a.isDead);
+    if (!alreadyAlive && ctx && ctx.battle) {
+      const icon = totemKey === 'healing' ? '🌀' : '🌪️';
+      const name = totemKey === 'healing' ? 'Healing Totem' : 'Spirit Totem';
+      const hp = Math.round(shaman.maxHp * 0.3);
+      const totem = ctx.battle.createSummon(shaman, { name, icon, color: totemKey === 'healing' ? '#6fc9d9' : '#c9a9e0', hp, attack: 0, attackType: 'magical' });
+      if (totem) shaman.mech.totemIds[totemKey] = totem.id;
     }
+    shaman.mech.activeTotems[totemKey] = true;
     allies.forEach(a => StatusEngine.apply(a, statusId, duration, shaman.id));
   },
 
@@ -444,9 +453,9 @@ const CharacterMechanics = {
     const restoreTo = Math.max(target.hp, Math.min(target.maxHp, snapshot));
     const healed = Math.max(0, restoreTo - target.hp);
     target.hp = restoreTo;
-    const energyRestored = Math.min(55, 100 - target.energy);
-    target.energy = Math.min(100, target.energy + 55);
-    const debuffs = target.statuses.filter(s => STATUS_DEFS[s.id] && STATUS_DEFS[s.id].category === 'debuff').slice(0, 3);
+    const energyRestored = Math.min(35, 100 - target.energy);
+    target.energy = Math.min(100, target.energy + 35);
+    const debuffs = target.statuses.filter(s => STATUS_DEFS[s.id] && STATUS_DEFS[s.id].category === 'debuff').slice(0, 1);
     debuffs.forEach(s => StatusEngine.remove(target, s.id));
     return { healed, energyRestored, cleansed: debuffs.length };
   },
@@ -488,8 +497,8 @@ const CharacterMechanics = {
     },
     freezing_time(actor, skillDef, targets, events, ctx) {
       if (!ctx.battle) return;
-      ctx.battle.globalFreeze = { side: actor.side === 'player' ? 'enemy' : 'player', turnsRemaining: 3 };
-      events.push({ type: 'special', actor: actor.id, text: `${actor.name} freezes time itself - the enemy team cannot act for the next 3 turns!` });
+      ctx.battle.globalFreeze = { side: actor.side === 'player' ? 'enemy' : 'player', turnsRemaining: 2 };
+      events.push({ type: 'special', actor: actor.id, text: `${actor.name} freezes time itself - the enemy team cannot act for the next 2 turns!` });
     },
 
     // Shadow Priest -------------------------------------------------------------------------------
@@ -634,13 +643,13 @@ const CharacterMechanics = {
     // Spirit Shaman -----------------------------------------------------------------------------
     healing_totem(actor, skillDef, targets, events, ctx) {
       const allies = ctx.allActors.filter(a => a.side === actor.side && !a.isDead);
-      CharacterMechanics.applyTotem(actor, allies, 'healing', 'healing_totem_aura', 4);
-      events.push({ type: 'special', actor: actor.id, text: `${actor.name} plants a Healing Totem for the team.` });
+      CharacterMechanics.applyTotem(actor, allies, 'healing', 'healing_totem_aura', 2, ctx);
+      events.push({ type: 'special', actor: actor.id, text: `${actor.name} plants a Healing Totem for the team - enemies can target and destroy it.` });
     },
     spirit_totem(actor, skillDef, targets, events, ctx) {
       const allies = ctx.allActors.filter(a => a.side === actor.side && !a.isDead);
-      CharacterMechanics.applyTotem(actor, allies, 'spirit', 'spirit_totem_aura', 4);
-      events.push({ type: 'special', actor: actor.id, text: `${actor.name} plants a Spirit Totem for the team.` });
+      CharacterMechanics.applyTotem(actor, allies, 'spirit', 'spirit_totem_aura', 2, ctx);
+      events.push({ type: 'special', actor: actor.id, text: `${actor.name} plants a Spirit Totem for the team - enemies can target and destroy it.` });
     },
 
     // Pirate Captain / Gravity Mage: position manipulation --------------------------------------
@@ -724,19 +733,16 @@ const CharacterMechanics = {
       events.push({ type: 'heal', actor: actor.id, target: turret.id, amount: healed, text: `${actor.name} repairs ${turret.name} for ${healed} HP.` });
     },
     war_machine(actor, skillDef, targets, events, ctx) {
-      let turret = ctx.allActors.find(a => a.id === actor.mech.turretId && !a.isDead);
-      let justDeployed = false;
+      // Its target is specifically the Turret Engineer already has deployed - no auto-deploy
+      // fallback anymore (see #9 in the skill revision spec).
+      const turret = ctx.allActors.find(a => a.id === actor.mech.turretId && !a.isDead);
       if (!turret) {
-        turret = CharacterMechanics.deployTurret(actor, ctx);
-        justDeployed = true;
-      }
-      if (!turret) {
-        events.push({ type: 'special', actor: actor.id, text: `${actor.name} has no room to deploy a War Machine.` });
+        events.push({ type: 'special', actor: actor.id, text: `${actor.name} has no Turret deployed to upgrade - use Deploy Turret first.` });
         return;
       }
       // Upgrade: bigger HP pool (healed proportionally, never less than 70%) and bigger Attack -
       // this boost is permanent (a real upgrade), while the AoE fire pattern itself lasts 2 turns.
-      const hpRatio = justDeployed ? 1 : turret.hp / turret.maxHp;
+      const hpRatio = turret.hp / turret.maxHp;
       turret.maxHp = Math.round(turret.maxHp * 1.7);
       turret.hp = Math.min(turret.maxHp, Math.round(turret.maxHp * Math.max(hpRatio, 0.7)));
       turret.stats.attack = Math.round(turret.stats.attack * 1.6);
@@ -745,7 +751,7 @@ const CharacterMechanics = {
       turret.name = 'War Machine';
       actor.mech.isWarMachine = true;
       actor.mech.warMachineTurnsLeft = 2;
-      events.push({ type: 'special', actor: actor.id, target: turret.id, text: `${justDeployed ? 'A freshly deployed Turret is' : "Engineer's Turret is"} upgraded into a War Machine!` });
+      events.push({ type: 'special', actor: actor.id, target: turret.id, text: "Engineer's Turret is upgraded into a War Machine!" });
       // Fires immediately on activation, same row-fallback rule as the passive.
       CharacterMechanics.fireTurret(actor, turret, ctx.allActors, events, true);
     },
@@ -807,16 +813,16 @@ const CharacterMechanics = {
     battle_song(actor, skillDef, targets, events, ctx) {
       CharacterMechanics.setStance(actor, 'battle_song');
       const allies = ctx.allActors.filter(a => a.side === actor.side && !a.isDead);
-      allies.forEach(a => StatusEngine.apply(a, 'battle_song_buff', 3, actor.id));
+      allies.forEach(a => StatusEngine.apply(a, 'battle_song_buff', 2, actor.id));
       events.push({ type: 'buff', actor: actor.id, text: `${actor.name} strikes up a Battle Song - the team's Attack surges!` });
     },
     war_drum(actor, skillDef, targets, events, ctx) {
       CharacterMechanics.setStance(actor, 'war_drum');
       const allies = ctx.allActors.filter(a => a.side === actor.side && !a.isDead);
       allies.forEach(a => {
-        StatusEngine.apply(a, 'war_drum_buff', 3, actor.id);
-        StatusEngine.apply(a, 'regeneration', 3, actor.id);
-        CombatEngine.gainEnergy(a, 8);
+        StatusEngine.apply(a, 'war_drum_buff', 2, actor.id);
+        StatusEngine.apply(a, 'regeneration', 2, actor.id);
+        CombatEngine.gainEnergy(a, 6);
       });
       events.push({ type: 'buff', actor: actor.id, text: `${actor.name} beats the War Drum - the team quickens and mends!` });
     },
@@ -913,35 +919,46 @@ const CharacterMechanics = {
       events.push({ type: 'special', actor: actor.id, text: `${actor.name} fuses her Runes into a ${result} effect!` });
       if (target && !target.isDead) {
         if (result === 'Burst') {
-          const { amount, isCrit } = CombatEngine.calculateDamage(actor, target, 0.7, {});
+          const { amount, isCrit } = CombatEngine.calculateDamage(actor, target, 0.95, {});
           const dealt = CombatEngine.applyDamage(actor, target, amount);
           events.push({ type: 'damage', actor: actor.id, target: target.id, amount: dealt, isCrit, text: `Burst detonates on ${target.name} for ${dealt} extra damage!` });
           if (target.isDead) { events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` }); CharacterMechanics.registerDeath(target, ctx.allActors); }
         } else if (result === 'Rapid') {
-          const { amount, isCrit } = CombatEngine.calculateDamage(actor, target, 0.55, {});
+          const { amount, isCrit } = CombatEngine.calculateDamage(actor, target, 0.75, {});
           const dealt = CombatEngine.applyDamage(actor, target, amount);
           events.push({ type: 'damage', actor: actor.id, target: target.id, amount: dealt, isCrit, text: `A second Rapid bolt hits ${target.name} for ${dealt} more damage!` });
           if (target.isDead) { events.push({ type: 'death', actor: target.id, text: `${target.name} has fallen!` }); CharacterMechanics.registerDeath(target, ctx.allActors); }
         } else if (result === 'Barrier') {
-          CombatEngine.applyShield(actor, Math.round(actor.maxHp * 0.16));
+          CombatEngine.applyShield(actor, Math.round(actor.maxHp * 0.24));
           events.push({ type: 'shield', actor: actor.id, target: actor.id, text: `${actor.name} raises a Barrier of Shield.` });
         } else if (result === 'Haste') {
-          StatusEngine.apply(actor, 'speed_up', 2, actor.id);
-          events.push({ type: 'buff', actor: actor.id, target: actor.id, text: `${actor.name} is hastened by the Wind.` });
+          StatusEngine.apply(actor, 'speed_up', 3, actor.id);
+          StatusEngine.apply(actor, 'attack_up', 2, actor.id);
+          events.push({ type: 'buff', actor: actor.id, target: actor.id, text: `${actor.name} is hastened and emboldened by the Wind.` });
         } else if (result === 'Fortress') {
-          CombatEngine.applyShield(actor, Math.round(actor.maxHp * 0.26));
+          CombatEngine.applyShield(actor, Math.round(actor.maxHp * 0.38));
           events.push({ type: 'shield', actor: actor.id, target: actor.id, text: `${actor.name} becomes a Fortress of Shield.` });
         } else if (result === 'Mobility') {
           CharacterMechanics.reposition(actor, 'backward', ctx.allActors);
-          events.push({ type: 'special', actor: actor.id, text: `${actor.name} repositions to the ${actor.position.row} row.` });
+          CombatEngine.applyShield(actor, Math.round(actor.maxHp * 0.14));
+          events.push({ type: 'special', actor: actor.id, text: `${actor.name} repositions to the ${actor.position.row} row with a shield.` });
         }
       }
     },
     grand_rune(actor, skillDef, targets, events, ctx) {
       const runes = actor.mech.runes;
       const allies = ctx.allActors.filter(a => a.side === actor.side && !a.isDead);
+      if (runes.includes('fire')) {
+        targets.forEach((t) => {
+          if (t.isDead) return;
+          const { amount, isCrit } = CombatEngine.calculateDamage(actor, t, 0.45, {});
+          const dealt = CombatEngine.applyDamage(actor, t, amount);
+          events.push({ type: 'damage', actor: actor.id, target: t.id, amount: dealt, isCrit, text: `The Fire Rune scorches ${t.name} for ${dealt} extra damage!` });
+          if (t.isDead) { events.push({ type: 'death', actor: t.id, text: `${t.name} has fallen!` }); CharacterMechanics.registerDeath(t, ctx.allActors); }
+        });
+      }
       if (runes.includes('guard')) {
-        allies.forEach(a => CombatEngine.applyShield(a, Math.round(a.maxHp * 0.18)));
+        allies.forEach(a => CombatEngine.applyShield(a, Math.round(a.maxHp * 0.24)));
         events.push({ type: 'shield', actor: actor.id, text: `${actor.name}'s Grand Rune shields the whole team!` });
       }
       if (runes.includes('wind')) {

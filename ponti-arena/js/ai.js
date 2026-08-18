@@ -42,7 +42,10 @@ const AISystem = {
     const list = [{ key: 'basicAttack', def: c.basicAttack }];
     if (actor.cooldowns.skill1 <= 0) list.push({ key: 'skill1', def: c.skill1 });
     if (actor.cooldowns.skill2 <= 0) list.push({ key: 'skill2', def: c.skill2 });
-    if (actor.energy >= 100) list.push({ key: 'ultimate', def: c.ultimate });
+    // Engineer's War Machine targets an already-deployed Turret - don't offer it (and waste 100
+    // Energy) if there's nothing there to upgrade.
+    const ultimateReady = actor.energy >= 100 && (c.ultimate.id !== 'war_machine' || !!actor.mech.turretId);
+    if (ultimateReady) list.push({ key: 'ultimate', def: c.ultimate });
     return list;
   },
 

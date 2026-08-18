@@ -66,18 +66,20 @@ const CombatEngine = {
    */
   calculateDamage(attacker, target, power, options = {}) {
     const estimate = !!options.estimate;
+    // Sniper's Aim: her next shot completely ignores the target's Evasion, Defense, and Shield.
+    const aimIgnore = !estimate && attacker.character.id === 'sniper' && StatusEngine.has(attacker, 'aim_stance');
     let targetEvasion = (target.character.base && target.character.base.evasion) || 0;
     const footwork = StatusEngine.get(target, 'footwork');
     if (footwork) targetEvasion += footwork.stacks * (STATUS_DEFS.footwork.percent || 0);
     if (StatusEngine.has(target, 'evasion_up')) targetEvasion += STATUS_DEFS.evasion_up.percent;
     if (StatusEngine.has(target, 'evasion_down')) targetEvasion += STATUS_DEFS.evasion_down.percent;
     targetEvasion = Math.max(0, targetEvasion);
-    if (!estimate && !options.skipEvasion && targetEvasion > 0 && Math.random() * 100 < targetEvasion) {
+    if (!aimIgnore && !estimate && !options.skipEvasion && targetEvasion > 0 && Math.random() * 100 < targetEvasion) {
       return { amount: 0, isCrit: false, evaded: true };
     }
     const atk = this.liveStat(attacker, 'attack');
     const defenseKey = attacker.character.attackType === 'magical' ? 'magicalDefense' : 'physicalDefense';
-    const def = this.liveStat(target, defenseKey);
+    const def = aimIgnore ? 0 : this.liveStat(target, defenseKey);
     let raw = (atk * power * 100) / (100 + def);
     raw = Math.max(raw, atk * power * 0.15); // damage floor so it never trends to 0
 
@@ -130,15 +132,11 @@ const CombatEngine = {
       const distance = depth[attacker.position.row] + depth[target.position.row];
       raw *= (1 + distance * 0.06); // up to +24% at max Back-vs-Back range
     }
-    // Sniper's Aim stance: big damage/crit boost on her next shot, consumed once, plus a small
-    // self-vulnerability window (handled as incoming-damage bonus below).
-    if (!estimate && attacker.character.id === 'sniper' && StatusEngine.has(attacker, 'aim_stance')) {
-      raw *= 1.4;
+    // Sniper's Aim stance: consumed on this shot (see aimIgnore above for the actual ignore-effects).
+    if (aimIgnore) {
       StatusEngine.remove(attacker, 'aim_stance');
     }
     if (options.headshotBonus && (target.hp / target.maxHp) <= 0.35) raw *= 1.5;
-    // Sniper is more vulnerable to incoming attacks while lining up Aim.
-    if (target.character.id === 'sniper' && StatusEngine.has(target, 'aim_stance')) raw *= 1.15;
     // Dragon Knight's Dragon Breath / Basic Attack - bonus with a high Dragon Gauge.
     if (attacker.character.id === 'dragon_knight' && attacker.mech && attacker.mech.dragonGauge >= 70) raw *= 1.2;
     // Berserker Lord's Raging Swing / Wrath Unleashed - bonus with high Rage.
@@ -147,8 +145,9 @@ const CombatEngine = {
       raw *= 1.15; // the "briefly shatters Armor" bonus is expressed as extra damage this hit
     }
     // Soul Reaper's Soul Harvest: Basic Attack scales with current Soul count.
-    if (attacker.character.id === 'soul_reaper' && options.skillId === 'soul_slash' && attacker.mech) {
-      raw *= (1 + attacker.mech.soul * 0.12);
+    // Soul Reaper's Soul Harvest: ALL of his damage scales with current Soul count (capped at 5 Souls).
+    if (attacker.character.id === 'soul_reaper' && attacker.mech && attacker.mech.soul) {
+      raw *= (1 + attacker.mech.soul * 0.25);
     }
     // Reaper's Cut: bonus damage based on the target's missing HP.
     if (options.missingHpExecute) {
@@ -179,10 +178,10 @@ const CombatEngine = {
       const stacks = attacker.arcaneStacks || 0;
       raw *= (1 + stacks * 0.10);
     }
-    // Necromancer Necrotic Power - scales with fallen units on the field, plus his own fallen Skeletons.
+    // Necromancer Necrotic Power - +10% per fallen character (either side), +5% per his own fallen Skeleton.
     if (attacker.character.id === 'necromancer') {
-      if (options.fallenCount) raw *= (1 + options.fallenCount * 0.05);
-      if (attacker.mech && attacker.mech.skeletonsLost) raw *= (1 + attacker.mech.skeletonsLost * 0.01);
+      if (options.fallenCount) raw *= (1 + options.fallenCount * 0.10);
+      if (attacker.mech && attacker.mech.skeletonsLost) raw *= (1 + attacker.mech.skeletonsLost * 0.05);
     }
     // Stormcaller Static Charge bonus flagged by caller
     if (options.staticChargeBonus) raw *= 1.5;
@@ -215,14 +214,15 @@ const CombatEngine = {
     }
 
     const amount = Math.max(1, Math.round(raw));
-    return { amount, isCrit, evaded: false };
+    return { amount, isCrit, evaded: false, ignoreShield: aimIgnore };
   },
 
-  applyDamage(attacker, target, amount) {
+  applyDamage(attacker, target, amount, options = {}) {
     // Engineer's Turret/War Machine is now a real, independently targetable unit (see
     // battle.createSummon) - it takes its OWN hits directly, and Engineer takes hers directly too.
     // No more damage redirection here (that's the old pre-summon design).
-    const afterShield = StatusEngine.consumeShield(target, amount);
+    // Sniper's Aim: this hit ignores Shield entirely, going straight to HP.
+    const afterShield = options.ignoreShield ? amount : StatusEngine.consumeShield(target, amount);
     // Frost Knight's Ice Wall: whoever lands the hit that fully breaks it gets Slowed.
     if (target.character.id === 'frost_knight' && StatusEngine.totalShield(target) <= 0 && afterShield < amount) {
       StatusEngine.apply(attacker, 'slow', 2, target.id);
