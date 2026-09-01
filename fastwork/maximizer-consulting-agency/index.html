@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maximizer Consulting Agency LTD</title>
+<meta name="description" content="Maximizer Consulting Agency LTD provides Business Consulting, M&A Advisory, Training Consulting, and Marketing & Digital Agency services.">
+<style>
+  /* ============================================================
+     CONFIG — set this once to your deployed Apps Script /exec URL.
+     Everything else on this page adapts automatically.
+     ============================================================ */
+  :root{
+    --color-bg: #0a111e;
+    --color-muted: #94a3b8;
+    --color-accent-2: #00b4d8;
+  }
+
+  *, *::before, *::after{ box-sizing: border-box; }
+  html, body{
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--color-bg);
+    overflow: hidden;
+  }
+
+  #site-frame{
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    border: 0;
+    display: block;
+    background: var(--color-bg);
+  }
+
+  /* Loading state, shown until the iframe finishes loading */
+  #loading-screen{
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    background: var(--color-bg);
+    z-index: 10;
+    transition: opacity 0.4s ease;
+  }
+  #loading-screen.is-hidden{
+    opacity: 0;
+    pointer-events: none;
+  }
+  .loading-mark{
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    font-size: 15px;
+    color: #f8fafc;
+  }
+  .loading-bar{
+    width: 120px;
+    height: 2px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.12);
+    overflow: hidden;
+  }
+  .loading-bar::after{
+    content: "";
+    display: block;
+    width: 40%;
+    height: 100%;
+    background: var(--color-accent-2);
+    animation: loading-slide 1.1s ease-in-out infinite;
+  }
+  @keyframes loading-slide{
+    0%{ transform: translateX(-100%); }
+    100%{ transform: translateX(350%); }
+  }
+
+  /* Error state if the URL isn't configured or fails to load */
+  #error-screen{
+    display: none;
+    position: fixed;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg);
+    z-index: 20;
+    padding: 24px;
+    text-align: center;
+  }
+  #error-screen.is-visible{ display: flex; }
+  #error-screen p{
+    color: var(--color-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 14.5px;
+    max-width: 420px;
+    line-height: 1.6;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .loading-bar::after{ animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="loading-mark">MAXIMIZER</div>
+  <div class="loading-bar"></div>
+</div>
+
+<div id="error-screen">
+  <p>The site couldn't load. Set <code>SITE_URL</code> at the top of this file's script to your Script URL.</p>
+</div>
+
+<iframe
+  id="site-frame"
+  title="Maximizer Consulting Agency LTD"
+  loading="eager"
+  referrerpolicy="strict-origin-when-cross-origin"
+  allow="clipboard-write"
+></iframe>
+
+<script>
+(function(){
+  "use strict";
+
+  // ============================================================
+  // SET THIS ONCE: your deployed Apps Script Web App /exec URL
+  // ============================================================
+  var SITE_URL = "https://script.google.com/macros/s/AKfycbyP8bVk-13s8ohWoYEtAYbsrBH1PWxRt29S4eY69sRZVHVYcV3TatEaF0-cSiMtclLE/exec";
+
+  var frame = document.getElementById('site-frame');
+  var loadingScreen = document.getElementById('loading-screen');
+  var errorScreen = document.getElementById('error-screen');
+
+  function showError(){
+    errorScreen.classList.add('is-visible');
+    loadingScreen.classList.add('is-hidden');
+  }
+
+  if(!SITE_URL || SITE_URL.indexOf('PASTE_YOUR') === 0){
+    showError();
+  } else {
+    var loaded = false;
+
+    frame.addEventListener('load', function(){
+      loaded = true;
+      loadingScreen.classList.add('is-hidden');
+    });
+
+    // Fallback: if it hasn't loaded in 12s (e.g. wrong/unreachable URL), show a hint
+    setTimeout(function(){
+      if(!loaded) showError();
+    }, 12000);
+
+    frame.src = SITE_URL;
+  }
+})();
+</script>
+
+</body>
+</html>
