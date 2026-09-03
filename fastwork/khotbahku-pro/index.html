@@ -87,21 +87,44 @@
     color:#2A1B00;padding:5px 10px;border-radius:6px;font-size:12.5px;cursor:pointer;
   }
 
-  /* ---------------------------- INSTALL FAB --------------------------- */
-  #installBtn{
-    position:fixed;right:16px;bottom:16px;z-index:55;display:none;
-    align-items:center;gap:8px;padding:11px 16px;border-radius:999px;border:0;
-    background:#4F46E5;color:#fff;font-weight:600;font-size:13.5px;
+  /* ---------------------------- POPUP PASANG APLIKASI --------------------------- */
+  /* Popup ajakan memasang muncul setiap kali halaman dibuka/dimuat ulang,
+     bukan tombol melayang permanen — supaya tidak mengganggu tampilan aplikasi. */
+  #installModal{
+    position:fixed;inset:0;z-index:70;display:none;
+    align-items:flex-end;justify-content:center;
+  }
+  #installModal.show{display:flex}
+  .install-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.5)}
+  .install-card{
+    position:relative;z-index:1;width:100%;max-width:420px;
+    margin:0 auto calc(16px + env(safe-area-inset-bottom));
+    background:#fff;color:#0F172A;border-radius:20px 20px 0 0;
+    padding:22px 22px calc(20px + env(safe-area-inset-bottom));
+    box-shadow:0 -10px 30px rgba(15,23,42,.25);
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    box-shadow:0 8px 20px rgba(79,70,229,.35);cursor:pointer;
+    animation:installSlideUp .25s ease;
   }
-  #installBtn.show{display:flex}
-  #installBtn svg{width:16px;height:16px}
-  #installBtn.installed{display:none!important}
-
-  @supports (bottom: env(safe-area-inset-bottom)){
-    #installBtn{bottom:calc(16px + env(safe-area-inset-bottom))}
+  @keyframes installSlideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+  @media (min-width:560px){
+    #installModal{align-items:center}
+    .install-card{border-radius:20px;margin:0;animation:installPopIn .2s ease}
   }
+  @keyframes installPopIn{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+  .install-icon{
+    width:56px;height:56px;border-radius:14px;overflow:hidden;margin-bottom:12px;
+    box-shadow:0 4px 14px rgba(79,70,229,.28)
+  }
+  .install-icon img{width:100%;height:100%;display:block}
+  .install-card h3{font-size:17px;margin-bottom:6px;color:#0F172A}
+  .install-card p{font-size:13.5px;line-height:1.6;color:#64748B;margin-bottom:18px}
+  .install-actions{display:flex;gap:10px}
+  .install-actions button{
+    flex:1;border:0;border-radius:12px;padding:12px 14px;font-size:13.5px;
+    font-weight:600;cursor:pointer;font-family:inherit
+  }
+  #installLater{background:#F1F5F9;color:#64748B}
+  #installConfirm{background:#4F46E5;color:#fff}
 
   /* ------------------------- SETUP NOTICE (dev only) ------------------- */
   #setupNotice{
@@ -153,10 +176,18 @@
     referrerpolicy="no-referrer-when-downgrade">
   </iframe>
 
-  <button id="installBtn" type="button">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 11l5 5 5-5M5 21h14"/></svg>
-    Pasang aplikasi
-  </button>
+  <div id="installModal" role="dialog" aria-modal="true" aria-labelledby="installTitle">
+    <div class="install-backdrop" id="installBackdrop"></div>
+    <div class="install-card">
+      <div class="install-icon"><img src="./icons/icon-192.png" alt=""></div>
+      <h3 id="installTitle">Pasang Khotbah Pro?</h3>
+      <p id="installText">Pasang aplikasi ini di perangkat Anda untuk akses lebih cepat, tampilan layar penuh, dan ikon di layar utama.</p>
+      <div class="install-actions">
+        <button id="installLater" type="button">Nanti saja</button>
+        <button id="installConfirm" type="button">Pasang Aplikasi</button>
+      </div>
+    </div>
+  </div>
 
 <script>
   /* --------------------------- URL WEB APP GAS --------------------------- */
@@ -212,31 +243,62 @@
     });
   }
 
-  /* ------------------------- TOMBOL PASANG APLIKASI ---------------------- */
-  var installBtn = document.getElementById('installBtn');
+  /* --------------------------- POPUP PASANG APLIKASI --------------------------- */
+  // Sudah berjalan sebagai app terpasang (standalone) -> jangan pernah tampilkan popup.
+  var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS 13+
+
+  var installModal = document.getElementById('installModal');
+  var installText = document.getElementById('installText');
+  var installConfirm = document.getElementById('installConfirm');
+  var installLater = document.getElementById('installLater');
+  var installBackdrop = document.getElementById('installBackdrop');
   var deferredPrompt = null;
 
+  // Catatan: popup ini SENGAJA tidak menyimpan status "sudah ditutup" —
+  // ia akan muncul lagi setiap kali halaman dibuka atau dimuat ulang,
+  // selama aplikasi belum terpasang (standalone).
+  function closeInstallModal() {
+    installModal.classList.remove('show');
+  }
+  function openInstallModal(mode) {
+    if (mode === 'ios') {
+      installText.innerHTML = 'Ketuk ikon <b>Bagikan</b> (kotak dengan panah ke atas) di Safari, lalu pilih ' +
+        '<b>"Tambahkan ke Layar Utama"</b> untuk memasang Khotbah Pro di perangkat Anda.';
+      installConfirm.textContent = 'Mengerti';
+      installConfirm.onclick = closeInstallModal;
+    } else {
+      installText.textContent = 'Pasang aplikasi ini di perangkat Anda untuk akses lebih cepat, tampilan layar penuh, dan ikon di layar utama.';
+      installConfirm.textContent = 'Pasang Aplikasi';
+      installConfirm.onclick = function () {
+        installModal.classList.remove('show');
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.finally(function () { deferredPrompt = null; });
+      };
+    }
+    installModal.classList.add('show');
+  }
+  installLater.addEventListener('click', closeInstallModal);
+  installBackdrop.addEventListener('click', closeInstallModal);
+
+  // Android/Chrome/Edge: tangkap event resmi lalu tampilkan popup (bukan tombol).
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault();
     deferredPrompt = e;
-    installBtn.classList.add('show');
+    if (!isStandalone) {
+      setTimeout(function () { openInstallModal('android'); }, 1500);
+    }
   });
-
-  installBtn.addEventListener('click', function () {
-    if (!deferredPrompt) return;
-    installBtn.classList.remove('show');
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.finally(function () { deferredPrompt = null; });
-  });
-
   window.addEventListener('appinstalled', function () {
-    installBtn.classList.remove('show');
-    installBtn.classList.add('installed');
+    installModal.classList.remove('show');
   });
 
-  // Sudah berjalan sebagai app terpasang (standalone) -> jangan tampilkan tombol.
-  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-    installBtn.classList.add('installed');
+  // iOS Safari tidak mendukung beforeinstallprompt -> tampilkan popup berisi
+  // instruksi manual "Tambahkan ke Layar Utama", setiap kali halaman dibuka.
+  if (isIOS && !isStandalone) {
+    setTimeout(function () { openInstallModal('ios'); }, 1500);
   }
 </script>
 </body>
