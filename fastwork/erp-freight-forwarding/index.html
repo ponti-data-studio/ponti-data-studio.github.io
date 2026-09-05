@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="description" content="ERP Freight Forwarding & Logistics — Sistem ERP terpadu untuk Sales, Customer Service, Customs, Finance, dan Pricing, tersinkron dengan Google Sheets.">
+
+<!-- Open Graph / pratinjau tautan -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="ERP Freight Forwarding & Logistics">
+<meta property="og:description" content="Kelola Quotation, Job Order, Shipment, Dokumen, dan Keuangan perusahaan freight forwarding dalam satu aplikasi, langsung dari HP atau desktop.">
+<meta property="og:image" content="./icons/icon-512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+
+<title>ERP Freight Forwarding & Logistics</title>
+
+<!-- Favicon -->
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png">
+
+<!-- PWA: manifest -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#1B2430">
+
+<!-- PWA: Android / Chrome / Windows install -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="ERP Logistics">
+
+<!-- PWA: iOS (Add to Home Screen) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ERP Logistics">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#F4F6F9}
+  iframe{width:100%;height:100%;border:none;display:block;background:#F4F6F9}
+
+  /* ------------------------------ SPLASH ----------------------------- */
+  #splash{
+    position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:16px;background:#F4F6F9;
+    transition:opacity .35s ease;
+  }
+  #splash.hide{opacity:0;pointer-events:none}
+  #splash .mark{
+    width:72px;height:72px;border-radius:18px;
+    background:#1B2430;
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:800;font-size:24px;letter-spacing:.02em;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    box-shadow:0 12px 24px rgba(27,36,48,.28);
+    animation:pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+  #splash .brand{
+    color:#64748B;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  #splash .dots{display:flex;gap:6px}
+  #splash .dots span{
+    width:6px;height:6px;border-radius:50%;background:#1B2430;
+    animation:blink 1.2s infinite ease-in-out;
+  }
+  #splash .dots span:nth-child(2){animation-delay:.15s;background:#0D6EFD}
+  #splash .dots span:nth-child(3){animation-delay:.3s;background:#1B2430}
+  @keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+  @media (prefers-reduced-motion:reduce){
+    #splash .mark{animation:none}
+    #splash .dots span{animation:none;opacity:.7}
+  }
+
+  /* ------------------------------ OFFLINE ----------------------------- */
+  #offlineBar{
+    position:fixed;left:0;right:0;top:0;z-index:60;display:none;
+    align-items:center;gap:10px;padding:10px 14px;
+    background:#B4770B;color:#2A1B00;font-size:13px;font-weight:500;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding-top:calc(10px + env(safe-area-inset-top));
+  }
+  #offlineBar.show{display:flex}
+  #offlineBar button{
+    margin-left:auto;border:1px solid rgba(0,0,0,.25);background:transparent;
+    color:#2A1B00;padding:5px 10px;border-radius:6px;font-size:12.5px;cursor:pointer;
+  }
+
+  /* ---------------------------- POPUP PASANG APLIKASI --------------------------- */
+  /* Popup ajakan memasang muncul setiap kali halaman dibuka/dimuat ulang,
+     bukan tombol melayang permanen — supaya tidak mengganggu tampilan aplikasi. */
+  #installModal{
+    position:fixed;inset:0;z-index:70;display:none;
+    align-items:flex-end;justify-content:center;
+  }
+  #installModal.show{display:flex}
+  .install-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.5)}
+  .install-card{
+    position:relative;z-index:1;width:100%;max-width:420px;
+    margin:0 auto calc(16px + env(safe-area-inset-bottom));
+    background:#fff;color:#0F172A;border-radius:20px 20px 0 0;
+    padding:22px 22px calc(20px + env(safe-area-inset-bottom));
+    box-shadow:0 -10px 30px rgba(15,23,42,.25);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    animation:installSlideUp .25s ease;
+  }
+  @keyframes installSlideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+  @media (min-width:560px){
+    #installModal{align-items:center}
+    .install-card{border-radius:20px;margin:0;animation:installPopIn .2s ease}
+  }
+  @keyframes installPopIn{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+  .install-icon{
+    width:56px;height:56px;border-radius:14px;overflow:hidden;margin-bottom:12px;
+    box-shadow:0 4px 14px rgba(27,36,48,.28)
+  }
+  .install-icon img{width:100%;height:100%;display:block}
+  .install-card h3{font-size:17px;margin-bottom:6px;color:#0F172A}
+  .install-card p{font-size:13.5px;line-height:1.6;color:#64748B;margin-bottom:18px}
+  .install-actions{display:flex;gap:10px}
+  .install-actions button{
+    flex:1;border:0;border-radius:12px;padding:12px 14px;font-size:13.5px;
+    font-weight:600;cursor:pointer;font-family:inherit
+  }
+  #installLater{background:#F1F5F9;color:#64748B}
+  #installConfirm{background:#1B2430;color:#fff}
+
+  /* ------------------------- SETUP NOTICE (dev only) ------------------- */
+  #setupNotice{
+    position:fixed;inset:0;z-index:70;display:none;
+    align-items:center;justify-content:center;padding:24px;
+    background:#F4F6F9;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  #setupNotice.show{display:flex}
+  #setupNotice .box{
+    max-width:420px;background:#fff;border:1px solid #E2E8F0;border-radius:20px;
+    padding:24px;text-align:center;
+  }
+  #setupNotice h1{font-size:16px;color:#0F172A;margin-bottom:8px}
+  #setupNotice p{font-size:13.5px;color:#64748B;line-height:1.6}
+  #setupNotice code{
+    display:block;margin-top:12px;padding:10px 12px;background:#F1F5F9;
+    border-radius:10px;font-size:12px;color:#4338CA;word-break:break-all;
+    text-align:left;
+  }
+</style>
+</head>
+<body>
+
+  <div id="offlineBar" role="status">
+    Tidak ada koneksi internet. Sebagian data mungkin tidak termuat.
+    <button id="offlineRetry">Coba lagi</button>
+  </div>
+
+  <div id="splash">
+    <div class="mark">EF</div>
+    <div class="dots"><span></span><span></span><span></span></div>
+    <div class="brand">Menyiapkan ERP Logistics</div>
+  </div>
+
+  <div id="setupNotice">
+    <div class="box">
+      <h1>Satu langkah lagi</h1>
+      <p>Ganti nilai <strong>APP_URL</strong> di bagian atas file <code>index.html</code> ini dengan URL Web App Apps Script kamu (dari menu Deploy → Manage deployments, formatnya diakhiri <code>/exec</code>).</p>
+      <code id="setupNoticeUrl"></code>
+    </div>
+  </div>
+
+  <iframe
+    id="app"
+    src=""
+    title="ERP Freight Forwarding & Logistics"
+    allow="clipboard-write; fullscreen"
+    referrerpolicy="no-referrer-when-downgrade">
+  </iframe>
+
+  <div id="installModal" role="dialog" aria-modal="true" aria-labelledby="installTitle">
+    <div class="install-backdrop" id="installBackdrop"></div>
+    <div class="install-card">
+      <div class="install-icon"><img src="./icons/icon-192.png" alt=""></div>
+      <h3 id="installTitle">Pasang ERP Logistics?</h3>
+      <p id="installText">Pasang aplikasi ini di perangkat Anda untuk akses lebih cepat, tampilan layar penuh, dan ikon di layar utama.</p>
+      <div class="install-actions">
+        <button id="installLater" type="button">Nanti saja</button>
+        <button id="installConfirm" type="button">Pasang Aplikasi</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  /* --------------------------- URL WEB APP GAS --------------------------- */
+  // Ganti baris ini dengan URL hasil Deploy → Web app di Apps Script,
+  // formatnya: https://script.google.com/macros/s/AKfycb.../exec
+  //
+  // Catatan penting: doGet() di Code.gs aplikasi ERP ini sudah diset
+  // .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL), jadi memang
+  // sudah didesain untuk bisa ditampilkan di dalam iframe seperti ini — tidak perlu
+  // mengubah apa pun di sisi Apps Script.
+  var APP_URL = 'https://script.google.com/macros/s/AKfycbzbn5LMmU6PvXMrUYSR9A5DXzBPBKwiGU-4AjpkmNAR7qhe_pALgF9MjiG0s0F3qqKjjA/exec';
+
+  var frame = document.getElementById('app');
+  var setupNotice = document.getElementById('setupNotice');
+  var splash = document.getElementById('splash');
+
+  if (!APP_URL || APP_URL.indexOf('REPLACE_WITH') === 0) {
+    document.getElementById('setupNoticeUrl').textContent =
+      "var APP_URL = 'https://script.google.com/macros/s/AKfycbxxxxxxxx/exec';";
+    setupNotice.classList.add('show');
+    splash.classList.add('hide');
+  } else {
+    frame.src = APP_URL;
+  }
+
+  /* ------------------------------ SPLASH ------------------------------ */
+  var splashHidden = false;
+  function hideSplash() {
+    if (splashHidden) return;
+    splashHidden = true;
+    splash.classList.add('hide');
+    setTimeout(function () { splash.remove(); }, 400);
+  }
+  frame.addEventListener('load', hideSplash);
+  // Jaring pengaman: kalau iframe lambat/gagal memicu 'load', jangan biarkan
+  // splash menutupi aplikasi selamanya.
+  setTimeout(hideSplash, 6000);
+
+  /* ------------------------------ OFFLINE ------------------------------ */
+  var offlineBar = document.getElementById('offlineBar');
+  function syncOnlineState() {
+    offlineBar.classList.toggle('show', !navigator.onLine);
+  }
+  window.addEventListener('online', syncOnlineState);
+  window.addEventListener('offline', syncOnlineState);
+  document.getElementById('offlineRetry').addEventListener('click', function () {
+    if (frame.src) frame.src = frame.src; // muat ulang iframe
+    syncOnlineState();
+  });
+  syncOnlineState();
+
+  /* --------------------------- SERVICE WORKER --------------------------- */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(function (err) {
+        console.warn('Pendaftaran service worker gagal:', err);
+      });
+    });
+  }
+
+  /* --------------------------- POPUP PASANG APLIKASI --------------------------- */
+  // Sudah berjalan sebagai app terpasang (standalone) -> jangan pernah tampilkan popup.
+  var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS 13+
+
+  var installModal = document.getElementById('installModal');
+  var installText = document.getElementById('installText');
+  var installConfirm = document.getElementById('installConfirm');
+  var installLater = document.getElementById('installLater');
+  var installBackdrop = document.getElementById('installBackdrop');
+  var deferredPrompt = null;
+
+  // Catatan: popup ini SENGAJA tidak menyimpan status "sudah ditutup" —
+  // ia akan muncul lagi setiap kali halaman dibuka atau dimuat ulang,
+  // selama aplikasi belum terpasang (standalone).
+  function closeInstallModal() {
+    installModal.classList.remove('show');
+  }
+  function openInstallModal(mode) {
+    if (mode === 'ios') {
+      installText.innerHTML = 'Ketuk ikon <b>Bagikan</b> (kotak dengan panah ke atas) di Safari, lalu pilih ' +
+        '<b>"Tambahkan ke Layar Utama"</b> untuk memasang ERP Logistics di perangkat Anda.';
+      installConfirm.textContent = 'Mengerti';
+      installConfirm.onclick = closeInstallModal;
+    } else {
+      installText.textContent = 'Pasang aplikasi ini di perangkat Anda untuk akses lebih cepat, tampilan layar penuh, dan ikon di layar utama.';
+      installConfirm.textContent = 'Pasang Aplikasi';
+      installConfirm.onclick = function () {
+        installModal.classList.remove('show');
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.finally(function () { deferredPrompt = null; });
+      };
+    }
+    installModal.classList.add('show');
+  }
+  installLater.addEventListener('click', closeInstallModal);
+  installBackdrop.addEventListener('click', closeInstallModal);
+
+  // Android/Chrome/Edge: tangkap event resmi lalu tampilkan popup (bukan tombol).
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!isStandalone) {
+      setTimeout(function () { openInstallModal('android'); }, 1500);
+    }
+  });
+  window.addEventListener('appinstalled', function () {
+    installModal.classList.remove('show');
+  });
+
+  // iOS Safari tidak mendukung beforeinstallprompt -> tampilkan popup berisi
+  // instruksi manual "Tambahkan ke Layar Utama", setiap kali halaman dibuka.
+  if (isIOS && !isStandalone) {
+    setTimeout(function () { openInstallModal('ios'); }, 1500);
+  }
+</script>
+</body>
+</html>
