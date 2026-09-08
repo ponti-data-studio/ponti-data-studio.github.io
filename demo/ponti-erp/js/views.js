@@ -53,14 +53,14 @@ const Views = (() => {
           <div class="card-surface section-card">
             <h6><i class="bi bi-clipboard-data me-1"></i>Business Overview</h6>
             <div class="row g-3">
-              <div class="col-md-6">
+              <div class="col-12 col-md-6">
                 <ul class="mini-list">
                   <li><span class="mini-title">Produk Terlaris</span><span class="mini-sub">${bestProduct ? Fmt.escapeHtml(bestProduct.name) : '-'}</span></li>
                   <li><span class="mini-title">Cabang Performa Terbaik</span><span class="mini-sub">${branches[0] ? Fmt.escapeHtml(branches[0].name) : '-'}</span></li>
                   <li><span class="mini-title">Sales Terbaik</span><span class="mini-sub">${employees[0] ? Fmt.escapeHtml(employees[0].name) : '-'}</span></li>
                 </ul>
               </div>
-              <div class="col-md-6">
+              <div class="col-12 col-md-6">
                 <ul class="mini-list">
                   <li><span class="mini-title">Stok Menipis</span><span class="mini-sub">${lowStock.length + outOfStock.length} produk</span></li>
                   <li><span class="mini-title">Invoice Belum Dibayar</span><span class="mini-sub">${unpaidInvoices.length} invoice</span></li>
@@ -140,7 +140,7 @@ const Views = (() => {
             const [key, label] = pair.split(':');
             let val = comp[key] || '-';
             if (key === 'founded') val = Fmt.date(val);
-            return `<div class="col-md-6"><div class="text-muted small">${label}</div><div class="fw-semibold">${Fmt.escapeHtml(val)}</div></div>`;
+            return `<div class="col-12 col-md-6"><div class="text-muted small">${label}</div><div class="fw-semibold">${Fmt.escapeHtml(val)}</div></div>`;
           }).join('')}
         </div>
       </div>
@@ -233,7 +233,7 @@ const Views = (() => {
         ${kpiCard('bi-piggy-bank', 'Net Profit', Fmt.rupiah(netProfit))}
         ${kpiCard('bi-bank', 'Cash Balance', Fmt.rupiah(cashBalance))}
       </div>
-      <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr)">
+      <div class="kpi-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
         ${kpiCard('bi-arrow-down-circle', 'Receivables', Fmt.rupiah(receivables))}
         ${kpiCard('bi-arrow-up-circle', 'Payables', Fmt.rupiah(payables))}
       </div>
@@ -319,7 +319,7 @@ const Views = (() => {
         <div><h1 class="page-title">Payroll Summary</h1><div class="page-subtitle">Estimasi payroll bulan berjalan (demo)</div></div>
         <button class="btn btn-outline-secondary btn-sm" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
       </div>
-      <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr)">
+      <div class="kpi-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
         ${kpiCard('bi-people', 'Total Karyawan Aktif', Fmt.number(rows.length))}
         ${kpiCard('bi-cash-stack', 'Total Estimasi Payroll', Fmt.rupiah(total))}
       </div>
@@ -347,7 +347,7 @@ const Views = (() => {
         <div><h1 class="page-title">CRM Pipeline</h1><div class="page-subtitle">Lead → Contacted → Negotiation → Proposal → Won/Lost</div></div>
         <button class="btn btn-primary btn-sm" id="addLeadBtn"><i class="bi bi-plus-lg"></i> Tambah Lead</button>
       </div>
-      <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr)">
+      <div class="kpi-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
         ${kpiCard('bi-funnel', 'Total Leads', Fmt.number(totalLeads))}
         ${kpiCard('bi-percent', 'Conversion Rate', conversion + '%')}
         ${kpiCard('bi-wallet2', 'Pipeline Value', Fmt.rupiah(pipelineValue))}
@@ -586,7 +586,7 @@ const Views = (() => {
             <ul class="guide-toc">${sections.map(([id, title]) => `<li><a href="#g-${id}">${title}</a></li>`).join('')}</ul>
           </div>
         </div>
-        <div class="col-lg-9">
+        <div class="col-12 col-lg-9">
           <div class="guide-note mb-3">Ponti-ERP merupakan aplikasi demo yang dapat dikembangkan dan disesuaikan dengan kebutuhan perusahaan. Setiap perusahaan memiliki workflow yang berbeda — modul, fitur, hak akses, laporan, approval, dan integrasi dapat disesuaikan berdasarkan kebutuhan bisnis.</div>
           ${sections.map(([id, title, body]) => `<div class="card-surface section-card guide-section" id="g-${id}"><h5>${title}</h5>${body}</div>`).join('')}
           <div class="guide-note">Aplikasi ini merupakan demo portfolio Ponti Data ID. Data yang digunakan adalah data simulasi dan bukan data perusahaan sungguhan.</div>
