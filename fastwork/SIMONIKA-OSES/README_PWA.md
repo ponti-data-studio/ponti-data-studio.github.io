@@ -15,6 +15,14 @@ SIMONIKA-OSES **harus sudah di-deploy sebagai Web App** (bukan cuma mode Extensi
 Sheets), karena wrapper ini butuh 1 URL yang bisa dibuka di `<iframe>`. Lihat bagian
 "Deploy sebagai Web App" pada `README_DEPLOYMENT.md` di paket kode utama.
 
+⚠️ **Wajib**: saat Deploy, gunakan **Execute as: Me** dan **Who has access: Anyone**
+(bukan "Anyone within domain" atau dibatasi user tertentu). Kalau dibatasi, Google
+akan memaksa munculkan halaman login Google Account di tengah proses buka halaman —
+dan halaman itu **tidak bisa dimuat di dalam iframe lintas domain** seperti wrapper
+ini, yang akan terlihat sebagai halaman putih dengan pesan **"took too long to
+respond"**. Karena SIMONIKA-OSES sudah punya sistem login sendiri (Email+Password+OTP),
+lapisan Google di level Web App ini memang sengaja dibuka bebas.
+
 ## Isi Folder
 
 ```
