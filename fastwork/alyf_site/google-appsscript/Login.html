@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ALYF CMS · Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#0b0b0b; --paper:#f7f5ef; --white:#ffffff; --muted:#6f6b65;
+      --gold:#b59657; --gold-soft:#d2bc8b; --line:rgba(11,11,11,.12);
+      --danger:#b5433f;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:"DM Sans",Arial,sans-serif;background:var(--ink);color:var(--white);
+      min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+      -webkit-font-smoothing:antialiased;
+    }
+    .card{
+      width:100%;max-width:420px;background:#111;border:1px solid rgba(255,255,255,.1);
+      padding:56px 40px 44px;
+    }
+    .brand{text-align:center;margin-bottom:8px}
+    .brand-main{font-family:"Cormorant Garamond",serif;font-size:38px;letter-spacing:.34em;margin-left:.34em;font-weight:500}
+    .brand-sub{display:block;font-size:9px;letter-spacing:.32em;text-transform:uppercase;opacity:.6;margin-top:8px}
+    h1{
+      font-family:"Cormorant Garamond",serif;font-weight:500;font-size:26px;text-align:center;
+      margin:28px 0 34px;color:var(--gold-soft);letter-spacing:.01em;
+    }
+    .field{margin-bottom:22px}
+    label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:rgba(255,255,255,.55);margin-bottom:10px}
+    .input-wrap{position:relative}
+    input{
+      width:100%;background:transparent;border:0;border-bottom:1px solid rgba(255,255,255,.28);
+      color:white;padding:10px 2px;font-size:15px;outline:none;transition:.2s;
+    }
+    input:focus{border-color:var(--gold)}
+    .toggle-pass{
+      position:absolute;right:0;top:6px;background:none;border:0;color:rgba(255,255,255,.5);
+      font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;
+    }
+    .toggle-pass:hover{color:var(--gold-soft)}
+    button.submit{
+      width:100%;margin-top:14px;min-height:52px;background:var(--gold);border:1px solid var(--gold);
+      color:var(--ink);text-transform:uppercase;letter-spacing:.14em;font-size:12px;font-weight:600;
+      cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center;gap:10px;
+    }
+    button.submit:hover{background:var(--gold-soft);border-color:var(--gold-soft)}
+    button.submit:disabled{opacity:.55;cursor:not-allowed}
+    .error-msg{
+      background:rgba(181,67,63,.14);border:1px solid rgba(181,67,63,.4);color:#e39c99;
+      font-size:12.5px;padding:12px 14px;margin-bottom:20px;display:none;
+    }
+    .spinner{width:15px;height:15px;border:2px solid rgba(11,11,11,.35);border-top-color:var(--ink);border-radius:50%;animation:spin .7s linear infinite;display:none}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .footnote{margin-top:30px;text-align:center;font-size:10px;letter-spacing:.1em;color:rgba(255,255,255,.35);text-transform:uppercase}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <span class="brand-main">ALYF</span>
+      <span class="brand-sub">Content Management System</span>
+    </div>
+    <h1>Admin Sign In</h1>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <form id="loginForm" autocomplete="off">
+      <div class="field">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" autocomplete="username" required />
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="input-wrap">
+          <input type="password" id="password" name="password" autocomplete="current-password" required />
+          <button type="button" class="toggle-pass" id="togglePass">Show</button>
+        </div>
+      </div>
+      <button type="submit" class="submit" id="submitBtn">
+        <span class="spinner" id="spinner"></span>
+        <span id="submitLabel">Sign In</span>
+      </button>
+    </form>
+
+    <div class="footnote">ALYF · Co-Living &amp; Villa</div>
+  </div>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const errorMsg = document.getElementById('errorMsg');
+    const submitBtn = document.getElementById('submitBtn');
+    const submitLabel = document.getElementById('submitLabel');
+    const spinner = document.getElementById('spinner');
+    const togglePass = document.getElementById('togglePass');
+    const passwordInput = document.getElementById('password');
+
+    togglePass.addEventListener('click', () => {
+      const isPass = passwordInput.type === 'password';
+      passwordInput.type = isPass ? 'text' : 'password';
+      togglePass.textContent = isPass ? 'Hide' : 'Show';
+    });
+
+    // If a valid session already exists, skip straight to the dashboard.
+    (function checkExistingSession() {
+      const token = sessionStorage.getItem('alyf_cms_token');
+      if (!token) return;
+      google.script.run
+        .withSuccessHandler(res => { if (res && res.success) window.location.href = '?route=admin'; })
+        .withFailureHandler(() => {})
+        .validateSession(token);
+    })();
+
+    function setLoading(loading) {
+      submitBtn.disabled = loading;
+      spinner.style.display = loading ? 'inline-block' : 'none';
+      submitLabel.textContent = loading ? 'Signing in…' : 'Sign In';
+    }
+
+    function showError(message) {
+      errorMsg.textContent = message;
+      errorMsg.style.display = 'block';
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      errorMsg.style.display = 'none';
+      setLoading(true);
+
+      const username = document.getElementById('username').value.trim();
+      const password = passwordInput.value;
+
+      google.script.run
+        .withSuccessHandler(res => {
+          setLoading(false);
+          if (res && res.success) {
+            sessionStorage.setItem('alyf_cms_token', res.data.token);
+            sessionStorage.setItem('alyf_cms_user', JSON.stringify(res.data.user));
+            window.location.href = '?route=admin';
+          } else {
+            showError((res && res.message) || 'Invalid username or password.');
+          }
+        })
+        .withFailureHandler(err => {
+          setLoading(false);
+          showError('Something went wrong. Please try again.');
+        })
+        .login(username, password);
+    });
+  </script>
+</body>
+</html>
