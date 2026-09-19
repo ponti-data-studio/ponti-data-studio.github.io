@@ -35,10 +35,18 @@
     <nav id="sidebar" class="sidebar" aria-label="Navigasi utama">
       <div class="brand-full"><img src="assets/icons/icon-192.png" alt=""> Web to App Builder</div>
       <ul class="nav-list">
-        <li><button class="nav-link active" data-section="homeSection" type="button">Dashboard</button></li>
-        <li><button class="nav-link" data-section="builderSection" type="button">Create PWA</button></li>
-        <li><button class="nav-link" data-section="appsSection" type="button">My Apps</button></li>
-        <li><button class="nav-link" data-section="settingsSection" type="button">Settings</button></li>
+        <li><button class="nav-link active" data-section="homeSection" type="button">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 17.5V12.5H12V17.5M3.5 8.5L10 3L16.5 8.5V16C16.5 16.4 16.34 16.78 16.06 17.06C15.78 17.34 15.4 17.5 15 17.5H5C4.6 17.5 4.22 17.34 3.94 17.06C3.66 16.78 3.5 16.4 3.5 16V8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Dashboard</button></li>
+        <li><button class="nav-link" data-section="builderSection" type="button">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 4.16V15.83M4.17 10H15.83" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="2.5" y="2.5" width="15" height="15" rx="4" stroke="currentColor" stroke-width="1.6"/></svg>
+          Create PWA</button></li>
+        <li><button class="nav-link" data-section="appsSection" type="button">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="2.5" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="11.5" y="2.5" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="2.5" y="11.5" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="11.5" y="11.5" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/></svg>
+          My Apps</button></li>
+        <li><button class="nav-link" data-section="settingsSection" type="button">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><line x1="3" y1="6" x2="17" y2="6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="6" r="1.8" fill="#fff" stroke="currentColor" stroke-width="1.6"/><line x1="3" y1="14" x2="17" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="14" r="1.8" fill="#fff" stroke="currentColor" stroke-width="1.6"/></svg>
+          Settings</button></li>
       </ul>
     </nav>
 
@@ -62,15 +70,16 @@
         </div>
 
         <div class="stats-grid">
-          <div class="stat-card"><div><div class="stat-label">Total Apps</div><div class="stat-value" id="statTotal">0</div></div></div>
-          <div class="stat-card"><div><div class="stat-label">Active Apps</div><div class="stat-value" id="statActive">0</div></div></div>
-          <div class="stat-card"><div><div class="stat-label">Inactive Apps</div><div class="stat-value" id="statInactive">0</div></div></div>
+          <div class="stat-card"><div><div class="stat-label">Total Apps</div><div class="stat-value" id="statTotal">0</div></div><div class="stat-icon stat-icon-total">📦</div></div>
+          <div class="stat-card"><div><div class="stat-label">Active Apps</div><div class="stat-value" id="statActive">0</div></div><div class="stat-icon stat-icon-active">✅</div></div>
+          <div class="stat-card"><div><div class="stat-label">Inactive Apps</div><div class="stat-value" id="statInactive">0</div></div><div class="stat-icon stat-icon-inactive">⏸️</div></div>
         </div>
 
         <h3>Recent Apps</h3>
         <div id="homeLoading" class="loading-state" hidden><div class="spinner"></div><p>Memuat data...</p></div>
         <div id="recentAppsList" class="app-grid"></div>
         <div id="recentAppsEmpty" class="empty-state" hidden>
+          <div class="empty-state-icon">📱</div>
           <p>Belum ada aplikasi.</p>
           <button class="btn btn-primary" id="emptyCreateBtn" type="button">Buat PWA Pertama</button>
         </div>
@@ -100,10 +109,29 @@
             </div>
 
             <div class="form-group">
-              <label for="fldIconUrl">App Icon URL</label>
-              <input type="url" id="fldIconUrl" placeholder="https://example.com/icon.png" required>
-              <p class="field-hint">Rekomendasi: 512×512 px, PNG, Square.</p>
-              <div class="field-error" id="errIconUrl"></div>
+              <label>App Icon</label>
+              <div class="icon-picker">
+                <div class="icon-picker-preview" id="iconPickerPreview">
+                  <img id="iconPickerPreviewImg" src="" alt="" hidden>
+                  <span class="icon-picker-preview-placeholder" id="iconPickerPreviewPlaceholder">🖼️</span>
+                </div>
+                <div class="icon-picker-body">
+                  <div class="icon-picker-actions">
+                    <button type="button" class="btn btn-secondary btn-small" id="iconPickCameraBtn">📷 Ambil Foto</button>
+                    <button type="button" class="btn btn-secondary btn-small" id="iconPickFileBtn">🖼️ Pilih File</button>
+                    <button type="button" class="btn btn-ghost btn-small" id="iconPickUrlToggle">Gunakan URL</button>
+                  </div>
+                  <div class="icon-picker-url" id="iconPickerUrlBox" hidden>
+                    <input type="url" id="fldIconUrlManual" placeholder="https://example.com/icon.png">
+                  </div>
+                  <p class="field-hint">Rekomendasi: 512×512 px, persegi. Maks 3 MB. Disimpan otomatis ke Google Drive.</p>
+                  <p class="icon-upload-status" id="iconUploadStatus" hidden></p>
+                  <div class="field-error" id="errIconUrl"></div>
+                </div>
+              </div>
+              <input type="hidden" id="fldIconUrl" required>
+              <input type="file" id="iconCameraInput" accept="image/*" capture="environment" hidden>
+              <input type="file" id="iconFileInput" accept="image/*" hidden>
             </div>
 
             <div class="form-row">
@@ -177,11 +205,13 @@
         <div id="appsLoading" class="loading-state" hidden><div class="spinner"></div><p>Memuat data...</p></div>
         <div id="appsList" class="app-grid"></div>
         <div id="appsEmpty" class="empty-state" hidden>
+          <div class="empty-state-icon">📱</div>
           <p>Belum ada aplikasi.</p>
           <p class="muted">Buat PWA pertama Anda dan aplikasi akan muncul di sini.</p>
           <button class="btn btn-primary" id="appsEmptyCreateBtn" type="button">Buat PWA</button>
         </div>
         <div id="appsNoResult" class="empty-state" hidden>
+          <div class="empty-state-icon">🔍</div>
           <p>Aplikasi tidak ditemukan.</p>
           <p class="muted">Coba kata kunci lain.</p>
         </div>

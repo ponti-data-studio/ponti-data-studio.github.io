@@ -74,6 +74,9 @@
     },
     deleteApp: function (id) {
       return apiPost('deleteApp', { id: id });
+    },
+    uploadIcon: function (fileName, mimeType, base64Data) {
+      return apiPost('uploadIcon', { fileName: fileName, mimeType: mimeType, base64Data: base64Data });
     }
   };
 })(window);

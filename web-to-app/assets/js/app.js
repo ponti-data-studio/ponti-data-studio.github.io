@@ -340,6 +340,100 @@
    * ========================================================== */
   var fld = {};
 
+  /* ============================================================
+   * ICON PICKER (camera / file upload to Google Drive, or manual URL)
+   * Reusable across the Create form and the Edit modal.
+   * ========================================================== */
+  var ALLOWED_ICON_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+  var MAX_ICON_BYTES = 3 * 1024 * 1024;
+
+  function initIconPicker(opts) {
+    function setPreview(url) {
+      if (url) {
+        opts.previewImg.src = url;
+        opts.previewImg.hidden = false;
+        opts.previewPlaceholder.hidden = true;
+      } else {
+        opts.previewImg.hidden = true;
+        opts.previewPlaceholder.hidden = false;
+      }
+    }
+
+    function setStatus(message, isError) {
+      if (!opts.statusEl) return;
+      opts.statusEl.textContent = message || '';
+      opts.statusEl.hidden = !message;
+      opts.statusEl.classList.toggle('icon-upload-error', !!isError);
+      opts.statusEl.classList.toggle('icon-upload-success', !isError && !!message);
+    }
+
+    function commitValue(url) {
+      opts.hiddenInput.value = url || '';
+      setPreview(url);
+      if (opts.onChange) opts.onChange();
+    }
+
+    function handleFile(file) {
+      if (!file) return;
+
+      if (ALLOWED_ICON_TYPES.indexOf(file.type) === -1) {
+        setStatus('Format file tidak didukung. Gunakan PNG, JPG, WEBP, atau GIF.', true);
+        return;
+      }
+      if (file.size > MAX_ICON_BYTES) {
+        setStatus('Ukuran file terlalu besar. Maksimal 3 MB.', true);
+        return;
+      }
+
+      var reader = new FileReader();
+      reader.onload = function () {
+        var dataUrl = reader.result;
+        var base64 = dataUrl.split(',')[1];
+
+        setPreview(dataUrl); // instant local preview while it uploads
+        setStatus('Mengupload icon ke Google Drive...', false);
+
+        Api.uploadIcon(file.name, file.type, base64).then(function (res) {
+          if (!res.success) {
+            setStatus(res.error, true);
+            return;
+          }
+          commitValue(res.data.url);
+          setStatus('✓ Icon berhasil diupload.', false);
+        });
+      };
+      reader.onerror = function () {
+        setStatus('Gagal membaca file. Coba file lain.', true);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    opts.cameraBtn.addEventListener('click', function () { opts.cameraInput.click(); });
+    opts.fileBtn.addEventListener('click', function () { opts.fileInput.click(); });
+    opts.cameraInput.addEventListener('change', function () {
+      handleFile(this.files[0]);
+      this.value = '';
+    });
+    opts.fileInput.addEventListener('change', function () {
+      handleFile(this.files[0]);
+      this.value = '';
+    });
+
+    if (opts.urlToggleBtn && opts.urlBox) {
+      opts.urlToggleBtn.addEventListener('click', function () {
+        opts.urlBox.hidden = !opts.urlBox.hidden;
+      });
+    }
+    if (opts.urlInput) {
+      opts.urlInput.addEventListener('input', function () {
+        setStatus('');
+        commitValue(opts.urlInput.value.trim());
+      });
+    }
+
+    setPreview(opts.hiddenInput.value || '');
+  }
+
   function setupLivePreview() {
     fld.appName = document.getElementById('fldAppName');
     fld.appUrl = document.getElementById('fldAppUrl');
@@ -349,7 +443,7 @@
     fld.description = document.getElementById('fldDescription');
     fld.slug = document.getElementById('fldSlug');
 
-    [fld.appName, fld.appUrl, fld.iconUrl, fld.themeColor, fld.bgColor, fld.description, fld.slug]
+    [fld.appName, fld.appUrl, fld.themeColor, fld.bgColor, fld.description, fld.slug]
       .forEach(function (el) { el.addEventListener('input', updatePreview); });
 
     fld.appName.addEventListener('input', function () {
@@ -359,6 +453,21 @@
       }
     });
     fld.slug.addEventListener('input', function () { fld.slug.dataset.manuallyEdited = 'true'; });
+
+    initIconPicker({
+      hiddenInput: fld.iconUrl,
+      previewImg: document.getElementById('iconPickerPreviewImg'),
+      previewPlaceholder: document.getElementById('iconPickerPreviewPlaceholder'),
+      cameraBtn: document.getElementById('iconPickCameraBtn'),
+      fileBtn: document.getElementById('iconPickFileBtn'),
+      cameraInput: document.getElementById('iconCameraInput'),
+      fileInput: document.getElementById('iconFileInput'),
+      urlToggleBtn: document.getElementById('iconPickUrlToggle'),
+      urlBox: document.getElementById('iconPickerUrlBox'),
+      urlInput: document.getElementById('fldIconUrlManual'),
+      statusEl: document.getElementById('iconUploadStatus'),
+      onChange: updatePreview
+    });
   }
 
   function updatePreview() {
@@ -494,8 +603,17 @@
     document.getElementById('createAppForm').reset();
     fld.themeColor.value = '#2563EB';
     fld.bgColor.value = '#FFFFFF';
+    fld.iconUrl.value = '';
     delete fld.slug.dataset.manuallyEdited;
     clearFieldErrors();
+
+    document.getElementById('iconPickerPreviewImg').hidden = true;
+    document.getElementById('iconPickerPreviewPlaceholder').hidden = false;
+    document.getElementById('iconPickerUrlBox').hidden = true;
+    var statusEl = document.getElementById('iconUploadStatus');
+    statusEl.hidden = true;
+    statusEl.textContent = '';
+
     updatePreview();
   }
 
@@ -637,8 +755,28 @@
           '<div class="form-group"><label for="editAppUrlReadonly">Google Apps Script Web App URL</label>' +
           '<input type="text" id="editAppUrlReadonly" value="' + escapeAttr(app.APP_URL) + '" disabled></div>' +
 
-          '<div class="form-group"><label for="editIconUrl">Icon URL</label>' +
-          '<input type="url" id="editIconUrl" value="' + escapeAttr(app.ICON_URL) + '" required></div>' +
+          '<div class="form-group"><label>App Icon</label>' +
+          '<div class="icon-picker">' +
+            '<div class="icon-picker-preview" id="editIconPickerPreview">' +
+              '<img id="editIconPickerPreviewImg" src="' + escapeAttr(app.ICON_URL) + '" alt="" ' + (app.ICON_URL ? '' : 'hidden') + '>' +
+              '<span class="icon-picker-preview-placeholder" id="editIconPickerPreviewPlaceholder"' + (app.ICON_URL ? ' hidden' : '') + '>🖼️</span>' +
+            '</div>' +
+            '<div class="icon-picker-body">' +
+              '<div class="icon-picker-actions">' +
+                '<button type="button" class="btn btn-secondary btn-small" id="editIconPickCameraBtn">📷 Ambil Foto</button>' +
+                '<button type="button" class="btn btn-secondary btn-small" id="editIconPickFileBtn">🖼️ Pilih File</button>' +
+                '<button type="button" class="btn btn-ghost btn-small" id="editIconPickUrlToggle">Gunakan URL</button>' +
+              '</div>' +
+              '<div class="icon-picker-url" id="editIconPickerUrlBox" hidden>' +
+                '<input type="url" id="editIconUrlManual" placeholder="https://example.com/icon.png" value="' + escapeAttr(app.ICON_URL) + '">' +
+              '</div>' +
+              '<p class="icon-upload-status" id="editIconUploadStatus" hidden></p>' +
+            '</div>' +
+          '</div>' +
+          '<input type="hidden" id="editIconUrl" value="' + escapeAttr(app.ICON_URL) + '" required>' +
+          '<input type="file" id="editIconCameraInput" accept="image/*" capture="environment" hidden>' +
+          '<input type="file" id="editIconFileInput" accept="image/*" hidden>' +
+          '</div>' +
 
           '<div class="form-row">' +
             '<div class="form-group"><label for="editThemeColor">Theme Color</label>' +
@@ -670,6 +808,20 @@
 
     document.getElementById('editCloseBtn').addEventListener('click', closeModal);
     document.getElementById('editCancelBtn').addEventListener('click', closeModal);
+
+    initIconPicker({
+      hiddenInput: document.getElementById('editIconUrl'),
+      previewImg: document.getElementById('editIconPickerPreviewImg'),
+      previewPlaceholder: document.getElementById('editIconPickerPreviewPlaceholder'),
+      cameraBtn: document.getElementById('editIconPickCameraBtn'),
+      fileBtn: document.getElementById('editIconPickFileBtn'),
+      cameraInput: document.getElementById('editIconCameraInput'),
+      fileInput: document.getElementById('editIconFileInput'),
+      urlToggleBtn: document.getElementById('editIconPickUrlToggle'),
+      urlBox: document.getElementById('editIconPickerUrlBox'),
+      urlInput: document.getElementById('editIconUrlManual'),
+      statusEl: document.getElementById('editIconUploadStatus')
+    });
 
     document.getElementById('editAppForm').addEventListener('submit', function (e) {
       e.preventDefault();
