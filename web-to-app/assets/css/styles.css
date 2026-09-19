@@ -35,6 +35,14 @@
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 
+/* CRITICAL: the browser's default [hidden]{display:none} rule is easily
+   defeated by any of our own classes that set an explicit "display"
+   value (flex, block, etc.) on the same element — author styles always
+   win over that default rule regardless of selector specificity. This
+   single !important rule guarantees hidden truly means hidden everywhere
+   in this app, no matter what other classes are present. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
