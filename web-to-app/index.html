@@ -265,11 +265,6 @@
   </div>
 
   <div id="pwaWrapper" class="pwa-wrapper" hidden>
-    <div class="pwa-header" id="pwaHeader">
-      <img id="pwaHeaderIcon" src="" alt="" onerror="this.style.display='none'">
-      <h1 id="pwaHeaderTitle">Memuat...</h1>
-      <button class="pwa-install-btn" id="pwaInstallBtn" type="button" hidden>Install</button>
-    </div>
     <div class="pwa-iframe-area">
       <div class="pwa-overlay" id="pwaLoadingScreen">
         <img id="pwaLoadingIcon" src="" alt="" onerror="this.style.display='none'">
@@ -282,8 +277,22 @@
         <p class="muted" style="font-size:13px;">Silakan periksa koneksi internet Anda.</p>
       </div>
     </div>
+
+    <!-- Install notification banner -->
+    <div id="pwaInstallBanner" class="pwa-install-banner" hidden>
+      <img id="pwaInstallBannerIcon" class="pwa-install-banner-icon" src="" alt="" onerror="this.style.display='none'">
+      <div class="pwa-install-banner-text">
+        <strong id="pwaInstallBannerTitle">Install aplikasi ini?</strong>
+        <p id="pwaInstallBannerDesc">Akses lebih cepat langsung dari layar utama perangkat Anda.</p>
+      </div>
+      <div class="pwa-install-banner-actions">
+        <button id="pwaInstallBannerDismiss" class="btn btn-ghost btn-small" type="button">Nanti</button>
+        <button id="pwaInstallBannerInstall" class="btn btn-primary btn-small" type="button">Install</button>
+      </div>
+    </div>
   </div>
 </div>
+
 
 <!-- Modals & toasts (shared) -->
 <div id="modalOverlay" class="modal-overlay" hidden>

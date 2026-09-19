@@ -431,17 +431,7 @@ input:disabled, select:disabled { background: var(--bg); color: var(--muted); cu
    PWA runtime wrapper (?app=slug mode)
    ============================================================ */
 #pwaRoot { position: fixed; inset: 0; z-index: 500; background: #fff; }
-.pwa-wrapper { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
-.pwa-header {
-  display: flex; align-items: center; gap: 10px; padding: 12px 16px;
-  color: #fff; flex-shrink: 0; background: var(--primary);
-}
-.pwa-header img { width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0; }
-.pwa-header h1 { font-size: 15px; margin: 0; font-weight: 700; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pwa-install-btn {
-  background: rgba(255,255,255,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.45);
-  padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; flex-shrink: 0;
-}
+.pwa-wrapper { display: flex; flex-direction: column; height: 100vh; width: 100vw; position: relative; }
 .pwa-iframe-area { flex: 1; position: relative; background: #fff; }
 .pwa-iframe-area iframe { width: 100%; height: 100%; border: none; display: block; }
 .pwa-overlay {
@@ -455,6 +445,33 @@ input:disabled, select:disabled { background: var(--bg); color: var(--muted); cu
 }
 .pwa-error-screen h2 { margin: 0; font-size: 19px; }
 .pwa-error-screen p { margin: 0; color: var(--muted); font-size: 14px; max-width: 320px; }
+
+/* Install notification banner */
+.pwa-install-banner {
+  position: fixed;
+  left: 12px; right: 12px; bottom: 12px;
+  z-index: 50;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  animation: slideUp 0.25s ease;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+}
+.pwa-install-banner-icon { width: 42px; height: 42px; border-radius: 11px; object-fit: cover; flex-shrink: 0; box-shadow: var(--shadow-sm); }
+.pwa-install-banner-text { flex: 1 1 180px; min-width: 0; }
+.pwa-install-banner-text strong { display: block; font-size: 14px; margin-bottom: 2px; }
+.pwa-install-banner-text p { margin: 0; font-size: 12.5px; color: var(--muted); }
+.pwa-install-banner-actions { display: flex; gap: 8px; flex-shrink: 0; margin-left: auto; }
+
+@media (min-width: 640px) {
+  .pwa-install-banner { left: auto; right: 20px; bottom: 20px; max-width: 380px; }
+}
 
 /* ============================================================
    Desktop / tablet refinements (mobile-first: min-width up)
