@@ -525,28 +525,32 @@ input:disabled, select:disabled { background: var(--bg); color: var(--muted); cu
 /* Install notification banner */
 .pwa-install-banner {
   position: fixed;
-  left: 12px; right: 12px; bottom: 12px;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% - 32px);
+  max-width: 360px;
   z-index: 50;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
-  padding: 14px;
+  padding: 20px;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  animation: slideUp 0.25s ease;
-  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  text-align: center;
+  gap: 10px;
+  animation: popIn 0.2s ease;
 }
-.pwa-install-banner-icon { width: 42px; height: 42px; border-radius: 11px; object-fit: cover; flex-shrink: 0; box-shadow: var(--shadow-sm); }
-.pwa-install-banner-text { flex: 1 1 180px; min-width: 0; }
-.pwa-install-banner-text strong { display: block; font-size: 14px; margin-bottom: 2px; }
-.pwa-install-banner-text p { margin: 0; font-size: 12.5px; color: var(--muted); }
-.pwa-install-banner-actions { display: flex; gap: 8px; flex-shrink: 0; margin-left: auto; }
-
-@media (min-width: 640px) {
-  .pwa-install-banner { left: auto; right: 20px; bottom: 20px; max-width: 380px; }
+.pwa-install-banner-icon { width: 56px; height: 56px; border-radius: 14px; object-fit: cover; flex-shrink: 0; box-shadow: var(--shadow-sm); }
+.pwa-install-banner-text { min-width: 0; }
+.pwa-install-banner-text strong { display: block; font-size: 15px; margin-bottom: 4px; }
+.pwa-install-banner-text p { margin: 0; font-size: 13px; color: var(--muted); }
+.pwa-install-banner-actions { display: flex; gap: 8px; margin-top: 4px; width: 100%; }
+.pwa-install-banner-actions .btn { flex: 1; }
+@keyframes popIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
 /* ============================================================
