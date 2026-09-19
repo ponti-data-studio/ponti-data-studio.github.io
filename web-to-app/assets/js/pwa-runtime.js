@@ -3,12 +3,13 @@
  * Handles ?app=slug: fetches the app config from the backend API and
  * renders the wrapper + iframe + install flow entirely client-side.
  *
- * Manifest note: since this page is served from a static host, we can
- * dynamically rewrite the <link rel="manifest"> href to a Blob URL built
- * from this app's own config (name/icon/colors) — giving each customer
- * app a distinct, correct install identity without any backend HTML
- * rendering. This is applied before install-eligibility is evaluated by
- * the browser.
+ * Manifest note: the <link rel="manifest"> is pointed at a backend
+ * (Apps Script) URL that generates this app's manifest fresh on every
+ * request — not a Blob URL built in this page's own JS. Blob URLs only
+ * stay valid for the lifetime of the document that created them, which
+ * is unreliable for OS-level install/icon generation that can happen
+ * asynchronously; a real, stable network URL does not have that
+ * problem (see applyManifestLink below).
  */
 (function (global) {
   'use strict';
@@ -30,33 +31,21 @@
     return window.location.origin + window.location.pathname + '?app=' + encodeURIComponent(slug);
   }
 
-  function buildManifestObject(app, pwaUrl) {
-    var shortName = app.APP_NAME.length > 12 ? app.APP_NAME.substring(0, 12) : app.APP_NAME;
-    return {
-      name: app.APP_NAME,
-      short_name: shortName,
-      description: app.DESCRIPTION || app.APP_NAME,
-      start_url: pwaUrl,
-      scope: pwaUrl,
-      display: 'standalone',
-      orientation: 'portrait',
-      theme_color: app.THEME_COLOR,
-      background_color: app.BACKGROUND_COLOR,
-      icons: [
-        { src: app.ICON_URL, sizes: '192x192', type: 'image/png' },
-        { src: app.ICON_URL, sizes: '512x512', type: 'image/png' }
-      ]
-    };
-  }
-
-  function applyDynamicManifest(app, pwaUrl) {
+  /**
+   * Points <link rel="manifest"> at a real backend URL that stays
+   * fetchable indefinitely, instead of a Blob URL built in this page's
+   * own JS. A Blob URL only lives as long as this tab/document does —
+   * if the browser fetches the manifest (and its icon) for the OS-level
+   * install shortcut asynchronously, possibly after this tab is gone,
+   * a Blob URL fetch fails and the OS falls back to a generic letter
+   * icon. A stable network URL does not have that problem.
+   */
+  function applyManifestLink(app, pwaUrl) {
     try {
-      var manifest = buildManifestObject(app, pwaUrl);
-      var blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-      var url = URL.createObjectURL(blob);
-      qs('manifestLink').setAttribute('href', url);
+      var manifestUrl = global.Api.getManifestUrl(app.SLUG, pwaUrl);
+      qs('manifestLink').setAttribute('href', manifestUrl);
     } catch (err) {
-      console.warn('Dynamic manifest could not be applied:', err);
+      console.warn('Could not set manifest link:', err);
     }
   }
 
@@ -75,7 +64,7 @@
 
     document.title = app.APP_NAME;
     qs('themeColorMeta').setAttribute('content', app.THEME_COLOR);
-    applyDynamicManifest(app, pwaUrl);
+    applyManifestLink(app, pwaUrl);
 
     qs('pwaLoadingScreen').style.background = app.BACKGROUND_COLOR;
     qs('pwaLoadingIcon').src = app.ICON_URL;

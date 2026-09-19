@@ -66,6 +66,13 @@
     isSlugAvailable: function (slug, excludeId) {
       return apiGet('isSlugAvailable', { slug: slug, excludeId: excludeId });
     },
+    getManifestUrl: function (slug, pwaUrl) {
+      var url = new URL(global.APP_CONFIG.GAS_API_URL);
+      url.searchParams.set('action', 'getManifest');
+      url.searchParams.set('slug', slug);
+      url.searchParams.set('pwaUrl', pwaUrl);
+      return url.toString();
+    },
     createApp: function (data) {
       return apiPost('createApp', { data: data });
     },
