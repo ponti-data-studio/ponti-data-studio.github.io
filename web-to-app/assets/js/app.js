@@ -10,6 +10,60 @@
     loadedSections: { home: false, apps: false }
   };
 
+  /* ============================================================
+   * LOCAL "MY APPS" STORE
+   * Since there is no login, the backend Sheet is shared/global data
+   * (needed so any visitor can open a PWA by slug). What each person
+   * sees in their own Dashboard / My Apps, however, is tracked per
+   * browser in localStorage — only apps THIS browser created. This
+   * never touches Google Sheets for reading; only createApp/updateApp/
+   * deleteApp still go to the backend (required for slug uniqueness
+   * and so the PWA works for any visitor, on any device).
+   * ========================================================== */
+  var LOCAL_APPS_KEY = 'webToAppBuilder_myApps_v1';
+
+  var LocalApps = {
+    getAll: function () {
+      try {
+        var raw = localStorage.getItem(LOCAL_APPS_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        console.warn('localStorage unavailable or corrupted:', e);
+        return [];
+      }
+    },
+    saveAll: function (apps) {
+      try {
+        localStorage.setItem(LOCAL_APPS_KEY, JSON.stringify(apps));
+      } catch (e) {
+        console.warn('Could not write to localStorage:', e);
+      }
+    },
+    add: function (app) {
+      var apps = this.getAll();
+      apps.unshift(app);
+      this.saveAll(apps);
+      return apps;
+    },
+    update: function (updatedApp) {
+      var apps = this.getAll();
+      var idx = apps.findIndex(function (a) { return a.ID === updatedApp.ID; });
+      if (idx !== -1) apps[idx] = updatedApp;
+      this.saveAll(apps);
+      return apps;
+    },
+    remove: function (id) {
+      var apps = this.getAll().filter(function (a) { return a.ID !== id; });
+      this.saveAll(apps);
+      return apps;
+    },
+    computeStatistics: function (apps) {
+      var total = apps.length;
+      var active = apps.filter(function (a) { return a.STATUS === 'ACTIVE'; }).length;
+      return { total: total, active: active, inactive: total - active };
+    }
+  };
+
   function getSiteBaseUrl() {
     // Works correctly whether hosted at a domain root, a GitHub Pages
     // project subpath, or a custom domain — always matches wherever
@@ -144,23 +198,12 @@
    * DASHBOARD / HOME
    * ========================================================== */
   function loadHomeData() {
-    setLoading('homeLoading', true);
     document.getElementById('recentAppsEmpty').hidden = true;
-
-    Api.getApps().then(function (res) {
-      setLoading('homeLoading', false);
-      if (!res.success) { showToast(res.error, 'error'); return; }
-      appState.apps = res.data;
-      appState.loadedSections.home = true;
-      renderRecentApps();
-    });
-
-    Api.getStatistics().then(function (res) {
-      if (res.success) {
-        appState.statistics = res.data;
-        renderStatistics();
-      }
-    });
+    appState.apps = LocalApps.getAll();
+    appState.statistics = LocalApps.computeStatistics(appState.apps);
+    appState.loadedSections.home = true;
+    renderStatistics();
+    renderRecentApps();
   }
 
   function renderStatistics() {
@@ -244,14 +287,9 @@
    * MY APPS
    * ========================================================== */
   function loadAppsData() {
-    setLoading('appsLoading', true);
-    Api.getApps().then(function (res) {
-      setLoading('appsLoading', false);
-      if (!res.success) { showToast(res.error, 'error'); return; }
-      appState.apps = res.data;
-      appState.loadedSections.apps = true;
-      renderAppsList();
-    });
+    appState.apps = LocalApps.getAll();
+    appState.loadedSections.apps = true;
+    renderAppsList();
   }
 
   function setupAppsToolbar() {
@@ -437,9 +475,14 @@
           return;
         }
 
-        appState.apps.unshift(res.data);
-        appState.loadedSections.home = false;
-        appState.loadedSections.apps = false;
+        LocalApps.add(res.data);
+        appState.apps = LocalApps.getAll();
+        appState.statistics = LocalApps.computeStatistics(appState.apps);
+        appState.loadedSections.home = true;
+        appState.loadedSections.apps = true;
+        renderStatistics();
+        renderRecentApps();
+        renderAppsList();
 
         showResult(res.data);
         showSection('resultSection');
@@ -661,12 +704,14 @@
           return;
         }
 
-        var idx = appState.apps.findIndex(function (a) { return a.ID === res.data.ID; });
-        if (idx !== -1) appState.apps[idx] = res.data;
+        LocalApps.update(res.data);
+        appState.apps = LocalApps.getAll();
+        appState.statistics = LocalApps.computeStatistics(appState.apps);
 
         closeModal();
         renderAppsList();
         renderRecentApps();
+        renderStatistics();
         showToast('Perubahan berhasil disimpan.', 'success');
       });
     });
@@ -702,18 +747,14 @@
           return;
         }
 
-        appState.apps = appState.apps.filter(function (a) { return a.ID !== app.ID; });
+        LocalApps.remove(app.ID);
+        appState.apps = LocalApps.getAll();
+        appState.statistics = LocalApps.computeStatistics(appState.apps);
+
         closeModal();
         renderAppsList();
         renderRecentApps();
-
-        if (appState.statistics) {
-          appState.statistics.total -= 1;
-          if (app.STATUS === 'ACTIVE') appState.statistics.active -= 1;
-          else appState.statistics.inactive -= 1;
-          renderStatistics();
-        }
-
+        renderStatistics();
         showToast('Aplikasi berhasil dihapus.', 'success');
       });
     });
