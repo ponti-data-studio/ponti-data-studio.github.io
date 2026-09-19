@@ -234,7 +234,7 @@
 
     var iconHtml = app.ICON_URL
       ? '<img src="' + escapeAttr(app.ICON_URL) + '" alt="" class="app-card-icon" onerror="this.style.display=\'none\'">'
-      : '<div class="app-card-icon-placeholder">📱</div>';
+      : '<div class="app-card-icon-placeholder"><svg viewBox="0 0 24 24" fill="none"><rect x="6" y="2" width="12" height="20" rx="2.5" stroke="currentColor" stroke-width="1.6"/><line x1="10.5" y1="18.5" x2="13.5" y2="18.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>';
 
     card.innerHTML =
       '<div class="app-card-top">' +
@@ -391,7 +391,7 @@
         var base64 = dataUrl.split(',')[1];
 
         setPreview(dataUrl); // instant local preview while it uploads
-        setStatus('Mengupload icon ke Google Drive...', false);
+        setStatus('Mengupload icon...', false);
 
         Api.uploadIcon(file.name, file.type, base64).then(function (res) {
           if (!res.success) {
@@ -759,12 +759,12 @@
           '<div class="icon-picker">' +
             '<div class="icon-picker-preview" id="editIconPickerPreview">' +
               '<img id="editIconPickerPreviewImg" src="' + escapeAttr(app.ICON_URL) + '" alt="" ' + (app.ICON_URL ? '' : 'hidden') + '>' +
-              '<span class="icon-picker-preview-placeholder" id="editIconPickerPreviewPlaceholder"' + (app.ICON_URL ? ' hidden' : '') + '>🖼️</span>' +
+              '<span class="icon-picker-preview-placeholder" id="editIconPickerPreviewPlaceholder"' + (app.ICON_URL ? ' hidden' : '') + '><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><circle cx="8.5" cy="9.5" r="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M21 15l-5-5-4 4-3-3-6 6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>' +
             '</div>' +
             '<div class="icon-picker-body">' +
               '<div class="icon-picker-actions">' +
-                '<button type="button" class="btn btn-secondary btn-small" id="editIconPickCameraBtn">📷 Ambil Foto</button>' +
-                '<button type="button" class="btn btn-secondary btn-small" id="editIconPickFileBtn">🖼️ Pilih File</button>' +
+                '<button type="button" class="btn btn-secondary btn-small" id="editIconPickCameraBtn"><svg class="btn-icon" viewBox="0 0 24 24" fill="none"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 011 1v9a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.2" stroke="currentColor" stroke-width="1.6"/></svg> Ambil Foto</button>' +
+                '<button type="button" class="btn btn-secondary btn-small" id="editIconPickFileBtn"><svg class="btn-icon" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><circle cx="8.5" cy="9.5" r="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M21 15l-5-5-4 4-3-3-6 6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Pilih File</button>' +
                 '<button type="button" class="btn btn-ghost btn-small" id="editIconPickUrlToggle">Gunakan URL</button>' +
               '</div>' +
               '<div class="icon-picker-url" id="editIconPickerUrlBox" hidden>' +
