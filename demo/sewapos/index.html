@@ -1,0 +1,2032 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>SewaPOS - Demo Mode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --navy:#0E2A5E;
+  --navy-2:#143C8C;
+  --blue:#2F6FED;
+  --blue-soft:#E8F0FE;
+  --sky:#F4F8FD;
+  --white:#FFFFFF;
+  --ink:#16202B;
+  --muted:#647085;
+  --line:#E3E9F1;
+  --green:#188A5B;
+  --green-soft:#E4F6EE;
+  --amber:#B5720A;
+  --amber-soft:#FCF0DC;
+  --red:#C43D3D;
+  --red-soft:#FBE9E8;
+  --radius-s:6px;
+  --radius-m:10px;
+  --sidebar-w:248px;
+  --topbar-h:60px;
+  padding-top: env(safe-area-inset-top,0px);
+  padding-bottom: env(safe-area-inset-bottom,0px);
+}
+:root:not([data-theme="light"]){ }
+*{box-sizing:border-box;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+html,body{height:100%;}
+body{
+  margin:0; background:var(--sky); color:var(--ink);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,.num{font-family:'Manrope',system-ui,sans-serif;}
+button{font-family:inherit;}
+a{color:inherit;}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-thumb{background:#C9D4E3;border-radius:8px;}
+
+/* ---------- boot ---------- */
+#boot{
+  position:fixed;inset:0;background:linear-gradient(155deg,var(--navy) 0%,var(--navy-2) 55%,#1C51AD 100%);
+  color:#fff;display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:22px;
+  padding:24px;text-align:center;
+}
+#boot .mark{font-family:'Manrope';font-weight:800;font-size:30px;letter-spacing:.2px;}
+#boot .mark span{color:#8FB4FF;}
+#boot p{max-width:440px;color:#C7D6F5;line-height:1.55;font-size:14.5px;margin:0;}
+#boot button{
+  background:#fff;color:var(--navy-2);border:none;padding:13px 26px;border-radius:999px;
+  font-weight:700;font-size:15px;cursor:pointer;
+}
+#boot button:disabled{opacity:.6;cursor:default;}
+#boot .foot{font-size:12.5px;color:#9FB4DE;}
+#boot .spin{width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;animation:spin .8s linear infinite;display:none;}
+#boot.loading .spin{display:inline-block;}
+#boot.loading button span.label{display:none;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ---------- app shell ---------- */
+#app{display:none;height:100vh;height:100dvh;}
+#app.ready{display:flex;}
+#sidebar{
+  width:var(--sidebar-w);background:var(--navy);color:#DCE6F8;flex-shrink:0;
+  display:flex;flex-direction:column;height:100%;overflow-y:auto;
+}
+#sidebar .brand{padding:18px 20px 14px;font-family:'Manrope';font-weight:800;font-size:19px;color:#fff;display:flex;align-items:center;gap:9px;}
+#sidebar .brand .dot{width:9px;height:9px;border-radius:50%;background:#5BD1A6;box-shadow:0 0 0 3px rgba(91,209,166,.25);}
+#sidebar nav{padding:6px 10px 20px;flex:1;}
+.nav-group{margin-top:14px;}
+.nav-group-label{font-size:11px;letter-spacing:.03em;color:#7C93C2;padding:0 12px 6px;font-weight:600;}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;font-size:13.8px;
+  color:#C7D6F5;cursor:pointer;margin:1px 0;font-weight:500;
+}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#fff;}
+.nav-item.active{background:#fff;color:var(--navy-2);font-weight:700;}
+.nav-item .ic{width:17px;text-align:center;font-size:14px;}
+#main{flex:1;display:flex;flex-direction:column;min-width:0;height:100%;}
+#topbar{
+  height:var(--topbar-h);padding-top:env(safe-area-inset-top,0px);
+  background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;
+  padding-left:22px;padding-right:22px;gap:14px;flex-shrink:0;
+}
+#topbar .title{font-family:'Manrope';font-weight:700;font-size:16.5px;flex:1;}
+#topbar .role-switch{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);}
+#topbar select{border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:12.5px;font-family:inherit;color:var(--ink);background:#fff;}
+.demo-pill{
+  background:var(--amber-soft);color:var(--amber);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;
+  display:flex;align-items:center;gap:6px;white-space:nowrap;
+}
+#content{flex:1;overflow-y:auto;padding:22px 26px 90px;}
+.menu-btn{display:none;background:none;border:none;font-size:20px;color:var(--navy);cursor:pointer;padding:4px;}
+
+/* ---------- generic bits ---------- */
+.page-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:18px;gap:14px;flex-wrap:wrap;}
+.page-head h1{font-size:21px;margin:0 0 4px;font-weight:800;}
+.page-head .sub{color:var(--muted);font-size:13px;margin:0;}
+.btn{border:none;border-radius:8px;padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px;}
+.btn-primary{background:var(--blue);color:#fff;}
+.btn-primary:hover{background:#2159c9;}
+.btn-ghost{background:#fff;border:1px solid var(--line);color:var(--ink);}
+.btn-ghost:hover{background:var(--sky);}
+.btn-danger{background:var(--red-soft);color:var(--red);}
+.btn-sm{padding:6px 11px;font-size:12.5px;border-radius:7px;}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius-m);}
+.panel{background:#fff;border:1px solid var(--line);border-radius:var(--radius-m);padding:18px;}
+.stat-strip{display:flex;background:#fff;border:1px solid var(--line);border-radius:var(--radius-m);overflow-x:auto;margin-bottom:18px;}
+.stat{padding:16px 20px;border-right:1px solid var(--line);min-width:150px;flex-shrink:0;}
+.stat:last-child{border-right:none;}
+.stat .lbl{font-size:12px;color:var(--muted);margin-bottom:6px;}
+.stat .val{font-size:21px;font-weight:800;}
+.stat .val.small{font-size:17px;}
+.grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;}
+table{width:100%;border-collapse:collapse;font-size:13.3px;}
+thead th{text-align:left;color:var(--muted);font-weight:600;font-size:11.8px;text-transform:none;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap;}
+tbody td{padding:11px 12px;border-bottom:1px solid #EDF1F6;vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:#FAFBFE;}
+.table-wrap{overflow-x:auto;}
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap;}
+.b-green{background:var(--green-soft);color:var(--green);}
+.b-blue{background:var(--blue-soft);color:var(--blue);}
+.b-amber{background:var(--amber-soft);color:var(--amber);}
+.b-red{background:var(--red-soft);color:var(--red);}
+.b-grey{background:#EEF1F5;color:var(--muted);}
+.toolbar{display:flex;gap:9px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+.toolbar input[type=text],.toolbar input[type=search],.toolbar select,.toolbar input[type=date]{
+  border:1px solid var(--line);border-radius:8px;padding:8px 11px;font-size:13px;font-family:inherit;background:#fff;
+}
+.field{margin-bottom:13px;}
+.field label{display:block;font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:5px;}
+.field input,.field select,.field textarea{
+  width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13.5px;font-family:inherit;background:#fff;color:var(--ink);
+}
+.field textarea{resize:vertical;min-height:60px;}
+.field .hint{font-size:11.5px;color:var(--muted);margin-top:4px;}
+.row{display:flex;gap:12px;}
+.row>.field{flex:1;}
+.empty{text-align:center;padding:50px 20px;color:var(--muted);}
+.empty .ic{font-size:30px;margin-bottom:10px;}
+.section-title{font-weight:700;font-size:14px;margin:0 0 12px;}
+.divider{height:1px;background:var(--line);margin:16px 0;}
+.tag-inline{background:var(--sky);border-radius:6px;padding:2px 7px;font-size:12px;}
+.link-btn{background:none;border:none;color:var(--blue);cursor:pointer;font-size:13px;font-weight:600;padding:0;}
+.avatar{width:32px;height:32px;border-radius:8px;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
+
+/* modal & drawer */
+.overlay{position:fixed;inset:0;background:rgba(15,25,45,.45);display:flex;justify-content:flex-end;z-index:200;}
+.overlay.center{justify-content:center;align-items:center;}
+.drawer{background:#fff;height:100%;width:460px;max-width:92vw;overflow-y:auto;padding:22px;box-shadow:-10px 0 30px rgba(0,0,0,.12);}
+.modal{background:#fff;border-radius:14px;width:520px;max-width:92vw;max-height:88vh;overflow-y:auto;padding:22px;}
+.modal.wide{width:720px;}
+.drawer-head,.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.drawer-head h3,.modal-head h3{margin:0;font-size:16.5px;font-weight:800;}
+.x-close{background:none;border:none;font-size:19px;cursor:pointer;color:var(--muted);}
+.form-actions{display:flex;gap:9px;justify-content:flex-end;margin-top:18px;}
+.toast-wrap{position:fixed;top:16px;right:16px;z-index:1200;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--ink);color:#fff;padding:11px 16px;border-radius:9px;font-size:13px;box-shadow:0 8px 22px rgba(0,0,0,.18);display:flex;align-items:center;gap:9px;animation:toastin .25s ease;}
+.toast.err{background:var(--red);}
+.toast.ok{background:var(--green);}
+@keyframes toastin{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+.confirm-box p{font-size:13.5px;color:var(--ink);line-height:1.5;}
+.wizard-steps{display:flex;gap:6px;margin-bottom:18px;}
+.wizard-steps div{flex:1;height:4px;border-radius:3px;background:var(--line);}
+.wizard-steps div.done{background:var(--blue);}
+.pick-card{border:1.5px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;margin-bottom:8px;}
+.pick-card:hover{border-color:var(--blue);}
+.pick-card.selected{border-color:var(--blue);background:var(--blue-soft);}
+.pick-card .top{display:flex;justify-content:space-between;font-weight:700;font-size:13.5px;}
+.pick-card .sub{font-size:12px;color:var(--muted);margin-top:3px;}
+.skeleton{background:linear-gradient(90deg,#EEF1F6 25%,#F7F9FC 37%,#EEF1F6 63%);background-size:400% 100%;animation:sk 1.3s ease infinite;border-radius:8px;}
+@keyframes sk{0%{background-position:100% 0;}100%{background-position:0 0;}}
+
+/* bottom nav mobile */
+#bottomnav{display:none;}
+@media (max-width:880px){
+  #sidebar{position:fixed;left:0;top:0;bottom:0;z-index:150;transform:translateX(-100%);transition:transform .2s ease;width:78vw;max-width:300px;}
+  #sidebar.open{transform:translateX(0);box-shadow:14px 0 30px rgba(0,0,0,.2);}
+  .menu-btn{display:inline-flex;}
+  #content{padding:16px 14px 96px;}
+  .grid2{grid-template-columns:1fr;}
+  #bottomnav{
+    display:flex;position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);
+    padding-bottom:env(safe-area-inset-bottom,0px);z-index:120;
+  }
+  #bottomnav .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 4px 8px;font-size:10.5px;color:var(--muted);cursor:pointer;}
+  #bottomnav .bn-item.active{color:var(--blue);}
+  #bottomnav .bn-item .ic{font-size:17px;}
+  .drawer{width:100%;}
+  .stat{min-width:130px;padding:13px 16px;}
+  #scrim{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:140;}
+}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div id="boot">
+  <div class="mark">Sewa<span>POS</span></div>
+  <p>Kasir dan manajemen rental untuk barang, kendaraan, dan perlengkapan event.</p>
+  <button id="btn-start-demo" onclick="startDemo()"><span class="spin"></span><span class="label">Coba Demo Gratis</span></button>
+  <div id="boot-error" style="display:none;color:#FFD3D0;font-size:12.5px;max-width:360px;line-height:1.5;background:rgba(0,0,0,.18);padding:9px 13px;border-radius:8px;"></div>
+  <div class="foot">Data tersimpan lokal di perangkat ini.</div>
+</div>
+
+<div id="scrim" style="display:none" onclick="closeSidebar()"></div>
+
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand"><span class="dot"></span>Sewa<span style="color:#8FB4FF">POS</span></div>
+    <nav id="nav"></nav>
+  </aside>
+  <div id="main">
+    <div id="topbar">
+      <button class="menu-btn" onclick="openSidebar()"></button>
+      <div class="title" id="topbar-title">Dashboard</div>
+      <div class="demo-pill"><span id="demo-pill-ic"></span> Demo Mode</div>
+      <div class="role-switch">
+        Login sebagai
+        <select id="role-select" onchange="setRole(this.value)"></select>
+      </div>
+    </div>
+    <div id="content"></div>
+  </div>
+</div>
+
+<div id="bottomnav"></div>
+<div class="toast-wrap" id="toast-wrap"></div>
+<div id="overlay-root"></div>
+
+<script>
+/* ============================================================
+   SEWAPOS DEMO MODE - aplikasi client-side dengan IndexedDB
+   Storage: IndexedDB (per-viewer, private, never leaves device)
+   ============================================================ */
+
+/* ---------------- IndexedDB helpers (with in-memory fallback) ---------------- */
+const DB_NAME = 'sewapos_demo_v1';
+const DB_VERSION = 2; // bump whenever STORES changes, so onupgradeneeded runs for existing browsers
+const STORES = ['categories','products','units','customers','bookings','rentals','payments','deposits','maintenance','expenses','movements','auditlogs','roles','appusers','meta','counters'];
+let _db = null;
+let MEM_FALLBACK = false;
+const MEM_STORE = {};
+function memInit(){ STORES.forEach(s=>{ if(!MEM_STORE[s]) MEM_STORE[s] = new Map(); }); }
+
+// Opens IndexedDB but never hangs or throws: if it's unavailable, blocked, has a
+// stale schema from an older version of this app, or slow to respond (can happen
+// inside sandboxed/embedded browser contexts), this resolves with null and
+// switches the app to an in-memory store so the demo still works (without
+// persistence across reloads in that fallback case).
+function idbOpenSafe(){
+  return new Promise((resolve)=>{
+    let settled = false;
+    const finishFallback = ()=>{ if(settled) return; settled=true; MEM_FALLBACK=true; memInit(); resolve(null); };
+    const timer = setTimeout(finishFallback, 4000);
+    if(!window.indexedDB){ clearTimeout(timer); finishFallback(); return; }
+    function attempt(allowRebuild){
+      try{
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = (e)=>{
+          const db = e.target.result;
+          STORES.forEach(s=>{ if(!db.objectStoreNames.contains(s)) db.createObjectStore(s, {keyPath: s==='meta'||s==='counters' ? 'key' : 'id'}); });
+        };
+        req.onsuccess = ()=>{
+          if(settled) return;
+          const db = req.result;
+          const missing = STORES.some(s=>!db.objectStoreNames.contains(s));
+          if(missing && allowRebuild){
+            // Schema is stale and the version bump above didn't fix it (rare edge
+            // case in some browsers). Wipe and recreate this demo database once.
+            db.close();
+            const delReq = indexedDB.deleteDatabase(DB_NAME);
+            delReq.onsuccess = ()=>attempt(false);
+            delReq.onerror = ()=>{ clearTimeout(timer); finishFallback(); };
+            delReq.onblocked = ()=>{ clearTimeout(timer); finishFallback(); };
+            return;
+          }
+          if(missing){ clearTimeout(timer); finishFallback(); return; }
+          settled=true; clearTimeout(timer); resolve(db);
+        };
+        req.onerror = ()=>{ clearTimeout(timer); finishFallback(); };
+        req.onblocked = ()=>{ clearTimeout(timer); finishFallback(); };
+      }catch(e){ clearTimeout(timer); finishFallback(); }
+    }
+    attempt(true);
+  });
+}
+function tx(store, mode='readonly'){ return _db.transaction(store, mode).objectStore(store); }
+function idbGetAll(store){
+  if(MEM_FALLBACK) return Promise.resolve(Array.from(MEM_STORE[store].values()));
+  return new Promise((res,rej)=>{ const r=tx(store).getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
+}
+function idbPut(store, val){
+  if(MEM_FALLBACK){ const key = (store==='meta'||store==='counters') ? val.key : val.id; MEM_STORE[store].set(key, val); return Promise.resolve(); }
+  return new Promise((res,rej)=>{ const r=tx(store,'readwrite').put(val); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); });
+}
+function idbDelete(store, id){
+  if(MEM_FALLBACK){ MEM_STORE[store].delete(id); return Promise.resolve(); }
+  return new Promise((res,rej)=>{ const r=tx(store,'readwrite').delete(id); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); });
+}
+function idbClear(store){
+  if(MEM_FALLBACK){ MEM_STORE[store].clear(); return Promise.resolve(); }
+  return new Promise((res,rej)=>{ const r=tx(store,'readwrite').clear(); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); });
+}
+async function idbClearAll(){ for(const s of STORES) await idbClear(s); }
+
+
+/* ---------------- in-memory store ---------------- */
+const DATA = { categories:[],products:[],units:[],customers:[],bookings:[],rentals:[],payments:[],deposits:[],maintenance:[],expenses:[],movements:[],auditlogs:[],roles:[],appusers:[] };
+const COUNTERS = {};
+let CURRENT_ROLE = 'OWNER';
+let CURRENT_USER = 'Demo Owner';
+
+async function loadAllFromDB(){
+  for(const s of Object.keys(DATA)) DATA[s] = await idbGetAll(s);
+  const counterRows = await idbGetAll('counters');
+  counterRows.forEach(r=>COUNTERS[r.key]=r.value);
+}
+async function persist(store, obj){ await idbPut(store, obj); }
+async function nextId(prefix){
+  COUNTERS[prefix] = (COUNTERS[prefix]||0)+1;
+  await idbPut('counters', {key:prefix, value:COUNTERS[prefix]});
+  return prefix+'-'+String(COUNTERS[prefix]).padStart(4,'0');
+}
+
+/* ---------------- seeded RNG (deterministic demo data) ---------------- */
+function makeRng(seed){ let s=seed>>>0; return ()=>{ s ^= s<<13; s^=s>>>17; s^=s<<5; s>>>=0; return (s%100000)/100000; }; }
+const rng = makeRng(20260921);
+function pick(arr){ return arr[Math.floor(rng()*arr.length)]; }
+function randInt(a,b){ return a+Math.floor(rng()*(b-a+1)); }
+function iso(d){ return d.toISOString(); }
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function addHours(d,n){ const x=new Date(d); x.setHours(x.getHours()+n); return x; }
+function fmtDate(v){ if(!v) return '-'; const d=new Date(v); return d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); }
+function fmtDateTime(v){ if(!v) return '-'; const d=new Date(v); return d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}); }
+function rupiah(n){ n=Math.round(n||0); return 'Rp'+n.toLocaleString('id-ID'); }
+function uid(){ return Math.random().toString(36).slice(2,10); }
+
+/* ---------------- seed data generation ---------------- */
+async function seedDemoData(){
+  await idbClearAll();
+  Object.keys(DATA).forEach(k=>DATA[k]=[]);
+  Object.keys(COUNTERS).forEach(k=>delete COUNTERS[k]);
+  const now = new Date();
+
+  const catNames = [
+    ['Kamera & Lensa','camera'], ['Kendaraan','car'], ['Peralatan Event','flag'], ['Elektronik','cpu'], ['Peralatan Outdoor','tent']
+  ];
+  for(const [name,catIconKey] of catNames){
+    const id = await nextId('CAT');
+    const row = {id,name,icon:catIconKey,createdAt:iso(now)};
+    DATA.categories.push(row); await persist('categories',row);
+  }
+  const catId = n => DATA.categories[n].id;
+
+  const productDefs = [
+    [0,'Canon EOS R6 Mark II','Kamera mirrorless full-frame','unit',18000000,150000,25000,850000,3200000],
+    [0,'Sony A7 IV','Kamera mirrorless hybrid','unit',24000000,175000,28000,950000,3600000],
+    [0,'Lensa Canon RF 24-70mm f/2.8','Lensa zoom standar','unit',22000000,90000,15000,500000,1800000],
+    [0,'Lensa Sony 70-200mm f/2.8 GM','Lensa tele profesional','unit',35000000,120000,20000,650000,2400000],
+    [0,'DJI Ronin RS3','Gimbal stabilizer kamera','unit',9500000,60000,10000,320000,1100000],
+    [1,'Toyota Avanza 2023','Mobil keluarga 7 seat','unit',230000000,0,0,450000,2800000],
+    [1,'Honda Brio Satya','City car irit','unit',165000000,0,0,320000,2000000],
+    [1,'Honda PCX 160','Skutik matic premium','unit',32000000,0,0,120000,750000],
+    [2,'Tenda Sarnafil 3x3m','Tenda event standar','unit',4500000,0,0,150000,850000],
+    [2,'Kursi Chiavari Gold','Kursi event elegan','pcs',350000,0,0,15000,80000],
+    [2,'Sound System Portable 15"','Speaker aktif + mixer','unit',6800000,0,0,250000,1400000],
+    [2,'Lighting Par LED Set','Set lampu panggung 8pcs','set',5200000,0,0,200000,1100000],
+    [3,'Proyektor Epson 5000 Lumens','Proyektor untuk acara besar','unit',14500000,0,0,350000,1500000],
+    [3,'Laptop MacBook Pro M3','Laptop untuk editing/kerja','unit',28000000,0,0,300000,2600000],
+    [3,'GoPro Hero 12','Action camera tahan air','unit',6200000,45000,8000,180000,700000],
+    [4,'Tenda Camping 4 Orang','Tenda dome untuk hiking','unit',2100000,0,0,90000,450000],
+    [4,'Set Alat Masak Camping','Kompor + peralatan masak lipat','set',850000,0,0,40000,180000],
+  ];
+  const statusPool = ['AVAILABLE','AVAILABLE','AVAILABLE','RENTED','RESERVED','MAINTENANCE'];
+  const condPool = ['Sangat Baik','Baik','Baik','Cukup'];
+  for(const [catIdx,name,desc,satuan,buy,hourP,unused,dayP,monthP] of productDefs){
+    const pid = await nextId('PRD');
+    const weekP = Math.round(dayP*5.2/1000)*1000;
+    const prod = {
+      id:pid, name, description:desc, categoryId:catId(catIdx), sku:'SKU-'+pid.split('-')[1], barcode:'89962'+randInt(1000000,9999999),
+      buyPrice:buy, rentPerHour:hourP, rentPerDay:dayP, rentPerWeek:weekP||Math.round(dayP*5.5), rentPerMonth:monthP,
+      satuan, location: pick(['Gudang A','Gudang B','Rak 1','Rak 2','Etalase']), createdAt: iso(addDays(now,-randInt(30,300)))
+    };
+    DATA.products.push(prod); await persist('products',prod);
+    const unitCount = randInt(1,3);
+    for(let i=1;i<=unitCount;i++){
+      const uidn = await nextId('UNT');
+      const unit = {
+        id:uidn, productId:pid, unitCode: prod.sku+'-'+String(i).padStart(2,'0'),
+        serialNumber:'SN'+randInt(100000,999999), barcode:'89963'+randInt(1000000,9999999),
+        status: pick(statusPool), condition: pick(condPool), createdAt: iso(now)
+      };
+      DATA.units.push(unit); await persist('units',unit);
+    }
+  }
+
+  const firstNames = ['Budi','Siti','Andi','Rina','Dedi','Fitri','Agus','Maya','Rian','Dewi','Fajar','Lina','Yoga','Wulan','Rizky','Sari','Doni','Putri','Bayu','Nita','Hendra','Ayu','Iwan','Novi','Arif'];
+  const lastNames = ['Saputra','Wijaya','Pratama','Lestari','Kurniawan','Anggraini','Setiawan','Rahmawati','Nugroho','Puspita'];
+  for(let i=0;i<24;i++){
+    const cid = await nextId('CUS');
+    const cust = {
+      id:cid, name: pick(firstNames)+' '+pick(lastNames), phone:'08'+randInt(1111111111,9999999999).toString().slice(0,11),
+      email:'customer'+(i+1)+'@example.com', address: 'Jl. '+pick(['Merdeka','Sudirman','Diponegoro','Ahmad Yani','Gatot Subroto'])+' No. '+randInt(1,150)+', '+pick(['Depok','Jakarta Selatan','Bekasi','Tangerang','Bogor']),
+      idNumber:'32'+randInt(10000000000,99999999999), idPhoto:null, notes:'', createdAt: iso(addDays(now,-randInt(5,400)))
+    };
+    DATA.customers.push(cust); await persist('customers',cust);
+  }
+
+  const dayRate = ['CASH','TRANSFER','QRIS','EWALLET'];
+  const availableUnits = ()=>DATA.units;
+  for(let i=0;i<34;i++){
+    const daysAgo = randInt(0,50);
+    const start = addDays(now,-daysAgo);
+    const durDays = randInt(1,6);
+    const due = addDays(start,durDays);
+    const cust = pick(DATA.customers);
+    const nItems = randInt(1,2);
+    let subtotal=0; const items=[];
+    const usedProducts = new Set();
+    for(let k=0;k<nItems;k++){
+      let prod = pick(DATA.products);
+      if(usedProducts.has(prod.id)) continue; usedProducts.add(prod.id);
+      const unitsOfP = DATA.units.filter(u=>u.productId===prod.id);
+      const unit = pick(unitsOfP);
+      const rate = prod.rentPerDay || prod.rentPerHour*24 || 50000;
+      const lineTotal = rate*durDays;
+      subtotal += lineTotal;
+      items.push({productId:prod.id, productName:prod.name, unitId:unit?unit.id:null, unitCode:unit?unit.unitCode:'-', priceType:'day', rate, qty:durDays, lineTotal});
+    }
+    if(items.length===0) continue;
+    const discount = rng()<0.2 ? Math.round(subtotal*0.05/1000)*1000 : 0;
+    const deposit = Math.round(subtotal*0.5/50000)*50000;
+    let status, returnedAt=null, penalty=0, damageFee=0, refund=null, paymentStatus='PAID';
+    const isOverdue = daysAgo>durDays && daysAgo < durDays+3 && rng()<0.3;
+    if(daysAgo < durDays){ status='ONGOING'; }
+    else if(isOverdue){ status='ONGOING'; }
+    else if(rng()<0.08){ status='CANCELLED'; paymentStatus='REFUNDED'; }
+    else {
+      status='COMPLETED';
+      returnedAt = iso(addDays(due, randInt(0,1)));
+      const lateDays = Math.max(0, Math.round((new Date(returnedAt)-due)/86400000));
+      penalty = lateDays * Math.round((subtotal/durDays)*0.1);
+      damageFee = rng()<0.12 ? randInt(20,150)*1000 : 0;
+      refund = Math.max(0, deposit-penalty-damageFee);
+    }
+    const grandTotal = subtotal-discount+deposit;
+    const rid = await nextId('RNT');
+    const rental = {
+      id:rid, code:rid, customerId:cust.id, customerName:cust.name, items,
+      startAt: iso(start), dueAt: iso(due), returnedAt,
+      subtotal, discount, deposit, penalty, damageFee, refund,
+      grandTotal, paymentStatus, status, method: pick(dayRate), createdAt: iso(start)
+    };
+    DATA.rentals.push(rental); await persist('rentals',rental);
+
+    const payId = await nextId('PAY');
+    const payment = {id:payId, rentalId:rid, amount:grandTotal, method:rental.method, type:'rental_payment', note:'Pembayaran sewa '+rid, createdAt: iso(start)};
+    DATA.payments.push(payment); await persist('payments',payment);
+
+    const depId = await nextId('DEP');
+    const deposit_row = {id:depId, rentalId:rid, amount:deposit, status: status==='COMPLETED' ? (damageFee+penalty>=deposit?'FORFEITED': (refund<deposit?'PARTIAL_REFUND':'REFUNDED')) : (status==='CANCELLED'?'REFUNDED':'HELD'), refundedAmount: refund!==null?refund:0, createdAt: iso(start)};
+    DATA.deposits.push(deposit_row); await persist('deposits',deposit_row);
+
+    for(const it of items){
+      if(!it.unitId) continue;
+      const mv1 = {id: uid(), unitId: it.unitId, productId: it.productId, type:'RENT_OUT', refType:'rental', refId:rid, note:'Sewa keluar', createdAt: iso(start)};
+      DATA.movements.push(mv1); await persist('movements',mv1);
+      if(status==='COMPLETED'){
+        const mv2 = {id: uid(), unitId: it.unitId, productId: it.productId, type:'RETURN', refType:'rental', refId:rid, note:'Pengembalian', createdAt: returnedAt};
+        DATA.movements.push(mv2); await persist('movements',mv2);
+        const u = DATA.units.find(u=>u.id===it.unitId);
+        if(u){ u.status = damageFee>0 && rng()<0.5 ? 'MAINTENANCE' : 'AVAILABLE'; await persist('units',u); }
+      } else if(status==='ONGOING'){
+        const u = DATA.units.find(u=>u.id===it.unitId);
+        if(u){ u.status='RENTED'; await persist('units',u); }
+      }
+    }
+  }
+
+  for(let i=0;i<10;i++){
+    const start = addDays(now, randInt(-3,10));
+    const prod = pick(DATA.products);
+    const unitsOfP = DATA.units.filter(u=>u.productId===prod.id);
+    const unit = pick(unitsOfP);
+    const cust = pick(DATA.customers);
+    const dur = randInt(1,4);
+    const bid = await nextId('BKG');
+    const statusOpts = ['PENDING','CONFIRMED','CONFIRMED','ONGOING','COMPLETED','CANCELLED'];
+    const bk = {
+      id:bid, customerId:cust.id, customerName:cust.name, productId:prod.id, productName:prod.name,
+      unitId: unit?unit.id:null, unitCode: unit?unit.unitCode:'-',
+      startAt: iso(start), endAt: iso(addDays(start,dur)),
+      status: pick(statusOpts), deposit: Math.round((prod.rentPerDay||100000)*dur*0.5/10000)*10000,
+      note:'', createdAt: iso(now)
+    };
+    DATA.bookings.push(bk); await persist('bookings',bk);
+  }
+
+  const maintIssues = ['Lensa buram / fokus tidak akurat','Servis rutin & pembersihan sensor','Ban aus perlu diganti','Baterai tidak tahan lama','Kabel konektor rusak','Kaca retak ringan'];
+  for(let i=0;i<7;i++){
+    const unit = pick(DATA.units);
+    const mid = await nextId('MNT');
+    const st = pick(['OPEN','OPEN','IN_PROGRESS','COMPLETED']);
+    const m = {
+      id:mid, unitId: unit.id, productId: unit.productId, issue: pick(maintIssues),
+      date: iso(addDays(now,-randInt(0,20))), technician: pick(['Pak Joko','Pak Anwar','Mbak Rani','Teknisi Eksternal']),
+      cost: randInt(50,400)*1000, status: st, note:'', createdAt: iso(now)
+    };
+    DATA.maintenance.push(m); await persist('maintenance',m);
+    if(st!=='COMPLETED'){ unit.status='MAINTENANCE'; await persist('units',unit); }
+  }
+
+  const expCats = ['Operasional','Gaji Karyawan','Sewa Tempat','Listrik & Internet','Perawatan Alat','Marketing','Transportasi'];
+  for(let i=0;i<16;i++){
+    const eid = await nextId('EXP');
+    const e = { id:eid, category: pick(expCats), amount: randInt(50,3000)*1000, date: iso(addDays(now,-randInt(0,45))), description: 'Pengeluaran '+pick(expCats).toLowerCase(), user: 'Demo Owner', createdAt: iso(now) };
+    DATA.expenses.push(e); await persist('expenses',e);
+  }
+
+  const auditActions = [
+    ()=>({action:'UPDATE', entity:'product', text:'Owner mengubah harga sewa harian produk.'}),
+    ()=>({action:'CREATE', entity:'rental', text:'Kasir membuat transaksi sewa baru.'}),
+    ()=>({action:'UPDATE', entity:'rental', text:'Kasir memproses pengembalian barang.'}),
+    ()=>({action:'CREATE', entity:'customer', text:'Admin menambahkan pelanggan baru.'}),
+  ];
+  for(let i=0;i<12;i++){
+    const a = pick(auditActions)();
+    const lid = uid();
+    const log = {id:lid, user: pick(['Demo Owner','Kasir 1','Admin Gudang']), action:a.action, entity:a.entity, entityId:'-', before:null, after:null, text:a.text, createdAt: iso(addDays(now,-randInt(0,30)))};
+    DATA.auditlogs.push(log); await persist('auditlogs',log);
+  }
+
+  // Role & permission defaults follow a least-privilege security recommendation:
+  // only the OWNER role holds full access ('*'), including role.manage (the ability
+  // to edit roles/permissions), which is intentionally never granted to any other role.
+  const DEFAULT_ROLES = [
+    {id:'OWNER', label:'Owner', description:'Akses penuh ke seluruh fitur, termasuk mengatur peran dan keamanan sistem.', permissions:['*'], isSystem:true},
+    {id:'ADMIN', label:'Admin', description:'Mengelola transaksi, inventory, pelanggan, booking, dan keuangan. Tidak dapat mengubah peran atau pengaturan sistem.', permissions:['transaction.create','transaction.view','transaction.edit','transaction.cancel','inventory.create','inventory.view','inventory.edit','customer.create','customer.view','customer.edit','booking.create','booking.view','finance.*','report.view','user.manage'], isSystem:false},
+    {id:'MANAGER', label:'Manager', description:'Mengawasi operasional harian: transaksi, inventory, pelanggan, booking, dan laporan.', permissions:['transaction.create','transaction.view','transaction.edit','inventory.create','inventory.view','inventory.edit','customer.create','customer.view','customer.edit','booking.create','booking.view','finance.view','report.view'], isSystem:false},
+    {id:'CASHIER', label:'Kasir', description:'Membuat transaksi, booking, dan mendaftarkan pelanggan baru.', permissions:['transaction.create','transaction.view','customer.create','customer.view','booking.create','booking.view'], isSystem:false},
+    {id:'STAFF', label:'Staff', description:'Akses lihat saja untuk inventory, pelanggan, dan booking.', permissions:['inventory.view','customer.view','booking.view'], isSystem:false},
+  ];
+  for(const r of DEFAULT_ROLES){ DATA.roles.push(r); await persist('roles', r); }
+
+  const DEFAULT_USERS = [
+    {name:'Demo Owner', email:'owner@sewapos.demo', role:'OWNER'},
+    {name:'Kasir 1', email:'kasir1@sewapos.demo', role:'CASHIER'},
+    {name:'Admin Gudang', email:'admin@sewapos.demo', role:'ADMIN'},
+  ];
+  for(const u of DEFAULT_USERS){ const uidn = await nextId('USR'); const row={id:uidn, ...u, createdAt: iso(now)}; DATA.appusers.push(row); await persist('appusers', row); }
+
+  await idbPut('meta', {key:'seeded', value:true, seededAt: iso(now)});
+}
+
+function writeAudit(action, entity, text){
+  const log = {id:uid(), user:CURRENT_USER, action, entity, entityId:'-', text, createdAt:iso(new Date())};
+  DATA.auditlogs.unshift(log); persist('auditlogs',log);
+}
+
+/* ---------------- toasts / confirm / modal helpers ---------------- */
+function toast(msg, kind=''){
+  const wrap = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  el.className='toast'+(kind?' '+kind:'');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(()=>{ el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, 2800);
+}
+function openOverlay(html, opts={}){
+  const root = document.getElementById('overlay-root');
+  const ov = document.createElement('div');
+  ov.className = 'overlay'+(opts.center?' center':'');
+  ov.innerHTML = html;
+  ov.addEventListener('click', e=>{ if(e.target===ov && opts.dismissable!==false) ov.remove(); });
+  root.appendChild(ov);
+  return ov;
+}
+function closeOverlays(){ document.getElementById('overlay-root').innerHTML=''; }
+function confirmDialog(message, onYes, opts={}){
+  const ov = openOverlay(`
+    <div class="modal" style="width:380px">
+      <div class="confirm-box">
+        <h3 style="margin:0 0 10px;font-size:15.5px;">${opts.title||'Konfirmasi'}</h3>
+        <p>${message}</p>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="cf-no">Batal</button>
+        <button class="btn ${opts.danger?'btn-danger':'btn-primary'}" id="cf-yes">${opts.yesLabel||'Ya, lanjutkan'}</button>
+      </div>
+    </div>`, {center:true});
+  ov.querySelector('#cf-no').onclick = ()=>ov.remove();
+  ov.querySelector('#cf-yes').onclick = ()=>{ ov.remove(); onYes(); };
+}
+
+/* ---------------- permissions (RBAC, editable by Owner) ---------------- */
+// Permission set assignable to non-system roles (least-privilege catalog).
+// 'role.manage' is deliberately excluded: only the OWNER role (permissions:['*'])
+// may create, edit, or delete roles and permissions. This prevents privilege
+// escalation by lower-privileged roles, a standard RBAC security recommendation.
+const PERM_CATALOG = [
+  'transaction.create','transaction.view','transaction.edit','transaction.cancel',
+  'inventory.create','inventory.view','inventory.edit',
+  'customer.create','customer.view','customer.edit',
+  'booking.create','booking.view',
+  'finance.view','finance.manage',
+  'report.view','user.manage','settings.manage'
+];
+function roleDef(roleId){ return DATA.roles.find(r=>r.id===roleId); }
+function can(perm){
+  const r = roleDef(CURRENT_ROLE);
+  const p = (r && r.permissions) || [];
+  if(p.includes('*')) return true;
+  const [ns] = perm.split('.');
+  return p.includes(perm) || p.includes(ns+'.*');
+}
+function setRole(role){ CURRENT_ROLE = role; toast('Peran diubah ke '+role+'. Menu dan aksi menyesuaikan hak akses.'); route(); }
+function buildRoleSelect(){
+  const sel = document.getElementById('role-select');
+  if(!sel) return;
+  sel.innerHTML = DATA.roles.map(r=>`<option value="${r.id}" ${r.id===CURRENT_ROLE?'selected':''}>${esc(r.label)}</option>`).join('');
+}
+
+/* ---------------- router / nav ---------------- */
+const NAV = [
+  {group:null, items:[ {id:'dashboard', label:'Dashboard', icon:'grid'} ]},
+  {group:null, items:[ {id:'panduan', label:'Panduan Penggunaan', icon:'book'} ]},
+  {group:'Transaksi', items:[
+    {id:'transaksi/baru', label:'Sewa Baru', icon:'plus'},
+    {id:'transaksi/aktif', label:'Rental Aktif', icon:'clock'},
+    {id:'transaksi/pengembalian', label:'Pengembalian', icon:'undo'},
+    {id:'transaksi/riwayat', label:'Riwayat', icon:'list'},
+    {id:'booking', label:'Booking', icon:'calendar'},
+  ]},
+  {group:'Inventory', items:[
+    {id:'inventory/barang', label:'Barang', icon:'box'},
+    {id:'inventory/unit', label:'Unit', icon:'boxes'},
+    {id:'inventory/kategori', label:'Kategori', icon:'tag'},
+    {id:'inventory/maintenance', label:'Maintenance', icon:'wrench'},
+    {id:'pelanggan', label:'Pelanggan', icon:'user'},
+  ]},
+  {group:'Keuangan', items:[
+    {id:'keuangan/pembayaran', label:'Pembayaran', icon:'wallet'},
+    {id:'keuangan/deposit', label:'Deposit', icon:'shield'},
+    {id:'keuangan/expense', label:'Expense', icon:'minuscircle'},
+    {id:'laporan', label:'Laporan', icon:'barchart'},
+  ]},
+  {group:null, items:[
+    {id:'user-role', label:'User & Role', icon:'key'},
+    {id:'pengaturan', label:'Pengaturan', icon:'settings'},
+  ]},
+];
+const BOTTOM_ITEMS = [
+  {id:'dashboard', label:'Beranda', icon:'grid'},
+  {id:'transaksi/baru', label:'Sewa', icon:'plus'},
+  {id:'booking', label:'Booking', icon:'calendar'},
+  {id:'transaksi/aktif', label:'Aktif', icon:'clock'},
+  {id:'menu-more', label:'Lainnya', icon:'menu'},
+];
+function buildNav(){
+  const nav = document.getElementById('nav');
+  nav.innerHTML = NAV.map(g=>`
+    <div class="nav-group">
+      ${g.group?`<div class="nav-group-label">${g.group}</div>`:''}
+      ${g.items.map(it=>`<div class="nav-item" data-route="${it.id}"><span class="ic">${icon(it.icon,15)}</span>${it.label}</div>`).join('')}
+    </div>`).join('');
+  nav.querySelectorAll('.nav-item').forEach(el=>{
+    el.onclick = ()=>{ location.hash = '#/'+el.dataset.route; closeSidebar(); };
+  });
+  const bn = document.getElementById('bottomnav');
+  bn.innerHTML = BOTTOM_ITEMS.map(it=>`<div class="bn-item" data-route="${it.id}"><span class="ic">${icon(it.icon,17)}</span>${it.label}</div>`).join('');
+  bn.querySelectorAll('.bn-item').forEach(el=>{
+    el.onclick = ()=>{ if(el.dataset.route==='menu-more'){ openSidebar(); } else { location.hash='#/'+el.dataset.route; } };
+  });
+  document.querySelector('.menu-btn').innerHTML = icon('menu',19);
+  document.getElementById('demo-pill-ic').innerHTML = icon('info',13);
+}
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('scrim').style.display='block'; }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('scrim').style.display='none'; }
+
+const ROUTE_TITLES = {
+  'dashboard':'Dashboard', 'panduan':'Panduan Penggunaan', 'transaksi/baru':'Sewa Baru', 'transaksi/aktif':'Rental Aktif', 'transaksi/pengembalian':'Pengembalian',
+  'transaksi/riwayat':'Riwayat Transaksi', 'booking':'Booking', 'inventory/barang':'Barang', 'inventory/unit':'Unit Barang',
+  'inventory/kategori':'Kategori', 'inventory/maintenance':'Maintenance', 'pelanggan':'Pelanggan', 'keuangan/pembayaran':'Pembayaran',
+  'keuangan/deposit':'Deposit', 'keuangan/expense':'Expense', 'laporan':'Laporan', 'user-role':'User & Role', 'pengaturan':'Pengaturan'
+};
+function route(){
+  let r = (location.hash||'#/dashboard').replace('#/','');
+  if(!ROUTE_TITLES[r]) r='dashboard';
+  document.getElementById('topbar-title').textContent = ROUTE_TITLES[r];
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active', el.dataset.route===r));
+  document.querySelectorAll('.bn-item').forEach(el=>el.classList.toggle('active', el.dataset.route===r));
+  const renderers = {
+    'dashboard':renderDashboard,'panduan':renderPanduan,'transaksi/baru':renderSewaBaru,'transaksi/aktif':renderRentalAktif,
+    'transaksi/pengembalian':renderPengembalian,'transaksi/riwayat':renderRiwayat,'booking':renderBooking,
+    'inventory/barang':renderBarang,'inventory/unit':renderUnit,'inventory/kategori':renderKategori,
+    'inventory/maintenance':renderMaintenance,'pelanggan':renderPelanggan,'keuangan/pembayaran':renderPembayaran,
+    'keuangan/deposit':renderDeposit,'keuangan/expense':renderExpense,'laporan':renderLaporan,
+    'user-role':renderUserRole,'pengaturan':renderPengaturan
+  };
+  (renderers[r]||renderDashboard)();
+}
+window.addEventListener('hashchange', route);
+
+/* ---------------- shared lookups ---------------- */
+function productById(id){ return DATA.products.find(p=>p.id===id); }
+function categoryById(id){ return DATA.categories.find(c=>c.id===id); }
+function customerById(id){ return DATA.customers.find(c=>c.id===id); }
+function unitById(id){ return DATA.units.find(u=>u.id===id); }
+function unitsByProduct(pid){ return DATA.units.filter(u=>u.productId===pid); }
+function availableUnitsForProduct(pid){ return DATA.units.filter(u=>u.productId===pid && u.status==='AVAILABLE'); }
+function statusBadge(status){
+  const map = {
+    AVAILABLE:['b-green','Tersedia'], RENTED:['b-blue','Disewa'], RESERVED:['b-amber','Dipesan'], RETURNED:['b-grey','Dikembalikan'],
+    DAMAGED:['b-red','Rusak'], MAINTENANCE:['b-amber','Maintenance'], LOST:['b-red','Hilang'],
+    PENDING:['b-amber','Menunggu'], CONFIRMED:['b-blue','Dikonfirmasi'], ONGOING:['b-blue','Berjalan'], COMPLETED:['b-green','Selesai'], CANCELLED:['b-grey','Dibatalkan'],
+    PAID:['b-green','Lunas'], UNPAID:['b-red','Belum Bayar'], REFUNDED:['b-grey','Direfund'], PARTIAL:['b-amber','Sebagian'],
+    OPEN:['b-amber','Terbuka'], IN_PROGRESS:['b-blue','Dikerjakan'],
+    HELD:['b-blue','Ditahan'], FORFEITED:['b-red','Hangus'], PARTIAL_REFUND:['b-amber','Refund Sebagian'],
+  };
+  const [cls,label] = map[status]||['b-grey',status];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+function esc(s){ return (s===undefined||s===null)?'':String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------------- icon library (inline SVG, professional line icons) ---------------- */
+const ICONS = {
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1.4"/><rect x="14" y="3" width="7" height="7" rx="1.4"/><rect x="3" y="14" width="7" height="7" rx="1.4"/><rect x="14" y="14" width="7" height="7" rx="1.4"/>',
+  plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 16,14"/>',
+  undo: '<path d="M3 10a9 9 0 1 1 2.6 6.4"/><polyline points="3,4 3,10 9,10"/>',
+  list: '<line x1="8" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="8" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/>',
+  box: '<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
+  boxes: '<path d="M12 3l8 4-8 4-8-4 8-4z"/><path d="M4 11l8 4 8-4"/><path d="M4 15l8 4 8-4"/>',
+  tag: '<path d="M20 12l-8 8-9-9V4h7l10 8z"/><circle cx="7.5" cy="7.5" r="1.1"/>',
+  wrench: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2-2 2.6-2.6z"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+  wallet: '<rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20"/><circle cx="17" cy="15" r="1.2"/>',
+  shield: '<path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z"/>',
+  minuscircle: '<circle cx="12" cy="12" r="9"/><line x1="8" y1="12" x2="16" y2="12"/>',
+  barchart: '<line x1="4" y1="20" x2="4" y2="10"/><line x1="10" y1="20" x2="10" y2="4"/><line x1="16" y1="20" x2="16" y2="14"/><line x1="3" y1="21" x2="21" y2="21"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9"/><path d="M17 6l3 3"/><path d="M14 9l2 2"/>',
+  settings: '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.4 7.4 0 0 0 0-3l2-1.5-2-3.4-2.3 1a7.4 7.4 0 0 0-2.6-1.5L14 2.5h-4l-.5 2.6a7.4 7.4 0 0 0-2.6 1.5l-2.3-1-2 3.4 2 1.5a7.4 7.4 0 0 0 0 3l-2 1.5 2 3.4 2.3-1c.8.7 1.7 1.2 2.6 1.5l.5 2.6h4l.5-2.6c.9-.3 1.8-.8 2.6-1.5l2.3 1 2-3.4z"/>',
+  menu: '<line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>',
+  x: '<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>',
+  refresh: '<path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21,3 21,9 15,9"/>',
+  download: '<path d="M12 3v12"/><polyline points="7,10 12,15 17,10"/><path d="M5 19h14"/>',
+  check: '<polyline points="5,13 10,18 19,7"/>',
+  minus: '<line x1="6" y1="12" x2="18" y2="12"/>',
+  alerttriangle: '<path d="M12 3l10 18H2L12 3z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17" r="1"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3,7 12,13 21,7"/>',
+  phone: '<path d="M6 3h3l2 5-2 1a12 12 0 0 0 6 6l1-2 5 2v3a2 2 0 0 1-2 2C10 20 4 14 4 5a2 2 0 0 1 2-2z"/>',
+  mappin: '<path d="M12 21s7-6.5 7-11a7 7 0 1 0-14 0c0 4.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.3"/>',
+  idcard: '<rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="8" cy="12" r="2"/><line x1="13" y1="10" x2="19" y2="10"/><line x1="13" y1="14" x2="19" y2="14"/>',
+  cart: '<circle cx="9" cy="20" r="1.1"/><circle cx="18" cy="20" r="1.1"/><path d="M3 4h2l2.4 12.4a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.6L21 8H6"/>',
+  clipboard: '<rect x="6" y="4" width="12" height="17" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1"/>',
+  camera: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7l1.5-3h5L16 7"/><circle cx="12" cy="14" r="3.3"/>',
+  car: '<path d="M4 16V9l2-4h12l2 4v7"/><circle cx="7.5" cy="16.5" r="1.5"/><circle cx="16.5" cy="16.5" r="1.5"/><line x1="4" y1="16" x2="20" y2="16"/>',
+  flag: '<path d="M5 21V4"/><path d="M5 4h13l-3 4 3 4H5"/>',
+  cpu: '<rect x="7" y="7" width="10" height="10" rx="1.4"/><line x1="10.8" y1="2" x2="10.8" y2="6"/><line x1="13.6" y1="2" x2="13.6" y2="6"/><line x1="10.8" y1="18" x2="10.8" y2="22"/><line x1="13.6" y1="18" x2="13.6" y2="22"/><line x1="2" y1="10.8" x2="6" y2="10.8"/><line x1="2" y1="13.6" x2="6" y2="13.6"/><line x1="18" y1="10.8" x2="22" y2="10.8"/><line x1="18" y1="13.6" x2="22" y2="13.6"/>',
+  tent: '<path d="M12 4l9 15H3l9-15z"/><path d="M12 4v15"/>',
+  info: '<circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="7.5" r="1"/>',
+  arrowright: '<line x1="4" y1="12" x2="18" y2="12"/><polyline points="12,6 18,12 12,18"/>',
+  book: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H12v16H6.5A2.5 2.5 0 0 0 4 21.5v-16z"/><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H12v16h5.5a2.5 2.5 0 0 1 2.5 2.5v-16z"/>',
+};
+function icon(name, size){
+  size = size||15;
+  return '<svg class="icon" viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;flex-shrink:0">'+(ICONS[name]||'')+'</svg>';
+}
+
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+function renderDashboard(){
+  const now = new Date();
+  const todayStr = now.toDateString();
+  const isToday = v=> new Date(v).toDateString()===todayStr;
+  const monthKey = d=> new Date(d).getFullYear()+'-'+new Date(d).getMonth();
+  const thisMonth = monthKey(now);
+
+  const rentalsToday = DATA.rentals.filter(r=>isToday(r.createdAt));
+  const omzetToday = rentalsToday.reduce((s,r)=>s+r.grandTotal-r.deposit,0);
+  const activeRentals = DATA.rentals.filter(r=>r.status==='ONGOING');
+  const bookingsToday = DATA.bookings.filter(b=>isToday(b.startAt));
+  const rentedUnits = DATA.units.filter(u=>u.status==='RENTED').length;
+  const availUnits = DATA.units.filter(u=>u.status==='AVAILABLE').length;
+  const overdue = activeRentals.filter(r=>new Date(r.dueAt) < now);
+  const depositHeld = DATA.deposits.filter(d=>d.status==='HELD').reduce((s,d)=>s+d.amount,0);
+  const monthRevenue = DATA.rentals.filter(r=>monthKey(r.createdAt)===thisMonth && r.status!=='CANCELLED').reduce((s,r)=>s+r.subtotal-r.discount,0);
+  const monthExpense = DATA.expenses.filter(e=>monthKey(e.date)===thisMonth).reduce((s,e)=>s+e.amount,0);
+
+  const days = []; for(let i=6;i>=0;i--) days.push(addDays(now,-i));
+  const revByDay = days.map(d=>{
+    const key = d.toDateString();
+    return DATA.rentals.filter(r=>new Date(r.createdAt).toDateString()===key && r.status!=='CANCELLED').reduce((s,r)=>s+r.subtotal-r.discount,0);
+  });
+
+  const topProducts = {};
+  DATA.rentals.forEach(r=>{ if(r.status==='CANCELLED') return; r.items.forEach(it=>{ topProducts[it.productName]=(topProducts[it.productName]||0)+1; }); });
+  const topList = Object.entries(topProducts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  document.getElementById('content').innerHTML = `
+    <div class="page-head">
+      <div><h1>Dashboard</h1><p class="sub">Ringkasan operasional hari ini, ${fmtDate(now)}</p></div>
+      <button class="btn btn-ghost" onclick="route()">${icon('refresh',13)} Refresh</button>
+    </div>
+    <div class="stat-strip">
+      <div class="stat"><div class="lbl">Omzet Hari Ini</div><div class="val">${rupiah(omzetToday)}</div></div>
+      <div class="stat"><div class="lbl">Transaksi Hari Ini</div><div class="val">${rentalsToday.length}</div></div>
+      <div class="stat"><div class="lbl">Rental Aktif</div><div class="val">${activeRentals.length}</div></div>
+      <div class="stat"><div class="lbl">Booking Hari Ini</div><div class="val">${bookingsToday.length}</div></div>
+      <div class="stat"><div class="lbl">Barang Disewa</div><div class="val">${rentedUnits}</div></div>
+      <div class="stat"><div class="lbl">Barang Tersedia</div><div class="val">${availUnits}</div></div>
+      <div class="stat"><div class="lbl">Terlambat Dikembalikan</div><div class="val" style="color:${overdue.length?'var(--red)':'inherit'}">${overdue.length}</div></div>
+      <div class="stat"><div class="lbl">Total Deposit Ditahan</div><div class="val small">${rupiah(depositHeld)}</div></div>
+      <div class="stat"><div class="lbl">Pendapatan Bulan Ini</div><div class="val small">${rupiah(monthRevenue)}</div></div>
+      <div class="stat"><div class="lbl">Expense Bulan Ini</div><div class="val small">${rupiah(monthExpense)}</div></div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="section-title">Tren Pendapatan 7 Hari Terakhir</div>
+        <canvas id="chart-rev" height="150"></canvas>
+      </div>
+      <div class="panel">
+        <div class="section-title">Barang Paling Sering Disewa</div>
+        ${topList.length? topList.map(([name,count])=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #EDF1F6;">
+            <span style="font-size:13px">${esc(name)}</span><span class="badge b-blue">${count}x</span>
+          </div>`).join('') : '<div class="empty">Belum ada data</div>'}
+      </div>
+    </div>
+    ${overdue.length? `
+    <div class="panel" style="margin-top:16px;border-color:var(--red)">
+      <div class="section-title" style="color:var(--red)">${icon('alerttriangle',15)} ${overdue.length} rental terlambat dikembalikan</div>
+      <div class="table-wrap"><table><thead><tr><th>Kode</th><th>Pelanggan</th><th>Jatuh Tempo</th><th>Barang</th><th></th></tr></thead><tbody>
+        ${overdue.map(r=>`<tr><td>${r.code}</td><td>${esc(r.customerName)}</td><td>${fmtDateTime(r.dueAt)}</td><td>${r.items.map(i=>esc(i.productName)).join(', ')}</td>
+        <td><button class="link-btn" onclick="location.hash='#/transaksi/pengembalian'">Proses Kembali ${icon('arrowright',12)}</button></td></tr>`).join('')}
+      </tbody></table></div>
+    </div>`:''}
+  `;
+  if(window.Chart){
+    const ctx = document.getElementById('chart-rev');
+    new Chart(ctx, {
+      type:'line',
+      data:{ labels: days.map(d=>d.toLocaleDateString('id-ID',{weekday:'short'})), datasets:[{ data:revByDay, borderColor:'#2F6FED', backgroundColor:'rgba(47,111,237,.12)', fill:true, tension:.35, pointRadius:3 }]},
+      options:{ plugins:{legend:{display:false}}, scales:{ y:{ ticks:{ callback:v=>'Rp'+(v/1000)+'k' } } } }
+    });
+  }
+}
+
+/* ============================================================
+   INVENTORY - KATEGORI
+   ============================================================ */
+function renderKategori(){
+  document.getElementById('content').innerHTML = `
+    <div class="page-head">
+      <div><h1>Kategori Barang</h1><p class="sub">${DATA.categories.length} kategori</p></div>
+      ${can('inventory.create')?`<button class="btn btn-primary" onclick="openCategoryForm()">${icon('plus',13)} Tambah Kategori</button>`:''}
+    </div>
+    <div class="card table-wrap"><table><thead><tr><th>Ikon</th><th>Nama</th><th>Jumlah Barang</th><th></th></tr></thead><tbody>
+      ${DATA.categories.map(c=>{
+        const count = DATA.products.filter(p=>p.categoryId===c.id).length;
+        return `<tr><td>${icon(c.icon||'box',20)}</td><td style="font-weight:600">${esc(c.name)}</td><td>${count} barang</td>
+        <td>${can('inventory.edit')?`<button class="link-btn" onclick="openCategoryForm('${c.id}')">Edit</button>`:''}</td></tr>`;
+      }).join('') || '<tr><td colspan="4"><div class="empty">Belum ada kategori</div></td></tr>'}
+    </tbody></table></div>
+  `;
+}
+function openCategoryForm(id){
+  const cat = id ? categoryById(id) : null;
+  const ov = openOverlay(`
+    <div class="modal">
+      <div class="modal-head"><h3>${cat?'Edit':'Tambah'} Kategori</h3><button class="x-close" onclick="closeOverlays()">${icon('x',16)}</button></div>
+      <div class="field"><label>Nama Kategori</label><input id="f-cat-name" value="${cat?esc(cat.name):''}" placeholder="mis. Kamera & Lensa" /></div>
+      <div class="field"><label>Ikon</label><select id="f-cat-icon">${['box','camera','car','flag','cpu','tent','tag','boxes'].map(k=>`<option value="${k}" ${cat&&cat.icon===k?'selected':(!cat&&k==='box'?'selected':'')}>${k}</option>`).join('')}</select></div>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeOverlays()">Batal</button><button class="btn btn-primary" onclick="saveCategory('${id||''}')">Simpan</button></div>
+    </div>`, {center:true});
+}
+async function saveCategory(id){
+  const name = document.getElementById('f-cat-name').value.trim();
+  const catIcon = document.getElementById('f-cat-icon').value||'box';
+  if(!name){ toast('Nama kategori wajib diisi','err'); return; }
+  if(id){ const c=categoryById(id); c.name=name; c.icon=catIcon; await persist('categories',c); writeAudit('UPDATE','category', CURRENT_USER+' mengubah kategori menjadi "'+name+'".'); }
+  else { const nid = await nextId('CAT'); const c={id:nid,name,icon:catIcon,createdAt:iso(new Date())}; DATA.categories.push(c); await persist('categories',c); writeAudit('CREATE','category', CURRENT_USER+' menambahkan kategori "'+name+'".'); }
+  closeOverlays(); toast('Kategori disimpan','ok'); renderKategori();
+}
+
+/* ============================================================
+   INVENTORY - BARANG
+   ============================================================ */
+function computeProductStatus(pid){
+  const units = unitsByProduct(pid);
+  if(units.length===0) return 'AVAILABLE';
+  if(units.some(u=>u.status==='AVAILABLE')) return 'AVAILABLE';
+  if(units.every(u=>u.status==='RENTED')) return 'RENTED';
+  return units[0].status;
+}
+function renderBarang(){
+  const state = renderBarang._state || {q:'', cat:'', status:''};
+  renderBarang._state = state;
+  const filtered = DATA.products.filter(p=>{
+    if(state.q && !(p.name.toLowerCase().includes(state.q.toLowerCase()) || p.sku.toLowerCase().includes(state.q.toLowerCase()))) return false;
+    if(state.cat && p.categoryId!==state.cat) return false;
+    if(state.status && computeProductStatus(p.id)!==state.status) return false;
+    return true;
+  });
+  document.getElementById('content').innerHTML = `
+    <div class="page-head">
+      <div><h1>Barang</h1><p class="sub">${DATA.products.length} produk terdaftar</p></div>
+      ${can('inventory.create')?`<button class="btn btn-primary" onclick="openProductForm()">${icon('plus',13)} Tambah Barang</button>`:''}
+    </div>
+    <div class="toolbar">
+      <input type="text" id="f-q" placeholder="Cari nama / SKU..." value="${esc(state.q)}" oninput="renderBarang._state.q=this.value; renderBarangList()"/>
+      <select id="f-cat" onchange="renderBarang._state.cat=this.value; renderBarangList()">
+        <option value="">Semua Kategori</option>
+        ${DATA.categories.map(c=>`<option value="${c.id}" ${state.cat===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}
+      </select>
+      <select id="f-status" onchange="renderBarang._state.status=this.value; renderBarangList()">
+        <option value="">Semua Status</option>
+        ${['AVAILABLE','RENTED','RESERVED','MAINTENANCE','DAMAGED'].map(s=>`<option value="${s}" ${state.status===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div id="barang-list"></div>
+  `;
+  renderBarangList();
+}
+function renderBarangList(){
+  const state = renderBarang._state;
+  const filtered = DATA.products.filter(p=>{
+    if(state.q && !(p.name.toLowerCase().includes(state.q.toLowerCase()) || p.sku.toLowerCase().includes(state.q.toLowerCase()))) return false;
+    if(state.cat && p.categoryId!==state.cat) return false;
+    if(state.status && computeProductStatus(p.id)!==state.status) return false;
+    return true;
+  });
+  document.getElementById('barang-list').innerHTML = `
+    <div class="card table-wrap"><table><thead><tr>
+      <th>Barang</th><th>Kategori</th><th>SKU</th><th>Harga Sewa/Hari</th><th>Unit</th><th>Status</th><th></th>
+    </tr></thead><tbody>
+      ${filtered.map(p=>{
+        const cat = categoryById(p.categoryId);
+        const units = unitsByProduct(p.id);
+        const status = computeProductStatus(p.id);
+        return `<tr>
+          <td><div style="font-weight:600">${esc(p.name)}</div><div style="font-size:11.5px;color:var(--muted)">${esc(p.location||'-')}</div></td>
+          <td>${cat?icon(cat.icon,14)+' '+esc(cat.name):'-'}</td>
+          <td><span class="tag-inline">${p.sku}</span></td>
+          <td>${p.rentPerDay?rupiah(p.rentPerDay):(p.rentPerHour?rupiah(p.rentPerHour)+'/jam':'-')}</td>
+          <td>${units.length} unit</td>
+          <td>${statusBadge(status)}</td>
+          <td style="white-space:nowrap">
+            <button class="link-btn" onclick="viewProductDetail('${p.id}')">Detail</button>
+            ${can('inventory.edit')?` · <button class="link-btn" onclick="openProductForm('${p.id}')">Edit</button>`:''}
+          </td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="7"><div class="empty"><div class="ic">${icon('box',26)}</div>Tidak ada barang yang cocok dengan filter</div></td></tr>`}
+    </tbody></table></div>
+  `;
+}
+function openProductForm(id){
+  const p = id?productById(id):null;
+  const ov = openOverlay(`
+    <div class="modal wide">
+      <div class="modal-head"><h3>${p?'Edit':'Tambah'} Barang</h3><button class="x-close" onclick="closeOverlays()">${icon('x',16)}</button></div>
+      <div class="row">
+        <div class="field"><label>Nama Barang</label><input id="f-name" value="${p?esc(p.name):''}" placeholder="mis. Canon EOS R6"/></div>
+        <div class="field"><label>Kategori</label><select id="f-cat2">${DATA.categories.map(c=>`<option value="${c.id}" ${p&&p.categoryId===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>SKU</label><input id="f-sku" value="${p?p.sku:'SKU-AUTO'}" /></div>
+        <div class="field"><label>Satuan</label><input id="f-satuan" value="${p?p.satuan:'unit'}" placeholder="unit / pcs / set"/></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Harga Beli (Rp)</label><input id="f-buy" type="number" value="${p?p.buyPrice:0}" /></div>
+        <div class="field"><label>Lokasi</label><input id="f-loc" value="${p?esc(p.location||''):''}" placeholder="mis. Gudang A"/></div>
+      </div>
+      <div class="section-title" style="margin-top:4px">Harga Sewa</div>
+      <div class="row">
+        <div class="field"><label>Per Jam (Rp)</label><input id="f-hour" type="number" value="${p?p.rentPerHour:0}" /></div>
+        <div class="field"><label>Per Hari (Rp)</label><input id="f-day" type="number" value="${p?p.rentPerDay:0}" /></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Per Minggu (Rp)</label><input id="f-week" type="number" value="${p?p.rentPerWeek:0}" /></div>
+        <div class="field"><label>Per Bulan (Rp)</label><input id="f-month" type="number" value="${p?p.rentPerMonth:0}" /></div>
+      </div>
+      <div class="field"><label>Deskripsi</label><textarea id="f-desc">${p?esc(p.description||''):''}</textarea></div>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeOverlays()">Batal</button><button class="btn btn-primary" onclick="saveProduct('${id||''}')">Simpan Barang</button></div>
+    </div>`, {center:true});
+}
+async function saveProduct(id){
+  const name = document.getElementById('f-name').value.trim();
+  if(!name){ toast('Nama barang wajib diisi','err'); return; }
+  const fields = {
+    name, categoryId: document.getElementById('f-cat2').value, sku: document.getElementById('f-sku').value.trim(),
+    satuan: document.getElementById('f-satuan').value.trim()||'unit', buyPrice:+document.getElementById('f-buy').value||0,
+    location: document.getElementById('f-loc').value.trim(), rentPerHour:+document.getElementById('f-hour').value||0,
+    rentPerDay:+document.getElementById('f-day').value||0, rentPerWeek:+document.getElementById('f-week').value||0,
+    rentPerMonth:+document.getElementById('f-month').value||0, description: document.getElementById('f-desc').value.trim(),
+  };
+  if(id){
+    const p = productById(id); const oldPrice = p.rentPerDay;
+    Object.assign(p, fields); await persist('products',p);
+    if(oldPrice!==fields.rentPerDay) writeAudit('UPDATE','product', CURRENT_USER+' mengubah harga sewa harian "'+name+'" dari '+rupiah(oldPrice)+' menjadi '+rupiah(fields.rentPerDay)+'.');
+    else writeAudit('UPDATE','product', CURRENT_USER+' memperbarui data barang "'+name+'".');
+  } else {
+    const nid = await nextId('PRD'); const barcode='89964'+randInt(1000000,9999999);
+    const p = {id:nid, ...fields, barcode, createdAt: iso(new Date())};
+    DATA.products.push(p); await persist('products',p);
+    writeAudit('CREATE','product', CURRENT_USER+' menambahkan barang baru "'+name+'".');
+  }
+  closeOverlays(); toast('Barang disimpan','ok'); renderBarang();
+}
+function viewProductDetail(id){
+  const p = productById(id); const cat = categoryById(p.categoryId); const units = unitsByProduct(id);
+  openOverlay(`
+    <div class="modal wide">
+      <div class="modal-head"><h3>${esc(p.name)}</h3><button class="x-close" onclick="closeOverlays()">${icon('x',16)}</button></div>
+      <div class="row" style="margin-bottom:14px">
+        <div class="tag-inline">${cat?icon(cat.icon,13)+' '+esc(cat.name):'-'}</div>
+        <div class="tag-inline">SKU ${p.sku}</div>
+        <div class="tag-inline">Barcode ${p.barcode}</div>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 14px">${esc(p.description||'Tidak ada deskripsi.')}</p>
+      <div class="grid2" style="margin-bottom:16px">
+        <div class="panel"><div class="section-title">Harga Sewa</div>
+          <div style="font-size:13px;line-height:1.9">
+            Per jam: <b>${p.rentPerHour?rupiah(p.rentPerHour):'-'}</b><br/>
+            Per hari: <b>${p.rentPerDay?rupiah(p.rentPerDay):'-'}</b><br/>
+            Per minggu: <b>${p.rentPerWeek?rupiah(p.rentPerWeek):'-'}</b><br/>
+            Per bulan: <b>${p.rentPerMonth?rupiah(p.rentPerMonth):'-'}</b>
+          </div>
+        </div>
+        <div class="panel"><div class="section-title">Info Lain</div>
+          <div style="font-size:13px;line-height:1.9">
+            Harga beli: <b>${rupiah(p.buyPrice)}</b><br/>
+            Lokasi: <b>${esc(p.location||'-')}</b><br/>
+            Satuan: <b>${esc(p.satuan)}</b>
+          </div>
+        </div>
+      </div>
+      <div class="section-title">Unit (${units.length})</div>
+      <div class="table-wrap"><table><thead><tr><th>Kode Unit</th><th>Serial</th><th>Kondisi</th><th>Status</th></tr></thead><tbody>
+        ${units.map(u=>`<tr><td>${u.unitCode}</td><td>${u.serialNumber}</td><td>${esc(u.condition)}</td><td>${statusBadge(u.status)}</td></tr>`).join('') || '<tr><td colspan="4"><div class="empty">Belum ada unit</div></td></tr>'}
+      </tbody></table></div>
+    </div>`, {center:true});
+}
+
+/* ============================================================
+   INVENTORY - UNIT
+   ============================================================ */
+function renderUnit(){
+  document.getElementById('content').innerHTML = `
+    <div class="page-head"><div><h1>Unit Barang</h1><p class="sub">${DATA.units.length} unit individual</p></div>
+    ${can('inventory.create')?`<button class="btn btn-primary" onclick="openUnitForm()">${icon('plus',13)} Tambah Unit</button>`:''}</div>
+    <div class="card table-wrap"><table><thead><tr><th>Kode Unit</th><th>Barang</th><th>Serial</th><th>Kondisi</th><th>Status</th><th></th></tr></thead><tbody>
+      ${DATA.units.map(u=>{ const p = productById(u.productId);
+        return `<tr><td style="font-weight:600">${u.unitCode}</td><td>${p?esc(p.name):'-'}</td><td>${u.serialNumber}</td><td>${esc(u.condition)}</td><td>${statusBadge(u.status)}</td>
+        <td>${can('inventory.edit')?`<button class="link-btn" onclick="openUnitForm('${u.id}')">Edit</button>`:''}</td></tr>`;
+      }).join('') || '<tr><td colspan="6"><div class="empty">Belum ada unit</div></td></tr>'}
+    </tbody></table></div>
+  `;
+}
+function openUnitForm(id){
+  const u = id?unitById(id):null;
+  openOverlay(`
+    <div class="modal">
+      <div class="modal-head"><h3>${u?'Edit':'Tambah'} Unit</h3><button class="x-close" onclick="closeOverlays()">${icon('x',16)}</button></div>
+      <div class="field"><label>Barang</label><select id="f-u-prod">${DATA.products.map(p=>`<option value="${p.id}" ${u&&u.productId===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div>
+      <div class="row">
+        <div class="field"><label>Kode Unit</label><input id="f-u-code" value="${u?u.unitCode:''}"/></div>
+        <div class="field"><label>Serial Number</label><input id="f-u-serial" value="${u?u.serialNumber:''}"/></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Kondisi</label><select id="f-u-cond">${['Sangat Baik','Baik','Cukup','Buruk'].map(c=>`<option ${u&&u.condition===c?'selected':''}>${c}</option>`).join('')}</select></div>
+        <div class="field"><label>Status</label><select id="f-u-status">${['AVAILABLE','RESERVED','RENTED','MAINTENANCE','DAMAGED','LOST'].map(s=>`<option value="${s}" ${u&&u.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      </div>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeOverlays()">Batal</button><button class="btn btn-primary" onclick="saveUnit('${id||''}')">Simpan</button></div>
+    </div>`, {center:true});
+}
+async function saveUnit(id){
+  const productId = document.getElementById('f-u-prod').value;
+  const unitCode = document.getElementById('f-u-code').value.trim();
+  if(!unitCode){ toast('Kode unit wajib diisi','err'); return; }
+  const fields = { productId, unitCode, serialNumber: document.getElementById('f-u-serial').value.trim(), condition: document.getElementById('f-u-cond').value, status: document.getElementById('f-u-status').value };
+  if(id){ const u=unitById(id); Object.assign(u,fields); await persist('units',u); writeAudit('UPDATE','unit',CURRENT_USER+' memperbarui unit '+unitCode+'.'); }
+  else { const nid=await nextId('UNT'); const u={id:nid,...fields, barcode:'89965'+randInt(1000000,9999999), createdAt:iso(new Date())}; DATA.units.push(u); await persist('units',u); writeAudit('CREATE','unit',CURRENT_USER+' menambahkan unit baru '+unitCode+'.'); }
+  closeOverlays(); toast('Unit disimpan','ok'); renderUnit();
+}
+
+/* ============================================================
+   MAINTENANCE
+   ============================================================ */
+function renderMaintenance(){
+  document.getElementById('content').innerHTML = `
+    <div class="page-head"><div><h1>Maintenance</h1><p class="sub">${DATA.maintenance.length} riwayat perawatan</p></div>
+    ${can('inventory.create')?`<button class="btn btn-primary" onclick="openMaintenanceForm()">${icon('plus',13)} Catat Maintenance</button>`:''}</div>
+    <div class="card table-wrap"><table><thead><tr><th>Unit</th><th>Masalah</th><th>Tanggal</th><th>Teknisi</th><th>Biaya</th><th>Status</th><th></th></tr></thead><tbody>
+      ${[...DATA.maintenance].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(m=>{ const u=unitById(m.unitId); const p=u?productById(u.productId):null;
+        return `<tr><td>${u?u.unitCode:'-'} <div style="font-size:11.5px;color:var(--muted)">${p?esc(p.name):''}</div></td><td>${esc(m.issue)}</td><td>${fmtDate(m.date)}</td><td>${esc(m.technician)}</td><td>${rupiah(m.cost)}</td><td>${statusBadge(m.status)}</td>
+        <td>${m.status!=='COMPLETED' && can('inventory.edit') ? `<button class="link-btn" onclick="advanceMaintenance('${m.id}')">${m.status==='OPEN'?'Mulai':'Selesaikan'}</button>`:'-'}</td></tr>`;
+      }).join('') || '<tr><td colspan="7"><div class="empty">Belum ada catatan maintenance</div></td></tr>'}
+    </tbody></table></div>
+  `;
+}
+function openMaintenanceForm(){
+  openOverlay(`
+    <div class="modal">
+      <div class="modal-head"><h3>Catat Maintenance</h3><button class="x-close" onclick="closeOverlays()">${icon('x',16)}</button></div>
+      <div class="field"><label>Unit</label><select id="f-m-unit">${DATA.units.map(u=>{const p=productById(u.productId); return `<option value="${u.id}">${u.unitCode} (${p?esc(p.name):''})</option>`;}).join('')}</select></div>
+      <div class="field"><label>Masalah</label><textarea id="f-m-issue" placeholder="Deskripsikan masalah..."></textarea></div>
+      <div class="row">
+        <div class="field"><label>Teknisi</label><input id="f-m-tech" placeholder="Nama teknisi"/></div>
+        <div class="field"><label>Estimasi Biaya (Rp)</label><input id="f-m-cost" type="number" value="0"/></div>
+      </div>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeOverlays()">Batal</button><button class="btn btn-primary" onclick="saveMaintenance()">Simpan</button></div>
+    </div>`, {center:true});
+}
+async function saveMaintenance(){
+  const unitId = document.getElementById('f-m-unit').value;
+  const issue = document.getElementById('f-m-issue').value.trim();
+  if(!issue){ toast('Deskripsi masalah wajib diisi','err'); return; }
+  const mid = await nextId('MNT');
+  const m = {id:mid, unitId, productId: unitById(unitId).productId, issue, date: iso(new Date()), technician: document.getElementById('f-m-tech').value.trim()||'Belum ditentukan', cost:+document.getElementById('f-m-cost').value||0, status:'OPEN', note:'', createdAt: iso(new Date())};
+  DATA.maintenance.push(m); await persist('maintenance',m);
+  const u = unitById(unitId); u.status='MAINTENANCE'; await persist('units',u);
+  const mv={id:uid(),unitId,productId:m.productId,type:'MAINTENANCE',refType:'maintenance',refId:mid,note:issue,createdAt:iso(new Date())}; DATA.movements.push(mv); await persist('movements',mv);
+  writeAudit('CREATE','maintenance', CURRENT_USER+' mencatat maintenance untuk unit '+u.unitCode+'.');
+  closeOverlays(); toast('Maintenance dicatat, status unit diubah menjadi Maintenance','ok'); renderMaintenance();
+}
+async function advanceMaintenance(id){
+  const m = DATA.maintenance.find(x=>x.id===id);
+  if(m.status==='OPEN'){ m.status='IN_PROGRESS'; await persist('maintenance',m); toast('Maintenance dimulai'); }
+  else {
+    m.status='COMPLETED'; await persist('maintenance',m);
+    const u = unitById(m.unitId); u.status='AVAILABLE'; u.condition='Baik'; await persist('units',u);
+    writeAudit('UPDATE','maintenance', CURRENT_USER+' menyelesaikan maintenance unit '+u.unitCode+', status kembali tersedia.');
+    toast('Maintenance selesai, unit tersedia kembali','ok');
+  }
+  renderMaintenance();
+}
+
+/* ============================================================
+   PELANGGAN
+   ============================================================ */
+function renderPelanggan(){
+  const q = renderPelanggan._q||'';
+  document.getElementById('content').innerHTML = `
+    <div class="page-head"><div><h1>Pelanggan</h1><p class="sub">${DATA.customers.length} pelanggan terdaftar</p></div>
+    ${can('customer.create')?`<button class="btn btn-primary" onclick="openCustomerForm()">${icon('plus',13)} Tambah Pelanggan</button>`:''}</div>
+    <div class="toolbar"><input type="text" placeholder="Cari nama / no. HP..." value="${esc(q)}" oninput="renderPelanggan._q=this.value; renderPelangganList()"/></div>
+    <div id="pelanggan-list"></div>
+  `;
+  renderPelangganList();
+}
+function renderPelangganList(){
+  const q = (renderPelanggan._q||'').toLowerCase();
+  const filtered = DATA.customers.filter(c=>!q || c.name.toLowerCase().includes(q) || c.phone.includes(q));
+  document.getElementById('pelanggan-list').innerHTML = `
+    <div class="card table-wrap"><table><thead><tr><th>Nama</th><th>Kontak</th><th>Total Transaksi</th><th>Total Pengeluaran</th><th>Rental Aktif</th><th></th></tr></thead><tbody>
+      ${filtered.map(c=>{
+        const rentals = DATA.rentals.filter(r=>r.customerId===c.id);
+        const total = rentals.filter(r=>r.status!=='CANCELLED').reduce((s,r)=>s+r.subtotal-r.discount,0);
+        const active = rentals.filter(r=>r.status==='ONGOING').length;
+        return `<tr>
+          <td><div style="display:flex;gap:9px;align-items:center"><div class="avatar">${c.name[0]}</div><div><div style="font-weight:600">${esc(c.name)}</div><div style="font-size:11.5px;color:var(--muted)">${esc(c.email)}</div></div></div></td>
+          <td>${c.phone}</td>
+          <td>${rentals.length}x</td>
+          <td>${rupiah(total)}</td>
+          <td>${active?`<span class="badge b-blue">${active} aktif</span>`:'-'}</td>
+          <td><button class="link-btn" onclick="viewCustomerDetail('${c.id}')">Detail</button></td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="6"><div class="empty">Tidak ada pelanggan ditemukan</div></td></tr>'}
+    </tbody></table></div>
+  `;
+}
+function openCustomerForm(id){
+  const c = id?customerById(id):null;
+  openOverlay(`
+    <div class="modal">
+      <div class="modal-head"><h3>${c?'Edit':'Tambah'} Pelanggan</h3><button class="x-close" onclick="closeOverlays()">${icon('x',16)}</button></div>
+      <div class="field"><label>Nama Lengkap</label><input id="f-c-name" value="${c?esc(c.name):''}"/></div>
+      <div class="row">
+        <div class="field"><label>No. HP</label><input id="f-c-phone" value="${c?c.phone:''}"/></div>
+        <div class="field"><label>Email</label><input id="f-c-email" value="${c?c.email:''}"/></div>
+      </div>
+      <div class="field"><label>Alamat</label><textarea id="f-c-addr">${c?esc(c.address):''}</textarea></div>
+      <div class="field"><label>Nomor Identitas (KTP)</label><input id="f-c-id" value="${c?c.idNumber:''}"/></div>
+      <div class="field"><label>Catatan</label><textarea id="f-c-notes">${c?esc(c.notes||''):''}</textarea></div>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeOverlays()">Batal</button><button class="btn btn-primary" onclick="saveCustomer('${id||''}')">Simpan</button></div>
+    </div>`, {center:true});
+}
+async function saveCustomer(id){
+  const name = document.getElementById('f-c-name').value.trim();
+  if(!name){ toast('Nama pelanggan wajib diisi','err'); return; }
+  const fields = { name, phone:document.getElementById('f-c-phone').value.trim(), email:document.getElementById('f-c-email').value.trim(), address:document.getElementById('f-c-addr').value.trim(), idNumber:document.getElementById('f-c-id').value.trim(), notes:document.getElementById('f-c-notes').value.trim() };
+  if(id){ const c=customerById(id); Object.assign(c,fields); await persist('customers',c); writeAudit('UPDATE','customer',CURRENT_USER+' memperbarui data pelanggan "'+name+'".'); }
+  else { const nid=await nextId('CUS'); const c={id:nid,...fields, createdAt:iso(new Date())}; DATA.customers.push(c); await persist('customers',c); writeAudit('CREATE','customer',CURRENT_USER+' menambahkan pelanggan baru "'+name+'".'); }
+  closeOverlays(); toast('Data pelanggan disimpan','ok'); renderPelanggan();
+}
+function viewCustomerDetail(id){
+  const c = customerById(id);
+  const rentals = [...DATA.rentals.filter(r=>r.customerId===id)].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  openOverlay(`
+    <div class="modal wide">
+      <div class="modal-head"><h3>${esc(c.name)}</h3><button class="x-close" onclick="closeOverlays()">${icon('x',16)}</button></div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:14px">
+        ${icon('phone',13)} ${c.phone} &nbsp;&middot;&nbsp; ${icon('mail',13)} ${esc(c.email)}<br/>${icon('mappin',13)} ${esc(c.address)}<br/>${icon('idcard',13)} ${esc(c.idNumber)}
+      </div>
+      <div class="section-title">Riwayat Rental (${rentals.length})</div>
+      <div class="table-wrap"><table><thead><tr><th>Kode</th><th>Barang</th><th>Tanggal</th><th>Total</th><th>Status</th></tr></thead><tbody>
+        ${rentals.map(r=>`<tr><td>${r.code}</td><td>${r.items.map(i=>esc(i.productName)).join(', ')}</td><td>${fmtDate(r.createdAt)}</td><td>${rupiah(r.subtotal-r.discount)}</td><td>${statusBadge(r.status)}</td></tr>`).join('') || '<tr><td colspan="5"><div class="empty">Belum ada transaksi</div></td></tr>'}
+      </tbody></table></div>
+    </div>`, {center:true});
+}
+
+/* ============================================================
+   BOOKING
+   ============================================================ */
+function checkBookingConflict(unitId, startAt, endAt, excludeId){
+  const s = new Date(startAt), e = new Date(endAt);
+  const activeBookings = DATA.bookings.filter(b=>b.unitId===unitId && b.id!==excludeId && !['CANCELLED','COMPLETED'].includes(b.status));
+  const conflictB = activeBookings.some(b=> s < new Date(b.endAt) && e > new Date(b.startAt));
+  const activeRentals = DATA.rentals.filter(r=>r.status==='ONGOING' && r.items.some(it=>it.unitId===unitId));
+  const conflictR = activeRentals.some(r=> s < new Date(r.dueAt) && e > new Date(r.startAt));
+  return conflictB || conflictR;
+}
+function renderBooking(){
+  document.getElementById('content').innerHTML = `
+    <div class="page-head"><div><h1>Booking</h1><p class="sub">${DATA.bookings.length} booking tercatat</p></div>
+    ${can('booking.create')?`<button class="btn btn-primary" onclick="openBookingForm()">${icon('plus',13)} Booking Baru</button>`:''}</div>
+    <div class="card table-wrap"><table><thead><tr><th>Pelanggan</th><th>Barang / Unit</th><th>Mulai</th><th>Selesai</th><th>Deposit</th><th>Status</th><th></th></tr></thead><tbody>
+      ${[...DATA.bookings].sort((a,b)=>new Date(b.startAt)-new Date(a.startAt)).map(b=>`
+        <tr><td>${esc(b.customerName)}</td><td>${esc(b.productName)}<div style="font-size:11.5px;color:var(--muted)">${b.unitCode}</div></td>
+        <td>${fmtDateTime(b.startAt)}</td><td>${fmtDateTime(b.endAt)}</td><td>${rupiah(b.deposit)}</td><td>${statusBadge(b.status)}</td>
+        <td>${can('booking.create') && ['PENDING'].includes(b.status)?`<button class="link-btn" onclick="setBookingStatus('${b.id}','CONFIRMED')">Konfirmasi</button> · `:''}${!['CANCELLED','COMPLETED'].includes(b.status)?`<button class="link-btn" style="color:var(--red)" onclick="setBookingStatus('${b.id}','CANCELLED')">Batalkan</button>`:''}</td>
+        </tr>`).join('') || '<tr><td colspan="7"><div class="empty">Belum ada booking</div></td></tr>'}
+    </tbody></table></div>
+  `;
+}
+async function setBookingStatus(id, status){
+  const b = DATA.bookings.find(x=>x.id===id); b.status=status; await persist('bookings',b);
+  writeAudit('UPDATE','booking', CURRENT_USER+' mengubah status booking '+b.id+' menjadi '+status+'.');
+  toast('Status booking diperbarui','ok'); renderBooking();
+}
+function openBookingForm(){
+  const ov = openOverlay(`
+    <div class="modal wide">
+      <div class="modal-head"><h3>Booking Baru</h3><button class="x-close" onclick="closeOverlays()">${icon('x',16)}</button></div>
+      <div class="row">
+        <div class="field"><label>Pelanggan</label><select id="bk-cust">${DATA.customers.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></div>
+        <div class="field"><label>Barang</label><select id="bk-prod" onchange="refreshBookingUnitOptions()">${DATA.products.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></div>
+      </div>
+      <div class="field"><label>Unit</label><select id="bk-unit"></select></div>
+      <div class="row">
+        <div class="field"><label>Mulai</label><input id="bk-start" type="datetime-local"/></div>
+        <div class="field"><label>Selesai</label><input id="bk-end" type="datetime-local"/></div>
+      </div>
+      <div class="field"><label>Deposit (Rp)</label><input id="bk-deposit" type="number" value="100000"/></div>
+      <div class="field"><label>Catatan</label><textarea id="bk-note"></textarea></div>
+      <div id="bk-conflict" style="display:none;color:var(--red);font-size:12.5px;margin-bottom:10px;">${icon('alerttriangle',13)} Unit ini sudah dibooking atau disewa pada rentang waktu tersebut.</div>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeOverlays()">Batal</button><button class="btn btn-primary" onclick="saveBooking()">Simpan Booking</button></div>
+    </div>`, {center:true});
+  refreshBookingUnitOptions();
+  const now = new Date(); document.getElementById('bk-start').value = now.toISOString().slice(0,16);
+  document.getElementById('bk-end').value = addDays(now,1).toISOString().slice(0,16);
+}
+function refreshBookingUnitOptions(){
+  const pid = document.getElementById('bk-prod').value;
+  const units = unitsByProduct(pid);
+  document.getElementById('bk-unit').innerHTML = units.map(u=>`<option value="${u.id}">${u.unitCode} (${u.status})</option>`).join('') || '<option value="">Tidak ada unit</option>';
+}
+async function saveBooking(){
+  const customerId = document.getElementById('bk-cust').value;
+  const productId = document.getElementById('bk-prod').value;
+  const unitId = document.getElementById('bk-unit').value;
+  const startAt = document.getElementById('bk-start').value, endAt = document.getElementById('bk-end').value;
+  if(!startAt || !endAt || new Date(endAt)<=new Date(startAt)){ toast('Rentang waktu tidak valid','err'); return; }
+  if(unitId && checkBookingConflict(unitId, startAt, endAt)){ document.getElementById('bk-conflict').style.display='block'; toast('Unit sudah dibooking pada waktu tersebut','err'); return; }
+  const cust = customerById(customerId), prod = productById(productId), unit = unitById(unitId);
+  const bid = await nextId('BKG');
+  const bk = {id:bid, customerId, customerName:cust.name, productId, productName:prod.name, unitId, unitCode:unit?unit.unitCode:'-', startAt:new Date(startAt).toISOString(), endAt:new Date(endAt).toISOString(), status:'PENDING', deposit:+document.getElementById('bk-deposit').value||0, note:document.getElementById('bk-note').value.trim(), createdAt: iso(new Date())};
+  DATA.bookings.push(bk); await persist('bookings',bk);
+  if(unit){ unit.status='RESERVED'; await persist('units',unit); }
+  writeAudit('CREATE','booking', CURRENT_USER+' membuat booking baru untuk '+cust.name+'.');
+  closeOverlays(); toast('Booking berhasil dibuat','ok'); renderBooking();
+}
+
+/* ============================================================
+   TRANSAKSI - SEWA BARU (wizard)
+   ============================================================ */
+const sewaState = { customerId:null, cart:[], discount:0, method:'CASH' };
+function renderSewaBaru(){
+  sewaState.customerId = sewaState.customerId || (DATA.customers[0] && DATA.customers[0].id);
+  sewaState.cart = sewaState.cart||[];
+  document.getElementById('content').innerHTML = `
+    <div class="page-head"><div><h1>Sewa Baru</h1><p class="sub">Buat transaksi rental baru untuk pelanggan</p></div></div>
+    <div class="grid2">
+      <div>
+        <div class="panel" style="margin-bottom:14px">
+          <div class="section-title">1. Pilih Pelanggan</div>
+          <select id="sw-cust" onchange="sewaState.customerId=this.value">
+            ${DATA.customers.map(c=>`<option value="${c.id}" ${sewaState.customerId===c.id?'selected':''}>${esc(c.name)} (${c.phone})</option>`).join('')}
+          </select>
+        </div>
+        <div class="panel">
+          <div class="section-title">2. Pilih Barang &amp; Unit</div>
+          <div class="row">
+            <div class="field"><label>Barang</label><select id="sw-prod" onchange="refreshSewaUnits()">${DATA.products.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></div>
+            <div class="field"><label>Unit Tersedia</label><select id="sw-unit"></select></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>Tipe Harga</label><select id="sw-type"><option value="hour">Per Jam</option><option value="day" selected>Per Hari</option><option value="week">Per Minggu</option><option value="month">Per Bulan</option></select></div>
+            <div class="field"><label>Durasi (jumlah)</label><input id="sw-qty" type="number" min="1" value="1"/></div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="addToCart()">${icon('plus',13)} Tambahkan ke Keranjang</button>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <div class="section-title">Keranjang Sewa</div>
+          <div id="sw-cart"></div>
+          <div class="divider"></div>
+          <div class="field"><label>Waktu Mulai</label><input id="sw-start" type="datetime-local"/></div>
+          <div class="field"><label>Diskon (Rp)</label><input id="sw-discount" type="number" value="${sewaState.discount}" oninput="sewaState.discount=+this.value||0; renderSewaCart()"/></div>
+          <div class="field"><label>Metode Pembayaran</label><select id="sw-method" onchange="sewaState.method=this.value"><option value="CASH">Cash</option><option value="TRANSFER">Bank Transfer</option><option value="QRIS">QRIS</option><option value="EWALLET">E-Wallet</option></select></div>
+          <div id="sw-summary"></div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:10px" onclick="confirmRental()">Proses &amp; Bayar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  refreshSewaUnits();
+  document.getElementById('sw-start').value = new Date().toISOString().slice(0,16);
+  renderSewaCart();
+}
+function refreshSewaUnits(){
+  const pid = document.getElementById('sw-prod').value;
+  const units = availableUnitsForProduct(pid);
+  document.getElementById('sw-unit').innerHTML = units.map(u=>`<option value="${u.id}">${u.unitCode}</option>`).join('') || '<option value="">Tidak ada unit tersedia</option>';
+}
+function pricingCalc(prod, type, qty){
+  const rateMap = { hour: prod.rentPerHour, day: prod.rentPerDay || (prod.rentPerHour?prod.rentPerHour*24:0), week: prod.rentPerWeek, month: prod.rentPerMonth };
+  const rate = rateMap[type] || 0;
+  return { rate, lineTotal: rate*qty };
+}
+function addToCart(){
+  const pid = document.getElementById('sw-prod').value;
+  const unitId = document.getElementById('sw-unit').value;
+  if(!unitId){ toast('Unit tidak tersedia untuk barang ini','err'); return; }
+  const prod = productById(pid); const unit = unitById(unitId);
+  const type = document.getElementById('sw-type').value;
+  const qty = Math.max(1, +document.getElementById('sw-qty').value||1);
+  if(sewaState.cart.some(i=>i.unitId===unitId)){ toast('Unit ini sudah ada di keranjang','err'); return; }
+  const {rate,lineTotal} = pricingCalc(prod, type, qty);
+  sewaState.cart.push({productId:pid, productName:prod.name, unitId, unitCode:unit.unitCode, priceType:type, rate, qty, lineTotal});
+  renderSewaCart();
+  toast('Ditambahkan ke keranjang');
+}
+function removeFromCart(unitId){ sewaState.cart = sewaState.cart.filter(i=>i.unitId!==unitId); renderSewaCart(); }
+function renderSewaCart(){
+  const subtotal = sewaState.cart.reduce((s,i)=>s+i.lineTotal,0);
+  const discount = sewaState.discount||0;
+  const deposit = Math.round(subtotal*0.5/10000)*10000;
+  const grandTotal = subtotal-discount+deposit;
+  document.getElementById('sw-cart').innerHTML = sewaState.cart.length ? sewaState.cart.map(i=>`
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #EDF1F6;font-size:13px">
+      <div><b>${esc(i.productName)}</b><div style="color:var(--muted);font-size:11.5px">${i.unitCode} · ${i.qty}x ${i.priceType}</div></div>
+      <div style="text-align:right"><b>${rupiah(i.lineTotal)}</b><br/><button class="link-btn" style="color:var(--red);font-size:11.5px" onclick="removeFromCart('${i.unitId}')">Hapus</button></div>
+    </div>`).join('') : `<div class="empty" style="padding:24px"><div class="ic">${icon('cart',26)}</div>Keranjang kosong</div>`;
+  const sum = document.getElementById('sw-summary');
+  if(sum) sum.innerHTML = `
+    <div class="divider"></div>
+    <div style="font-size:13px;line-height:2">
+      Subtotal <span style="float:right">${rupiah(subtotal)}</span><br/>
+      Diskon <span style="float:right">- ${rupiah(discount)}</span><br/>
+      Deposit (jaminan) <span style="float:right">${rupiah(deposit)}</span><br/>
+      <b style="font-size:14.5px">Total Dibayar <span style="float:right">${rupiah(grandTotal)}</span></b>
+    </div>`;
+}
+async function confirmRental(){
+  if(sewaState.cart.length===0){ toast('Keranjang masih kosong','err'); return; }
+  const customerId = document.getElementById('sw-cust').value;
+  const startAt = document.getElementById('sw-start').value;
+  if(!startAt){ toast('Waktu mulai wajib diisi','err'); return; }
+  const cust = customerById(customerId);
+  const subtotal = sewaState.cart.reduce((s,i)=>s+i.lineTotal,0);
+  const discount = sewaState.discount||0;
+  const deposit = Math.round(subtotal*0.5/10000)*10000;
+  const grandTotal = subtotal-discount+deposit;
+  // due date = latest of (start + qty in that unit)
+  let dueAt = new Date(startAt);
+  sewaState.cart.forEach(i=>{
+    let d = new Date(startAt);
+    if(i.priceType==='hour') d = addHours(d,i.qty);
+    else if(i.priceType==='day') d = addDays(d,i.qty);
+    else if(i.priceType==='week') d = addDays(d,i.qty*7);
+    else if(i.priceType==='month') d = addDays(d,i.qty*30);
+    if(d>dueAt) dueAt=d;
+  });
+  const rid = await nextId('RNT');
+  const rental = { id:rid, code:rid, customerId, customerName:cust.name, items:[...sewaState.cart], startAt:new Date(startAt).toISOString(), dueAt: dueAt.toISOString(), returnedAt:null, subtotal, discount, deposit, penalty:0, damageFee:0, refund:null, grandTotal, paymentStatus:'PAID', status:'ONGOING', method: sewaState.method, createdAt: iso(new Date()) };
+  DATA.rentals.push(rental); await persist('rentals',rental);
+  const payId = await nextId('PAY');
+  const payment = {id:payId, rentalId:rid, amount:grandTotal, method:sewaState.method, type:'rental_payment', note:'Pembayaran sewa '+rid, createdAt: iso(new Date())};
+  DATA.payments.push(payment); await persist('payments',payment);
+  const depId = await nextId('DEP');
+  const depRow = {id:depId, rentalId:rid, amount:deposit, status:'HELD', refundedAmount:0, createdAt: iso(new Date())};
+  DATA.deposits.push(depRow); await persist('deposits',depRow);
+  for(const it of rental.items){
+    const u = unitById(it.unitId); u.status='RENTED'; await persist('units',u);
+    const mv = {id:uid(), unitId:it.unitId, productId:it.productId, type:'RENT_OUT', refType:'rental', refId:rid, note:'Sewa keluar - '+rid, createdAt: iso(new Date())};
+    DATA.movements.push(mv); await persist('movements',mv);
+  }
+  writeAudit('CREATE','rental', CURRENT_USER+' membuat transaksi sewa '+rid+' untuk '+cust.name+' senilai '+rupiah(grandTotal)+'.');
+  sewaState.cart = []; sewaState.discount = 0;
+  toast('Transaksi sewa '+rid+' berhasil dibuat','ok');
+  location.hash = '#/transaksi/aktif';
+}
+
+/* ============================================================
+   TRANSAKSI - RENTAL AKTIF
+   ============================================================ */
+function renderRentalAktif(){
+  const now = new Date();
+  const active = [...DATA.rentals.filter(r=>r.status==='ONGOING')].sort((a,b)=>new Date(a.dueAt)-new Date(b.dueAt));
+  document.getElementById('content').innerHTML = `
+    <div class="page-head"><div><h1>Rental Aktif</h1><p class="sub">${active.length} rental sedang berjalan</p></div></div>
+    <div class="card table-wrap"><table><thead><tr><th>Kode</th><th>Pelanggan</th><th>Barang</th><th>Mulai</th><th>Jatuh Tempo</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>
+      ${active.map(r=>{
+        const overdue = new Date(r.dueAt) < now;
+        return `<tr><td style="font-weight:600">${r.code}</td><td>${esc(r.customerName)}</td><td>${r.items.map(i=>esc(i.productName)+' ('+i.unitCode+')').join(', ')}</td>
+        <td>${fmtDateTime(r.startAt)}</td><td style="color:${overdue?'var(--red)':'inherit'}">${fmtDateTime(r.dueAt)}${overdue?' '+icon('alerttriangle',12):''}</td><td>${rupiah(r.grandTotal)}</td>
+        <td>${overdue?statusBadge('DAMAGED').replace('Rusak','Terlambat'):statusBadge('ONGOING')}</td>
+        <td><button class="btn btn-sm btn-ghost" onclick="location.hash='#/transaksi/pengembalian'">Proses Kembali</button></td></tr>`;
+      }).join('') || `<tr><td colspan="8"><div class="empty"><div class="ic">${icon('clipboard',26)}</div>Tidak ada rental aktif saat ini</div></td></tr>`}
+    </tbody></table></div>
+  `;
+}
+
+/* ============================================================
+   TRANSAKSI - PENGEMBALIAN
+   ============================================================ */
+const PENALTY_RATE_PER_DAY = 0.1; // 10% dari tarif harian per hari keterlambatan
+function renderPengembalian(){
+  const active = DATA.rentals.filter(r=>r.status==='ONGOING');
+  document.getElementById('content').innerHTML = `
+    <div class="page-head"><div><h1>Pengembalian</h1><p class="sub">Cari transaksi untuk memproses pengembalian barang</p></div></div>
+    <div class="toolbar"><select id="ret-select" style="min-width:340px" onchange="loadReturnForm(this.value)">
+      <option value="">Pilih transaksi rental aktif</option>
+      ${active.map(r=>`<option value="${r.id}">${r.code} (${esc(r.customerName)})</option>`).join('')}
+    </select></div>
+    <div id="ret-form"></div>
+  `;
+}
+function loadReturnForm(rid){
+  const box = document.getElementById('ret-form');
+  if(!rid){ box.innerHTML=''; return; }
+  const r = DATA.rentals.find(x=>x.id===rid);
+  const now = new Date();
+  const lateMs = now - new Date(r.dueAt);
+  const lateDays = Math.max(0, Math.ceil(lateMs/86400000));
+  box.innerHTML = `
+    <div class="panel">
+      <div class="section-title">Inspeksi Barang ${r.code}</div>
+      <p class="sub" style="margin:-6px 0 14px">Pelanggan: <b>${esc(r.customerName)}</b> · Jatuh tempo: <b>${fmtDateTime(r.dueAt)}</b> ${lateDays>0?`· <span style="color:var(--red)">Terlambat ${lateDays} hari</span>`:''}</p>
+      ${r.items.map((it,idx)=>`
+        <div class="pick-card" style="cursor:default">
+          <div class="top"><span>${esc(it.productName)} (${it.unitCode})</span></div>
+          <div class="row" style="margin-top:10px">
+            <div class="field"><label>Kondisi Fisik</label><select id="ret-cond-${idx}"><option>Baik / Utuh</option><option>Ada Kerusakan Ringan</option><option>Ada Kerusakan Berat</option><option>Hilang</option></select></div>
+            <div class="field"><label>Biaya Kerusakan (Rp)</label><input id="ret-damage-${idx}" type="number" value="0" oninput="recalcReturn('${rid}')"/></div>
+          </div>
+          <div class="field"><label>Catatan Inspeksi</label><input id="ret-note-${idx}" placeholder="Kelengkapan, kebersihan, fungsi..."/></div>
+        </div>`).join('')}
+      <div class="divider"></div>
+      <div class="row">
+        <div class="field"><label>Hari Terlambat</label><input id="ret-latedays" type="number" value="${lateDays}" oninput="recalcReturn('${rid}')"/></div>
+        <div class="field"><label>Tarif Denda / Hari</label><input value="${(PENALTY_RATE_PER_DAY*100)}% dari tarif harian" disabled/></div>
+      </div>
+      <div id="ret-summary"></div>
+      <div class="form-actions"><button class="btn btn-primary" onclick="processReturn('${rid}')">Selesaikan Pengembalian</button></div>
+    </div>
+  `;
+  recalcReturn(rid);
+}
+function recalcReturn(rid){
+  const r = DATA.rentals.find(x=>x.id===rid);
+  const lateDays = Math.max(0, +document.getElementById('ret-latedays').value||0);
+  const dailyRate = r.subtotal / (r.items.reduce((s,i)=>s+ (i.priceType==='day'?i.qty:1),0) || 1);
+  const penalty = Math.round(lateDays * dailyRate * PENALTY_RATE_PER_DAY);
+  let damageFee = 0;
+  r.items.forEach((it,idx)=>{ const el=document.getElementById('ret-damage-'+idx); if(el) damageFee += (+el.value||0); });
+  const refund = Math.max(0, r.deposit - penalty - damageFee);
+  const shortfall = Math.max(0, penalty+damageFee-r.deposit);
+  document.getElementById('ret-summary').innerHTML = `
+    <div style="font-size:13.5px;line-height:2;background:var(--sky);border-radius:8px;padding:12px 14px">
+      Deposit ditahan <span style="float:right">${rupiah(r.deposit)}</span><br/>
+      Denda keterlambatan (${lateDays} hari) <span style="float:right">- ${rupiah(penalty)}</span><br/>
+      Biaya kerusakan <span style="float:right">- ${rupiah(damageFee)}</span><br/>
+      <b>Refund ke pelanggan <span style="float:right">${rupiah(refund)}</span></b>
+      ${shortfall>0?`<br/><span style="color:var(--red)">Kekurangan yang harus ditagih ke pelanggan: ${rupiah(shortfall)}</span>`:''}
+    </div>`;
+}
+async function processReturn(rid){
+  const r = DATA.rentals.find(x=>x.id===rid);
+  const lateDays = Math.max(0, +document.getElementById('ret-latedays').value||0);
+  const dailyRate = r.subtotal / (r.items.reduce((s,i)=>s+ (i.priceType==='day'?i.qty:1),0) || 1);
+  const penalty = Math.round(lateDays * dailyRate * PENALTY_RATE_PER_DAY);
+  let damageFee = 0; const conditions=[];
+  r.items.forEach((it,idx)=>{ damageFee += (+document.getElementById('ret-damage-'+idx).value||0); conditions.push(document.getElementById('ret-cond-'+idx).value); });
+  const refund = Math.max(0, r.deposit-penalty-damageFee);
+
+  r.returnedAt = iso(new Date()); r.penalty = penalty; r.damageFee = damageFee; r.refund = refund; r.status='COMPLETED';
+  await persist('rentals', r);
+
+  for(let idx=0; idx<r.items.length; idx++){
+    const it = r.items[idx]; const u = unitById(it.unitId);
+    const cond = conditions[idx];
+    u.status = cond==='Hilang' ? 'LOST' : (cond==='Baik / Utuh' ? 'AVAILABLE' : 'MAINTENANCE');
+    u.condition = cond==='Baik / Utuh' ? 'Baik' : cond;
+    await persist('units', u);
+    const mv = {id:uid(), unitId:it.unitId, productId:it.productId, type:'RETURN', refType:'rental', refId:rid, note:'Pengembalian - kondisi: '+cond, createdAt: iso(new Date())};
+    DATA.movements.push(mv); await persist('movements', mv);
+  }
+  const dep = DATA.deposits.find(d=>d.rentalId===rid);
+  if(dep){ dep.status = (penalty+damageFee>=dep.amount) ? 'FORFEITED' : (refund<dep.amount?'PARTIAL_REFUND':'REFUNDED'); dep.refundedAmount=refund; await persist('deposits',dep); }
+  if(refund>0){
+    const payId = await nextId('PAY');
+    const payment = {id:payId, rentalId:rid, amount:refund, method:r.method, type:'deposit_refund', note:'Refund deposit '+rid, createdAt: iso(new Date())};
+    DATA.payments.push(payment); await persist('payments',payment);
+  }
+  writeAudit('UPDATE','rental', CURRENT_USER+' memproses pengembalian '+rid+'. Denda '+rupiah(penalty)+', kerusakan '+rupiah(damageFee)+', refund '+rupiah(refund)+'.');
+  toast('Pengembalian selesai diproses','ok');
+  location.hash = '#/transaksi/riwayat';
+}
+
+/* ============================================================
+   TRANSAKSI - RIWAYAT
+   ============================================================ */
+function renderRiwayat(){
+  const state = renderRiwayat._s || {status:'', from:'', to:''};
+  renderRiwayat._s = state;
+  document.getElementById('content').innerHTML = `
+    <div class="page-head"><div><h1>Riwayat Transaksi</h1><p class="sub">${DATA.rentals.length} total transaksi</p></div></div>
+    <div class="toolbar">
+      <select onchange="renderRiwayat._s.status=this.value; renderRiwayatList()">
+        <option value="">Semua Status</option>
+        ${['ONGOING','COMPLETED','CANCELLED'].map(s=>`<option value="${s}">${s}</option>`).join('')}
+      </select>
+      <input type="date" onchange="renderRiwayat._s.from=this.value; renderRiwayatList()"/>
+      <span style="color:var(--muted);font-size:12.5px">s/d</span>
+      <input type="date" onchange="renderRiwayat._s.to=this.value; renderRiwayatList()"/>
+    </div>
+    <div id="riwayat-list"></div>
+  `;
+  renderRiwayatList();
+}
+function renderRiwayatList(){
+  const s = renderRiwayat._s;
+  let list = [...DATA.rentals].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  if(s.status) list = list.filter(r=>r.status===s.status);
+  if(s.from) list = list.filter(r=>new Date(r.createdAt) >= new Date(s.from));
+  if(s.to) list = list.filter(r=>new Date(r.createdAt) <= new Date(s.to+'T23:59:59'));
+  document.getElementById('riwayat-list').innerHTML = `
+    <div class="card table-wrap"><table><thead><tr><th>Kode</th><th>Pelanggan</th><th>Barang</th><th>Tanggal</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>
+      ${list.map(r=>`<tr><td style="font-weight:600">${r.code}</td><td>${esc(r.customerName)}</td><td>${r.items.map(i=>esc(i.productName)).join(', ')}</td>
+        <td>${fmtDate(r.createdAt)}</td><td>${rupiah(r.grandTotal)}</td><td>${statusBadge(r.status)}</td>
+        <td><button class="link-btn" onclick="viewRentalDetail('${r.id}')">Detail</button></td></tr>`).join('') || '<tr><td colspan="7"><div class="empty">Tidak ada transaksi</div></td></tr>'}
+    </tbody></table></div>
+  `;
+}
+function viewRentalDetail(id){
+  const r = DATA.rentals.find(x=>x.id===id);
+  openOverlay(`
+    <div class="modal wide">
+      <div class="modal-head"><h3>${r.code}</h3><button class="x-close" onclick="closeOverlays()">${icon('x',16)}</button></div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Pelanggan: <b style="color:var(--ink)">${esc(r.customerName)}</b> · ${statusBadge(r.status)}</div>
+      <div class="table-wrap"><table><thead><tr><th>Barang</th><th>Unit</th><th>Tipe</th><th>Qty</th><th>Subtotal</th></tr></thead><tbody>
+        ${r.items.map(i=>`<tr><td>${esc(i.productName)}</td><td>${i.unitCode}</td><td>${i.priceType}</td><td>${i.qty}</td><td>${rupiah(i.lineTotal)}</td></tr>`).join('')}
+      </tbody></table></div>
+      <div class="divider"></div>
+      <div style="font-size:13.5px;line-height:2">
+        Mulai <span style="float:right">${fmtDateTime(r.startAt)}</span><br/>
+        Jatuh tempo <span style="float:right">${fmtDateTime(r.dueAt)}</span><br/>
+        ${r.returnedAt?`Dikembalikan <span style="float:right">${fmtDateTime(r.returnedAt)}</span><br/>`:''}
+        Subtotal <span style="float:right">${rupiah(r.subtotal)}</span><br/>
+        Diskon <span style="float:right">-${rupiah(r.discount)}</span><br/>
+        Deposit <span style="float:right">${rupiah(r.deposit)}</span><br/>
+        ${r.penalty?`Denda <span style="float:right">-${rupiah(r.penalty)}</span><br/>`:''}
+        ${r.damageFee?`Kerusakan <span style="float:right">-${rupiah(r.damageFee)}</span><br/>`:''}
+        ${r.refund!==null?`Refund <span style="float:right">${rupiah(r.refund)}</span><br/>`:''}
+        <b>Total <span style="float:right">${rupiah(r.grandTotal)}</span></b>
+      </div>
+    </div>`, {center:true});
+}
+
+/* ============================================================
+   KEUANGAN
+   ============================================================ */
+function renderPembayaran(){
+  const list = [...DATA.payments].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  const typeLabel = {rental_payment:'Pembayaran Sewa', deposit_refund:'Refund Deposit', deposit_charge:'Potongan Deposit'};
+  document.getElementById('content').innerHTML = `
+    <div class="page-head"><div><h1>Pembayaran</h1><p class="sub">${list.length} catatan pembayaran</p></div></div>
+    <div class="card table-wrap"><table><thead><tr><th>Tanggal</th><th>Transaksi</th><th>Jenis</th><th>Metode</th><th>Nominal</th></tr></thead><tbody>
+      ${list.map(p=>`<tr><td>${fmtDateTime(p.createdAt)}</td><td>${p.rentalId}</td><td>${typeLabel[p.type]||p.type}</td><td><span class="tag-inline">${p.method}</span></td><td style="font-weight:600">${rupiah(p.amount)}</td></tr>`).join('') || '<tr><td colspan="5"><div class="empty">Belum ada pembayaran</div></td></tr>'}
+    </tbody></table></div>
+  `;
+}
+function renderDeposit(){
+  const list = [...DATA.deposits].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  const totalHeld = list.filter(d=>d.status==='HELD').reduce((s,d)=>s+d.amount,0);
+  document.getElementById('content').innerHTML = `
+    <div class="page-head"><div><h1>Deposit</h1><p class="sub">Total deposit ditahan saat ini: <b>${rupiah(totalHeld)}</b></p></div></div>
+    <div class="card table-wrap"><table><thead><tr><th>Transaksi</th><th>Nominal Deposit</th><th>Status</th><th>Jumlah Direfund</th><th>Tanggal</th></tr></thead><tbody>
+      ${list.map(d=>`<tr><td>${d.rentalId}</td><td>${rupiah(d.amount)}</td><td>${statusBadge(d.status)}</td><td>${rupiah(d.refundedAmount)}</td><td>${fmtDate(d.createdAt)}</td></tr>`).join('') || '<tr><td colspan="5"><div class="empty">Belum ada data deposit</div></td></tr>'}
+    </tbody></table></div>
+  `;
+}
+function renderExpense(){
+  document.getElementById('content').innerHTML = `
+    <div class="page-head"><div><h1>Expense</h1><p class="sub">${DATA.expenses.length} catatan pengeluaran</p></div>
+    ${can('finance.*')||can('finance.view')||can('*')?`<button class="btn btn-primary" onclick="openExpenseForm()">${icon('plus',13)} Catat Pengeluaran</button>`:''}</div>
+    <div class="card table-wrap"><table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Deskripsi</th><th>Nominal</th><th>Oleh</th></tr></thead><tbody>
+      ${[...DATA.expenses].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(e=>`<tr><td>${fmtDate(e.date)}</td><td><span class="tag-inline">${esc(e.category)}</span></td><td>${esc(e.description)}</td><td style="font-weight:600">${rupiah(e.amount)}</td><td>${esc(e.user)}</td></tr>`).join('') || '<tr><td colspan="5"><div class="empty">Belum ada pengeluaran</div></td></tr>'}
+    </tbody></table></div>
+  `;
+}
+function openExpenseForm(){
+  openOverlay(`
+    <div class="modal">
+      <div class="modal-head"><h3>Catat Pengeluaran</h3><button class="x-close" onclick="closeOverlays()">${icon('x',16)}</button></div>
+      <div class="field"><label>Kategori</label><input id="ex-cat" placeholder="mis. Operasional"/></div>
+      <div class="row">
+        <div class="field"><label>Nominal (Rp)</label><input id="ex-amt" type="number" value="0"/></div>
+        <div class="field"><label>Tanggal</label><input id="ex-date" type="date" value="${new Date().toISOString().slice(0,10)}"/></div>
+      </div>
+      <div class="field"><label>Deskripsi</label><textarea id="ex-desc"></textarea></div>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeOverlays()">Batal</button><button class="btn btn-primary" onclick="saveExpense()">Simpan</button></div>
+    </div>`, {center:true});
+}
+async function saveExpense(){
+  const category = document.getElementById('ex-cat').value.trim()||'Lainnya';
+  const amount = +document.getElementById('ex-amt').value||0;
+  if(amount<=0){ toast('Nominal harus lebih dari 0','err'); return; }
+  const eid = await nextId('EXP');
+  const e = {id:eid, category, amount, date: document.getElementById('ex-date').value, description: document.getElementById('ex-desc').value.trim(), user: CURRENT_USER, createdAt: iso(new Date())};
+  DATA.expenses.push(e); await persist('expenses',e);
+  writeAudit('CREATE','expense', CURRENT_USER+' mencatat pengeluaran '+category+' sebesar '+rupiah(amount)+'.');
+  closeOverlays(); toast('Pengeluaran dicatat','ok'); renderExpense();
+}
+
+/* ============================================================
+   LAPORAN
+   ============================================================ */
+function renderLaporan(){
+  const now = new Date();
+  const revenue = DATA.rentals.filter(r=>r.status!=='CANCELLED').reduce((s,r)=>s+r.subtotal-r.discount,0);
+  const expense = DATA.expenses.reduce((s,e)=>s+e.amount,0);
+  const penaltyTotal = DATA.rentals.reduce((s,r)=>s+r.penalty,0);
+  const topProducts = {};
+  DATA.rentals.forEach(r=>{ if(r.status==='CANCELLED') return; r.items.forEach(it=>{ topProducts[it.productName]=(topProducts[it.productName]||0)+1; }); });
+  const topList = Object.entries(topProducts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  document.getElementById('content').innerHTML = `
+    <div class="page-head"><div><h1>Laporan</h1><p class="sub">Ringkasan performa bisnis rental</p></div>
+      <button class="btn btn-ghost" onclick="exportCSV()">${icon('download',13)} Export CSV</button>
+    </div>
+    <div class="stat-strip">
+      <div class="stat"><div class="lbl">Total Pendapatan</div><div class="val">${rupiah(revenue)}</div></div>
+      <div class="stat"><div class="lbl">Total Expense</div><div class="val">${rupiah(expense)}</div></div>
+      <div class="stat"><div class="lbl">Profit Sederhana</div><div class="val" style="color:${revenue-expense>=0?'var(--green)':'var(--red)'}">${rupiah(revenue-expense)}</div></div>
+      <div class="stat"><div class="lbl">Total Denda Terkumpul</div><div class="val small">${rupiah(penaltyTotal)}</div></div>
+      <div class="stat"><div class="lbl">Total Transaksi</div><div class="val">${DATA.rentals.length}</div></div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="section-title">Barang Terlaris</div>
+        <div class="table-wrap"><table><thead><tr><th>Barang</th><th>Jumlah Disewa</th></tr></thead><tbody>
+          ${topList.map(([n,c])=>`<tr><td>${esc(n)}</td><td>${c}x</td></tr>`).join('')}
+        </tbody></table></div>
+      </div>
+      <div class="panel">
+        <div class="section-title">Laporan Inventory</div>
+        <div class="table-wrap"><table><thead><tr><th>Status</th><th>Jumlah Unit</th></tr></thead><tbody>
+          ${['AVAILABLE','RENTED','RESERVED','MAINTENANCE','DAMAGED','LOST'].map(s=>`<tr><td>${statusBadge(s)}</td><td>${DATA.units.filter(u=>u.status===s).length}</td></tr>`).join('')}
+        </tbody></table></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <div class="section-title">Laporan Pelanggan Teratas</div>
+      <div class="table-wrap"><table><thead><tr><th>Pelanggan</th><th>Jumlah Transaksi</th><th>Total Belanja</th></tr></thead><tbody>
+        ${[...DATA.customers].map(c=>{ const rs=DATA.rentals.filter(r=>r.customerId===c.id && r.status!=='CANCELLED'); return {c, count:rs.length, total:rs.reduce((s,r)=>s+r.subtotal-r.discount,0)}; })
+          .filter(x=>x.count>0).sort((a,b)=>b.total-a.total).slice(0,10)
+          .map(x=>`<tr><td>${esc(x.c.name)}</td><td>${x.count}x</td><td>${rupiah(x.total)}</td></tr>`).join('') || '<tr><td colspan="3"><div class="empty">Belum ada data</div></td></tr>'}
+      </tbody></table></div>
+    </div>
+  `;
+}
+async function exportCSV(){
+  const rows = [['Kode','Pelanggan','Barang','Tanggal','Subtotal','Diskon','Deposit','Denda','Kerusakan','Total','Status']];
+  DATA.rentals.forEach(r=>rows.push([r.code, r.customerName, r.items.map(i=>i.productName).join(' | '), fmtDate(r.createdAt), r.subtotal, r.discount, r.deposit, r.penalty, r.damageFee, r.grandTotal, r.status]));
+  const csv = rows.map(row=>row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\\n');
+  try{
+    const downloads = window.claude ? await window.claude.use('downloads') : null;
+    if(downloads){ await downloads.save({filename:'sewapos-laporan-transaksi.csv', data:csv}); toast('File CSV siap diunduh','ok'); return; }
+  }catch(e){ /* fall through */ }
+  toast('Fitur unduh file tidak tersedia di tampilan ini','err');
+}
+
+/* ============================================================
+   USER & ROLE
+   ============================================================ */
+function renderUserRole(){
+  const isOwner = can('*') || (roleDef(CURRENT_ROLE)&&roleDef(CURRENT_ROLE).permissions.includes('*'));
+  document.getElementById('content').innerHTML = `
+    <div class="page-head"><div><h1>User &amp; Role</h1><p class="sub">Peran aktif: <b>${CURRENT_ROLE}</b>. Ganti di kanan atas untuk melihat hak akses lain.</p></div></div>
+    <div class="panel" style="margin-bottom:16px;background:var(--blue-soft);border-color:#C9DCFB">
+      <div style="font-size:12.5px;color:var(--navy-2);line-height:1.6">
+        ${icon('shield',14)} <b>Rekomendasi keamanan sistem:</b> hanya peran <b>Owner</b> yang dapat membuat, mengubah, atau menghapus peran dan izin akses (role.manage). Ini mencegah peran lain menaikkan hak aksesnya sendiri. Peran Owner sendiri terkunci dan selalu memegang akses penuh.
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="page-head" style="margin-bottom:12px">
+          <div class="section-title" style="margin:0">Daftar User</div>
+          ${can('user.manage')?`<button class="btn btn-primary btn-sm" onclick="openAppUserForm()">${icon('plus',13)} Tambah User</button>`:''}
+        </div>
+        <div id="appuser-list"></div>
+      </div>
+      <div class="panel">
+        <div class="page-head" style="margin-bottom:12px">
+          <div class="section-title" style="margin:0">Daftar Role</div>
+          ${isOwner?`<button class="btn btn-primary btn-sm" onclick="openRoleForm()">${icon('plus',13)} Tambah Role</button>`:''}
+        </div>
+        <div id="role-list"></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <div class="section-title">Matriks Permission ${isOwner?'<span class="badge b-blue">dapat diedit</span>':'<span class="badge b-grey">lihat saja</span>'}</div>
+      <div id="perm-matrix"></div>
+    </div>
+  `;
+  renderAppUserList();
+  renderRoleList();
+  renderPermMatrix();
+}
+function renderAppUserList(){
+  document.getElementById('appuser-list').innerHTML = `
+    <div class="table-wrap"><table><thead><tr><th>Nama</th><th>Email</th><th>Role</th><th></th></tr></thead><tbody>
+      ${DATA.appusers.map(u=>{
+        const r = roleDef(u.role);
+        return `<tr><td>${esc(u.name)}</td><td style="font-size:12px;color:var(--muted)">${esc(u.email)}</td>
+        <td>${can('user.manage')?`<select onchange="changeAppUserRole('${u.id}',this.value)" style="border:1px solid var(--line);border-radius:6px;padding:4px 7px;font-size:12px">${DATA.roles.map(role=>`<option value="${role.id}" ${role.id===u.role?'selected':''}>${esc(role.label)}</option>`).join('')}</select>`:`<span class="badge b-blue">${r?esc(r.label):u.role}</span>`}</td>
+        <td>${can('user.manage')?`<button class="link-btn" style="color:var(--red)" onclick="deleteAppUser('${u.id}')">Hapus</button>`:''}</td></tr>`;
+      }).join('') || '<tr><td colspan="4"><div class="empty">Belum ada user</div></td></tr>'}
+    </tbody></table></div>
+  `;
+}
+function renderRoleList(){
+  const isOwner = roleDef(CURRENT_ROLE) && roleDef(CURRENT_ROLE).permissions.includes('*');
+  document.getElementById('role-list').innerHTML = DATA.roles.map(r=>`
+    <div style="padding:9px 0;border-bottom:1px solid #EDF1F6">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><b>${esc(r.label)}</b> ${r.isSystem?'<span class="badge b-grey">Sistem</span>':''}</div>
+        ${isOwner && !r.isSystem?`<span><button class="link-btn" onclick="openRoleForm('${r.id}')">Edit</button> &middot; <button class="link-btn" style="color:var(--red)" onclick="deleteRole('${r.id}')">Hapus</button></span>`:''}
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(r.description||'')}</div>
+    </div>`).join('');
+}
+function renderPermMatrix(){
+  const isOwner = roleDef(CURRENT_ROLE) && roleDef(CURRENT_ROLE).permissions.includes('*');
+  document.getElementById('perm-matrix').innerHTML = `
+    <div class="table-wrap"><table><thead><tr><th>Permission</th>${DATA.roles.map(r=>`<th>${esc(r.label)}</th>`).join('')}</tr></thead><tbody>
+      ${PERM_CATALOG.map(p=>`<tr><td style="font-size:12.5px">${p}</td>${DATA.roles.map(r=>{
+        if(r.isSystem){ return `<td style="text-align:center"><span style="color:var(--green)">${icon('check',14)}</span></td>`; }
+        const has = r.permissions.includes('*') || r.permissions.includes(p.split('.')[0]+'.*') || r.permissions.includes(p);
+        if(isOwner){
+          return `<td style="text-align:center"><input type="checkbox" ${has?'checked':''} onchange="togglePermission('${r.id}','${p}',this.checked)"/></td>`;
+        }
+        return `<td style="text-align:center">${has?'<span style="color:var(--green)">'+icon('check',14)+'</span>':'<span style="color:var(--muted)">'+icon('minus',14)+'</span>'}</td>`;
+      }).join('')}</tr>`).join('')}
+    </tbody></table></div>
+  `;
+}
+async function togglePermission(roleId, permKey, checked){
+  const r = roleDef(roleId);
+  if(!r || r.isSystem) return;
+  const ns = permKey.split('.')[0];
+  let perms = [...r.permissions];
+  if(checked){
+    if(!perms.includes('*') && !perms.includes(ns+'.*') && !perms.includes(permKey)) perms.push(permKey);
+  } else {
+    if(perms.includes(ns+'.*')){
+      const restOfNs = PERM_CATALOG.filter(p=>p.startsWith(ns+'.') && p!==permKey);
+      perms = perms.filter(p=>p!==ns+'.*').concat(restOfNs);
+    } else {
+      perms = perms.filter(p=>p!==permKey);
+    }
+  }
+  r.permissions = perms;
+  await persist('roles', r);
+  writeAudit('UPDATE','role', CURRENT_USER+' mengubah izin "'+permKey+'" untuk role '+r.label+' menjadi '+(checked?'aktif':'nonaktif')+'.');
+  renderPermMatrix();
+}
+function openRoleForm(id){
+  const r = id?roleDef(id):null;
+  openOverlay(`
+    <div class="modal wide">
+      <div class="modal-head"><h3>${r?'Edit':'Tambah'} Role</h3><button class="x-close" onclick="closeOverlays()">${icon('x',16)}</button></div>
+      <div class="row">
+        <div class="field"><label>Nama Role</label><input id="rf-label" value="${r?esc(r.label):''}" placeholder="mis. Supervisor"/></div>
+      </div>
+      <div class="field"><label>Deskripsi</label><textarea id="rf-desc">${r?esc(r.description||''):''}</textarea></div>
+      <div class="section-title" style="margin-top:6px">Izin Akses</div>
+      <div style="max-height:260px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:10px">
+        ${PERM_CATALOG.map(p=>{
+          const checked = r ? (r.permissions.includes('*')||r.permissions.includes(p.split('.')[0]+'.*')||r.permissions.includes(p)) : false;
+          return `<label style="display:flex;align-items:center;gap:8px;padding:4px 2px;font-size:13px"><input type="checkbox" data-perm="${p}" ${checked?'checked':''}/> ${p}</label>`;
+        }).join('')}
+      </div>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeOverlays()">Batal</button><button class="btn btn-primary" onclick="saveRole('${id||''}')">Simpan Role</button></div>
+    </div>`, {center:true});
+}
+async function saveRole(id){
+  const label = document.getElementById('rf-label').value.trim();
+  if(!label){ toast('Nama role wajib diisi','err'); return; }
+  const description = document.getElementById('rf-desc').value.trim();
+  const permissions = Array.from(document.querySelectorAll('[data-perm]')).filter(el=>el.checked).map(el=>el.dataset.perm);
+  if(id){
+    const r = roleDef(id); r.label=label; r.description=description; r.permissions=permissions; await persist('roles',r);
+    writeAudit('UPDATE','role', CURRENT_USER+' memperbarui role "'+label+'".');
+  } else {
+    const rid = 'ROLE-'+uid().toUpperCase();
+    const r = {id:rid, label, description, permissions, isSystem:false};
+    DATA.roles.push(r); await persist('roles',r);
+    writeAudit('CREATE','role', CURRENT_USER+' membuat role baru "'+label+'".');
+  }
+  closeOverlays(); buildRoleSelect(); toast('Role disimpan','ok'); renderUserRole();
+}
+function deleteRole(id){
+  const r = roleDef(id);
+  if(!r || r.isSystem){ toast('Role sistem tidak dapat dihapus','err'); return; }
+  if(DATA.appusers.some(u=>u.role===id)){ toast('Pindahkan user dari role ini sebelum menghapus','err'); return; }
+  confirmDialog('Role "'+r.label+'" akan dihapus permanen. Lanjutkan?', async ()=>{
+    DATA.roles = DATA.roles.filter(x=>x.id!==id); await idbDelete('roles', id);
+    writeAudit('DELETE','role', CURRENT_USER+' menghapus role "'+r.label+'".');
+    buildRoleSelect(); toast('Role dihapus','ok'); renderUserRole();
+  }, {title:'Hapus Role', danger:true, yesLabel:'Ya, Hapus'});
+}
+function openAppUserForm(){
+  openOverlay(`
+    <div class="modal">
+      <div class="modal-head"><h3>Tambah User</h3><button class="x-close" onclick="closeOverlays()">${icon('x',16)}</button></div>
+      <div class="field"><label>Nama</label><input id="uf-name" placeholder="Nama lengkap"/></div>
+      <div class="field"><label>Email</label><input id="uf-email" placeholder="nama@perusahaan.com"/></div>
+      <div class="field"><label>Role</label><select id="uf-role">${DATA.roles.map(r=>`<option value="${r.id}">${esc(r.label)}</option>`).join('')}</select></div>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeOverlays()">Batal</button><button class="btn btn-primary" onclick="saveAppUser()">Simpan</button></div>
+    </div>`, {center:true});
+}
+async function saveAppUser(){
+  const name = document.getElementById('uf-name').value.trim();
+  if(!name){ toast('Nama user wajib diisi','err'); return; }
+  const email = document.getElementById('uf-email').value.trim();
+  const role = document.getElementById('uf-role').value;
+  const nid = await nextId('USR');
+  const u = {id:nid, name, email, role, createdAt: iso(new Date())};
+  DATA.appusers.push(u); await persist('appusers',u);
+  writeAudit('CREATE','appuser', CURRENT_USER+' menambahkan user "'+name+'" dengan role '+role+'.');
+  closeOverlays(); toast('User ditambahkan','ok'); renderUserRole();
+}
+async function changeAppUserRole(id, role){
+  const u = DATA.appusers.find(x=>x.id===id); const oldRole=u.role; u.role=role; await persist('appusers',u);
+  writeAudit('UPDATE','appuser', CURRENT_USER+' mengubah role user "'+u.name+'" dari '+oldRole+' menjadi '+role+'.');
+  toast('Role user diperbarui','ok'); renderAppUserList();
+}
+function deleteAppUser(id){
+  const u = DATA.appusers.find(x=>x.id===id);
+  if(u.role==='OWNER' && DATA.appusers.filter(x=>x.role==='OWNER').length<=1){
+    toast('Tidak dapat menghapus satu-satunya user dengan role Owner','err'); return;
+  }
+  confirmDialog('User "'+u.name+'" akan dihapus. Lanjutkan?', async ()=>{
+    DATA.appusers = DATA.appusers.filter(x=>x.id!==id); await idbDelete('appusers', id);
+    writeAudit('DELETE','appuser', CURRENT_USER+' menghapus user "'+u.name+'".');
+    toast('User dihapus','ok'); renderAppUserList();
+  }, {title:'Hapus User', danger:true});
+}
+
+/* ============================================================
+   PANDUAN PENGGUNAAN
+   ============================================================ */
+function renderPanduan(){
+  const flow = [
+    {icon:'tag', label:'Kategori'}, {icon:'box', label:'Barang & Unit'}, {icon:'user', label:'Pelanggan'},
+    {icon:'calendar', label:'Booking'}, {icon:'plus', label:'Sewa Baru'}, {icon:'clock', label:'Rental Aktif'},
+    {icon:'undo', label:'Pengembalian'}, {icon:'list', label:'Riwayat & Laporan'},
+  ];
+  const steps = [
+    {icon:'tag', title:'Siapkan data master', desc:'Buat Kategori, lalu tambahkan Barang beserta harga sewa per jam/hari/minggu/bulan, dan daftarkan Unit fisik untuk tiap barang (mis. 3 unit kamera dengan kode berbeda).'},
+    {icon:'user', title:'Daftarkan pelanggan', desc:'Tambahkan data pelanggan di menu Pelanggan sebelum transaksi dibuat, atau langsung saat proses Sewa Baru.'},
+    {icon:'calendar', title:'Booking (opsional)', desc:'Jika pelanggan ingin memesan barang untuk tanggal tertentu di muka, buat Booking. Sistem otomatis mencegah bentrok jadwal pada unit yang sama.'},
+    {icon:'plus', title:'Buat transaksi Sewa Baru', desc:'Pilih pelanggan, pilih barang dan unit yang tersedia, tentukan durasi sewa, lalu konfirmasi pembayaran. Sistem menghitung subtotal, deposit, dan total otomatis. Status unit berubah menjadi Disewa.'},
+    {icon:'clock', title:'Pantau Rental Aktif', desc:'Semua transaksi berjalan tampil di sini beserta jatuh temponya. Transaksi yang melewati jatuh tempo ditandai sebagai terlambat.'},
+    {icon:'undo', title:'Proses Pengembalian', desc:'Saat barang kembali, buka menu Pengembalian, periksa kondisi tiap unit, dan sistem otomatis menghitung denda keterlambatan serta biaya kerusakan yang dipotong dari deposit. Sisa deposit dikembalikan ke pelanggan.'},
+    {icon:'list', title:'Cek Riwayat, Dashboard, dan Laporan', desc:'Transaksi yang selesai otomatis tercatat di Riwayat dan memperbarui angka di Dashboard serta Laporan (pendapatan, barang terlaris, laporan pelanggan).'},
+    {icon:'wallet', title:'Catat Keuangan', desc:'Pembayaran dan pengembalian deposit tercatat otomatis. Pengeluaran operasional dicatat manual di menu Expense untuk menghitung profit sederhana di Laporan.'},
+    {icon:'key', title:'Atur akses tim', desc:'Owner dapat menambah user, mengatur role, dan mengubah izin akses tiap role di menu User & Role.'},
+  ];
+  document.getElementById('content').innerHTML = `
+    <div class="page-head"><div><h1>Panduan Penggunaan</h1><p class="sub">Alur kerja utama SewaPOS dari data master sampai laporan</p></div></div>
+    <div class="panel" style="margin-bottom:16px">
+      <div class="section-title">Alur Transaksi</div>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+        ${flow.map((f,i)=>`<span class="tag-inline" style="display:inline-flex;align-items:center;gap:6px;padding:7px 11px">${icon(f.icon,14)} ${f.label}</span>${i<flow.length-1?icon('arrowright',14):''}`).join('')}
+      </div>
+    </div>
+    <div class="panel">
+      <div class="section-title">Langkah demi Langkah</div>
+      ${steps.map((s,i)=>`
+        <div style="display:flex;gap:14px;padding:13px 0;${i<steps.length-1?'border-bottom:1px solid #EDF1F6':''}">
+          <div style="width:30px;height:30px;border-radius:8px;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center;flex-shrink:0">${icon(s.icon,15)}</div>
+          <div><div style="font-weight:700;font-size:13.5px;margin-bottom:3px">${i+1}. ${s.title}</div><div style="font-size:12.8px;color:var(--muted);line-height:1.6">${s.desc}</div></div>
+        </div>`).join('')}
+    </div>
+  `;
+}
+
+/* ============================================================
+   PENGATURAN
+   ============================================================ */
+function renderPengaturan(){
+  document.getElementById('content').innerHTML = `
+    <div class="page-head"><div><h1>Pengaturan</h1><p class="sub">Informasi perusahaan &amp; kontrol data demo</p></div></div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="section-title">Informasi Perusahaan (Demo)</div>
+        <div style="font-size:13.5px;line-height:2">
+          Nama: <b>SewaPOS Demo Company</b><br/>
+          Paket: <span class="badge b-amber">Demo Mode</span><br/>
+          Outlet: 1 · User: 1 (peran dapat diganti untuk pratinjau) <br/>
+          Mata uang: IDR (Rp)
+        </div>
+      </div>
+      <div class="panel">
+        <div class="section-title">Paket &amp; Entitlement</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Semua fitur aktif dalam mode demo.</div>
+        ${['pos.basic','rental.basic','inventory.basic','booking','advanced.report','multi.user','multi.branch','audit.log'].map(e=>`<span class="tag-inline" style="margin:2px 4px 2px 0;display:inline-block">${e}</span>`).join('')}
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <div class="section-title">Audit Log Terbaru</div>
+      <div class="table-wrap"><table><thead><tr><th>Waktu</th><th>User</th><th>Aksi</th></tr></thead><tbody>
+        ${[...DATA.auditlogs].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,15).map(l=>`<tr><td>${fmtDateTime(l.createdAt)}</td><td>${esc(l.user)}</td><td>${esc(l.text)}</td></tr>`).join('') || '<tr><td colspan="3"><div class="empty">Belum ada aktivitas</div></td></tr>'}
+      </tbody></table></div>
+    </div>
+    <div class="panel" style="margin-top:16px;border-color:var(--red)">
+      <div class="section-title" style="color:var(--red)">Zona Reset Demo</div>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 12px">Mengembalikan semua data demo ke kondisi awal. Tidak dapat dibatalkan.</p>
+      <button class="btn btn-danger" onclick="doResetDemo()">${icon('undo',13)} Reset Demo</button>
+    </div>
+  `;
+}
+function doResetDemo(){
+  confirmDialog('Semua data demo akan direset ke kondisi awal. Lanjutkan?', async ()=>{
+    await seedDemoData();
+    await loadAllFromDB();
+    CURRENT_ROLE = 'OWNER';
+    buildRoleSelect();
+    toast('Demo berhasil direset ke kondisi awal','ok');
+    location.hash = '#/dashboard'; route();
+  }, {title:'Reset Demo Mode', danger:true, yesLabel:'Ya, Reset Sekarang'});
+}
+
+/* ============================================================
+   BOOT SEQUENCE
+   ============================================================ */
+async function startDemo(){
+  const bootEl = document.getElementById('boot');
+  const errEl = document.getElementById('boot-error');
+  errEl.style.display = 'none';
+  bootEl.classList.add('loading');
+  document.getElementById('btn-start-demo').disabled = true;
+  try{
+    await bootSequence();
+  }catch(err){
+    console.error(err);
+    // Any lingering IndexedDB failure (e.g. a stale schema this session couldn't
+    // repair) falls back to the in-memory store instead of leaving the user stuck.
+    try{
+      MEM_FALLBACK = true; memInit(); _db = null;
+      await bootSequence();
+      return;
+    }catch(err2){
+      console.error(err2);
+      bootEl.classList.remove('loading');
+      document.getElementById('btn-start-demo').disabled = false;
+      errEl.textContent = 'Gagal memuat data demo (' + (err2 && err2.message ? err2.message : 'kesalahan tidak diketahui') + '). Coba tombol di bawah atau muat ulang halaman.';
+      errEl.style.display = 'block';
+    }
+  }
+}
+async function bootSequence(){
+  const bootEl = document.getElementById('boot');
+  if(!MEM_FALLBACK) _db = await idbOpenSafe();
+  const metaRows = await idbGetAll('meta');
+  const seeded = metaRows.find(m=>m.key==='seeded');
+  if(!seeded){ await seedDemoData(); }
+  await loadAllFromDB();
+  buildNav();
+  buildRoleSelect();
+  document.getElementById('app').classList.add('ready');
+  bootEl.style.display='none';
+  route();
+  if(MEM_FALLBACK){
+    setTimeout(()=>toast('Penyimpanan browser tidak tersedia di sini. Demo berjalan tanpa menyimpan data setelah halaman ditutup.','err'), 400);
+  }
+}
+</script>
+</body>
+</html>
