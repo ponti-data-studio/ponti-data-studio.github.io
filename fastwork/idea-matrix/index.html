@@ -197,13 +197,23 @@
   var setupNotice = document.getElementById('setupNotice');
   var splash = document.getElementById('splash');
 
+  // Tautan atur ulang password di email: https://<domain>/.../idea-matrix/?reset=TOKEN
+  // Token diteruskan ke aplikasi di dalam iframe (hanya huruf/angka), lalu dihapus dari
+  // alamat browser supaya muat ulang halaman tidak membuka tautan yang sudah terpakai.
+  var resetToken = '';
+  try {
+    var rm = location.search.match(/[?&]reset=([A-Za-z0-9]{32,128})(?:&|$)/);
+    if (rm) resetToken = rm[1];
+    if (resetToken && window.history && history.replaceState) history.replaceState(null, '', location.pathname + location.hash);
+  } catch (e) { /* abaikan */ }
+
   if (!APP_URL || APP_URL.indexOf('REPLACE_WITH') === 0) {
     document.getElementById('setupNoticeUrl').textContent =
       "var APP_URL = 'https://script.google.com/macros/s/AKfycbxxxxxxxx/exec';";
     setupNotice.classList.add('show');
     splash.classList.add('hide');
   } else {
-    frame.src = APP_URL;
+    frame.src = APP_URL + (resetToken ? (APP_URL.indexOf('?') >= 0 ? '&' : '?') + 'reset=' + resetToken : '');
   }
 
   /* ------------------------------ SPLASH ------------------------------ */
