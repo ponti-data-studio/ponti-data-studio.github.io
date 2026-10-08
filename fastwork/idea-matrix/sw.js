@@ -10,7 +10,7 @@
  *
  * Setiap mengubah berkas cangkang, naikkan VERSION agar cache lama diganti.
  */
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.0.1';
 const CACHE = 'idea-matrix-shell-' + VERSION;
 const SHELL = [
   './',
