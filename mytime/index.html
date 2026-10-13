@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>Mytime</title>
+  <meta name="description" content="Invest Your Time. Build Your Future.">
+  <meta name="theme-color" content="#F5F7FA">
+  <!-- PWA:START -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Mytime">
+  <link rel="preload" href="fonts/pjs-600.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- PWA:END -->
+  <!-- CSS:START -->
+  <link rel="stylesheet" href="css/app.css">
+  <!-- CSS:END -->
+</head>
+<body>
+  <div id="boot" class="boot" role="status">Memuat Mytime…</div>
+  <div id="auth" class="hidden"></div>
+
+  <div id="app" class="app hidden">
+    <nav class="sidebar" id="sidebar" aria-label="Navigasi utama"></nav>
+
+    <main class="main" id="main">
+      <header class="topbar">
+        <button type="button" class="icon-btn back hidden" id="backBtn" aria-label="Kembali"></button>
+        <h1 id="pageTitle">Home</h1>
+        <button type="button" class="sync-chip" id="syncChip" data-status="online" aria-live="polite">
+          <span class="sdot"></span><span class="slabel">Online</span>
+        </button>
+        <button type="button" class="icon-btn" id="refreshBtn" aria-label="Muat ulang data"></button>
+      </header>
+      <div id="banners"></div>
+
+      <section class="section" id="sec-home" data-section="home"></section>
+      <section class="section" id="sec-tasks" data-section="tasks"></section>
+      <section class="section" id="sec-focus" data-section="focus"></section>
+      <section class="section" id="sec-goals" data-section="goals"></section>
+      <section class="section" id="sec-more" data-section="more"></section>
+      <section class="section" id="sec-track" data-section="track"></section>
+      <section class="section" id="sec-habits" data-section="habits"></section>
+      <section class="section" id="sec-budget" data-section="budget"></section>
+      <section class="section" id="sec-calendar" data-section="calendar"></section>
+      <section class="section" id="sec-analytics" data-section="analytics"></section>
+      <section class="section" id="sec-review" data-section="review"></section>
+      <section class="section" id="sec-journal" data-section="journal"></section>
+      <section class="section" id="sec-settings" data-section="settings"></section>
+    </main>
+
+    <nav class="bottom-nav" id="bottomNav" aria-label="Navigasi bawah"></nav>
+    <button type="button" class="timer-dock hidden" id="timerDock" aria-label="Buka timer yang sedang berjalan"></button>
+    <button type="button" class="fab" id="fab" aria-label="Tambah"></button>
+  </div>
+
+  <!-- VENDOR:START -->
+  <script src="vendor/sweetalert2.all.min.js"></script>
+  <!-- VENDOR:END -->
+  <!-- JS:START -->
+  <script src="config.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/repo.js"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/calc.js"></script>
+  <script src="js/timer.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/forms.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/views/home.js"></script>
+  <script src="js/views/tasks.js"></script>
+  <script src="js/views/track.js"></script>
+  <script src="js/views/focus.js"></script>
+  <script src="js/views/goals.js"></script>
+  <script src="js/views/habits.js"></script>
+  <script src="js/views/budget.js"></script>
+  <script src="js/views/calendar.js"></script>
+  <script src="js/views/analytics.js"></script>
+  <script src="js/views/review.js"></script>
+  <script src="js/views/journal.js"></script>
+  <script src="js/views/settings.js"></script>
+  <script src="js/views/more.js"></script>
+  <script src="js/app.js"></script>
+  <!-- JS:END -->
+</body>
+</html>

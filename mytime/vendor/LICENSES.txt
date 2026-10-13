@@ -1,0 +1,7 @@
+Third-party components bundled with Time Investment
+====================================================
+
+SweetAlert2 v11 (vendor/sweetalert2.all.min.js) — MIT License — https://sweetalert2.github.io
+Chart.js v4.5.1 (vendor/chart.umd.min.js) — MIT License — https://www.chartjs.org
+Lucide icons (js/icons.js) — ISC License — Copyright (c) Lucide Icons and Contributors — https://lucide.dev
+Plus Jakarta Sans (fonts/*.woff2) — SIL Open Font License 1.1 — see fonts/OFL.txt — Copyright 2020 The Plus Jakarta Sans Project Authors
