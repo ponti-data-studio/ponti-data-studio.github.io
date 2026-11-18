@@ -170,14 +170,6 @@
     </div>
   </div>
 
-  <iframe
-    id="app"
-    src=""
-    title="ERP Perhiasan — Produksi &amp; Material"
-    allow="clipboard-write; fullscreen"
-    referrerpolicy="no-referrer-when-downgrade">
-  </iframe>
-
   <div id="installModal" role="dialog" aria-modal="true" aria-labelledby="installTitle">
     <div class="install-backdrop" id="installBackdrop"></div>
     <div class="install-card">
@@ -197,7 +189,6 @@
   // formatnya: https://script.google.com/macros/s/AKfycb.../exec
   var APP_URL = 'https://script.google.com/macros/s/AKfycbxJvgyTi4dnEtL8oab-IMyOUvUIQNWX9bkaBjaAIx-q_nwaHawK_k32QX-IimBAMieFkA/exec';
 
-  var frame = document.getElementById('app');
   var setupNotice = document.getElementById('setupNotice');
   var splash = document.getElementById('splash');
 
@@ -207,7 +198,9 @@
     setupNotice.classList.add('show');
     splash.classList.add('hide');
   } else {
-    frame.src = APP_URL;
+    // Apps Script menolak dimuat di dalam iframe situs lain (X-Frame-Options),
+    // jadi buka langsung di jendela ini. Saat offline, tampilkan bar offline.
+    if (navigator.onLine) { window.location.replace(APP_URL); }
   }
 
   /* ------------------------------ SPLASH ------------------------------ */
@@ -218,7 +211,6 @@
     splash.classList.add('hide');
     setTimeout(function () { splash.remove(); }, 400);
   }
-  frame.addEventListener('load', hideSplash);
   // Jaring pengaman: kalau iframe lambat/gagal memicu 'load', jangan biarkan
   // splash menutupi aplikasi selamanya.
   setTimeout(hideSplash, 6000);
@@ -228,11 +220,11 @@
   function syncOnlineState() {
     offlineBar.classList.toggle('show', !navigator.onLine);
   }
-  window.addEventListener('online', syncOnlineState);
+  window.addEventListener('online', function () { syncOnlineState(); if (APP_URL) window.location.replace(APP_URL); });
   window.addEventListener('offline', syncOnlineState);
   document.getElementById('offlineRetry').addEventListener('click', function () {
-    if (frame.src) frame.src = frame.src; // muat ulang iframe
     syncOnlineState();
+    if (navigator.onLine && APP_URL) window.location.replace(APP_URL);
   });
   syncOnlineState();
 
