@@ -3,7 +3,7 @@
  * dan dipasang. Konten ERP itu sendiri ada di iframe Apps Script (lintas-origin)
  * dan TIDAK di-cache di sini: data/login selalu diambil langsung dari server.
  * Naikkan CACHE_VERSION setiap kali file shell diubah. */
-const CACHE_VERSION = 'erp-perhiasan-v1';
+const CACHE_VERSION = 'erp-perhiasan-v2';
 const SHELL = [
   './',
   './index.html',
@@ -20,7 +20,8 @@ const SHELL = [
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_VERSION)
-      .then((c) => c.addAll(SHELL))
+      // cache:'reload' = ambil baru dari server, jangan dari cache HTTP browser.
+      .then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' }))))
       .then(() => self.skipWaiting())
   );
 });
@@ -40,10 +41,10 @@ self.addEventListener('fetch', (e) => {
   // Jangan sentuh Apps Script / Google / domain lain: biarkan langsung ke jaringan.
   if (url.origin !== self.location.origin) return;
 
-  // Navigasi: jaringan dulu, jatuh ke index.html tersimpan saat offline.
+  // Navigasi: selalu ambil baru dari jaringan (lewati cache HTTP), jatuh ke index.html tersimpan saat offline.
   if (req.mode === 'navigate') {
     e.respondWith(
-      fetch(req).catch(() => caches.match('./index.html'))
+      fetch(req.url, { cache: 'reload' }).catch(() => caches.match('./index.html'))
     );
     return;
   }
