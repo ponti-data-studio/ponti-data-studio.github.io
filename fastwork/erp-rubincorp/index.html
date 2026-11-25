@@ -147,7 +147,39 @@
     border-radius:10px;font-size:12px;color:#0B3A78;word-break:break-all;
     text-align:left;
   }
+
+  /* ------------------- v1.6 JEMBATAN CETAK & KAMERA (untuk ERP di iframe) ------------------- */
+  #hpWrap{position:fixed;inset:0;z-index:80;display:none;flex-direction:column;background:#E2E8F0;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  #hpWrap.show{display:flex}
+  #hpBar{display:flex;gap:8px;align-items:center;padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top));
+    background:#0B3A78;color:#fff;font-size:14px;font-weight:600}
+  #hpBar span{flex:1}
+  #hpBar button,#hcBar button{border:0;border-radius:10px;padding:10px 14px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+  .hb-main{background:#C9951A;color:#1A1200}
+  .hb-sec{background:rgba(255,255,255,.16);color:#fff}
+  #hpScroll{flex:1;overflow:auto;padding:12px}
+  #hpArea{background:#fff;margin:0 auto;padding:8px;max-width:820px;box-shadow:0 2px 10px rgba(15,23,42,.15)}
+  #hcWrap{position:fixed;inset:0;z-index:85;display:none;flex-direction:column;background:#000;color:#fff;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  #hcWrap.show{display:flex}
+  #hcVideo{flex:1;width:100%;min-height:0;object-fit:contain;background:#000}
+  #hcFrame{position:absolute;left:50%;top:42%;width:62vmin;height:62vmin;transform:translate(-50%,-50%);
+    border:3px solid #F2D26B;border-radius:18px;box-shadow:0 0 0 9999px rgba(0,0,0,.35);display:none;pointer-events:none}
+  #hcWrap.scan #hcFrame{display:block}
+  #hcInfo{text-align:center;font-size:13px;padding:8px;color:#CBD5E1}
+  #hcBar{display:flex;gap:8px;justify-content:center;padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+  #hcWrap.scan #hcShot{display:none}
+  @media print{
+    html,body{height:auto!important;overflow:visible!important;background:#fff!important}
+    body.hp-printing>*{display:none!important}
+    body.hp-printing>#hpWrap{display:block!important;position:static!important;background:#fff!important}
+    body.hp-printing #hpBar{display:none!important}
+    body.hp-printing #hpScroll{overflow:visible!important;padding:0!important}
+    body.hp-printing #hpArea{box-shadow:none!important;padding:0!important;max-width:none!important;margin:0!important}
+  }
 </style>
+<style id="hpCss"></style>
 </head>
 <body>
 
@@ -189,6 +221,22 @@
         <button id="installConfirm" type="button">Pasang Aplikasi</button>
       </div>
     </div>
+  </div>
+
+  <!-- v1.6: pratinjau cetak & kamera untuk aplikasi ERP (dibuka atas permintaan aplikasi di iframe) -->
+  <div id="hpWrap" role="dialog" aria-modal="true" aria-label="Pratinjau cetak">
+    <div id="hpBar"><span id="hpTitle">Siap dicetak</span>
+      <button type="button" class="hb-sec" id="hpClose">Tutup</button>
+      <button type="button" class="hb-main" id="hpPrint">Cetak</button></div>
+    <div id="hpScroll"><div id="hpArea"></div></div>
+  </div>
+  <div id="hcWrap" role="dialog" aria-modal="true" aria-label="Kamera">
+    <video id="hcVideo" playsinline autoplay muted></video><div id="hcFrame"></div>
+    <div id="hcInfo">Membuka kamera…</div>
+    <div id="hcBar"><button type="button" class="hb-sec" id="hcCancel">Batal</button>
+      <button type="button" class="hb-sec" id="hcSwitch">Ganti kamera</button>
+      <button type="button" class="hb-main" id="hcShot">Ambil Foto</button></div>
+    <canvas id="hcCanvas" style="display:none"></canvas>
   </div>
 
 <script>
@@ -302,6 +350,157 @@
   if (isIOS && !isStandalone) {
     setTimeout(function () { openInstallModal('ios'); }, 1500);
   }
+  /* ---------------- v1.6 JEMBATAN CETAK & KAMERA UNTUK ERP ----------------
+   * Aplikasi ERP berjalan di iframe Apps Script. Di HP, mencetak dari dalam iframe sering gagal,
+   * dan kamera di iframe sering diblokir. Halaman ini (lapisan paling atas) yang mencetak & membuka
+   * kamera atas permintaan aplikasi, lalu mengirim hasilnya kembali lewat postMessage.
+   * Hanya pesan dari server Apps Script (*.googleusercontent.com) yang dilayani. */
+  (function () {
+    var hp = { wrap: document.getElementById('hpWrap'), area: document.getElementById('hpArea'), css: document.getElementById('hpCss') };
+    var hc = { wrap: document.getElementById('hcWrap'), video: document.getElementById('hcVideo'), info: document.getElementById('hcInfo'),
+      canvas: document.getElementById('hcCanvas'), stream: null, req: null, timer: null, detector: null, facing: 'environment', deviceIdx: 0 };
+
+    function trusted(origin) {
+      try { var u = new URL(origin); return u.protocol === 'https:' && /(^|\.)googleusercontent\.com$/.test(u.hostname); } catch (e) { return false; }
+    }
+    /** Pesan harus berasal dari aplikasi di dalam iframe halaman ini (bukan dari jendela/halaman lain). */
+    function fromOurFrame(src) {
+      try {
+        var target = frame.contentWindow;
+        for (var i = 0; src && i < 6; i++) { if (src === target) return true; if (src === src.parent) break; src = src.parent; }
+      } catch (e) { /* abaikan */ }
+      return false;
+    }
+    /** Bersihkan HTML cetak: tanpa script, atribut on*, atau tautan javascript:. */
+    function cleanHtml(html) {
+      var doc = new DOMParser().parseFromString('<div>' + String(html || '') + '</div>', 'text/html');
+      var bad = doc.querySelectorAll('script,iframe,object,embed,link,meta,base,form');
+      for (var i = 0; i < bad.length; i++) bad[i].remove();
+      var all = doc.body.querySelectorAll('*');
+      for (var j = 0; j < all.length; j++) {
+        for (var k = all[j].attributes.length - 1; k >= 0; k--) {
+          var a = all[j].attributes[k], v = String(a.value || '').trim().toLowerCase();
+          if (/^on/i.test(a.name) || ((a.name === 'href' || a.name === 'src' || a.name === 'xlink:href') && v.indexOf('javascript:') === 0)) all[j].removeAttribute(a.name);
+        }
+      }
+      return doc.body.firstChild ? doc.body.firstChild.innerHTML : '';
+    }
+    function reply(req, msg) {
+      msg.erpHost = 2; msg.id = req.id;
+      try { req.source.postMessage(msg, req.origin); } catch (e) { console.warn('ERP host reply', e); }
+    }
+    var caps = { print: true, camera: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia), version: 1 };
+
+    window.addEventListener('message', function (ev) {
+      var d = ev.data;
+      if (!d || typeof d !== 'object' || d.erpHost !== 1 || !trusted(ev.origin) || !fromOurFrame(ev.source)) return;
+      var req = { id: d.id, source: ev.source, origin: ev.origin };
+      if (d.type === 'HELLO') return reply(req, { type: 'HELLO', caps: caps });
+      if (d.type === 'PRINT') return openPrint(req, d.data || {});
+      if (d.type === 'PHOTO') return openCam(req, 'photo');
+      if (d.type === 'SCAN') return openCam(req, 'scan', d.data || {});
+      if (d.type === 'SCAN_RESULT' && hc.req && hc.req.id === d.id) return finishCam({ text: String(d.text || '') });
+    });
+    /* ---- Cetak ---- */
+    function openPrint(req, data) {
+      hp.css.textContent = String(data.css || '').replace(/@import[^;]*;?/gi, '').replace(/<\/?style/gi, '');
+      hp.area.className = 'print-' + String(data.kind || 'a4').replace(/[^a-z0-9]/gi, '');
+      hp.area.innerHTML = cleanHtml(data.html);
+      document.getElementById('hpTitle').textContent = 'Siap dicetak' + (data.title ? ' · ' + data.title : '');
+      hp.wrap.classList.add('show');
+      reply(req, { type: 'PRINT', ok: true });
+    }
+    function closePrint() {
+      hp.wrap.classList.remove('show'); document.body.classList.remove('hp-printing');
+      hp.area.innerHTML = ''; hp.css.textContent = '';
+    }
+    document.getElementById('hpPrint').addEventListener('click', function () {
+      document.body.classList.add('hp-printing');
+      setTimeout(function () {
+        try { window.print(); } catch (e) { alert('Dialog cetak tidak dapat dibuka: ' + e.message); }
+      }, 50);
+    });
+    window.addEventListener('afterprint', function () { document.body.classList.remove('hp-printing'); });
+    document.getElementById('hpClose').addEventListener('click', closePrint);
+
+    /* ---- Kamera (foto & scan QR) ---- */
+    function camConstraints() {
+      return { audio: false, video: { facingMode: { ideal: hc.facing }, width: { ideal: 1920 }, height: { ideal: 1080 } } };
+    }
+    function stopStream() {
+      if (hc.timer) { clearTimeout(hc.timer); hc.timer = null; }
+      if (hc.stream) { hc.stream.getTracks().forEach(function (t) { t.stop(); }); hc.stream = null; }
+      hc.video.srcObject = null;
+    }
+    function startStream() {
+      stopStream();
+      hc.info.textContent = 'Membuka kamera…';
+      return navigator.mediaDevices.getUserMedia(camConstraints()).then(function (st) {
+        hc.stream = st; hc.video.srcObject = st;
+        try { st.getVideoTracks()[0].applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function () { }); } catch (e) { /* abaikan */ }
+        return hc.video.play().catch(function () { });
+      });
+    }
+    function openCam(req, mode, opt) {
+      if (hc.req) finishCam({ cancel: true });
+      if (!caps.camera) return reply(req, { type: mode.toUpperCase(), error: 'Kamera tidak tersedia di perangkat/browser ini.' });
+      hc.req = req; hc.mode = mode; hc.opt = opt || {};
+      hc.wrap.classList.toggle('scan', mode === 'scan');
+      hc.wrap.classList.add('show');
+      startStream().then(function () {
+        hc.info.textContent = mode === 'scan' ? 'Arahkan kamera ke QR Code' : 'Arahkan kamera lalu tekan Ambil Foto';
+        if (mode === 'scan') scanLoop();
+      }).catch(function (err) {
+        var n = err && err.name;
+        finishCam({ error: n === 'NotAllowedError' ? 'Izin kamera ditolak. Izinkan kamera untuk situs ini di pengaturan browser.' :
+          n === 'NotFoundError' ? 'Kamera tidak ditemukan.' : n === 'NotReadableError' ? 'Kamera sedang dipakai aplikasi lain.' : ((err && err.message) || 'Kamera tidak dapat dibuka.') });
+      });
+    }
+    function finishCam(msg) {
+      var req = hc.req; hc.req = null;
+      stopStream();
+      hc.wrap.classList.remove('show', 'scan');
+      if (req) reply(req, Object.assign({ type: hc.mode === 'scan' ? 'SCAN' : 'PHOTO' }, msg));
+    }
+    function grab(maxSide, quality) {
+      var v = hc.video, w = v.videoWidth, h = v.videoHeight;
+      if (!w || !h) return null;
+      var k = Math.min(1, maxSide / Math.max(w, h));
+      hc.canvas.width = Math.round(w * k); hc.canvas.height = Math.round(h * k);
+      hc.canvas.getContext('2d').drawImage(v, 0, 0, hc.canvas.width, hc.canvas.height);
+      return hc.canvas.toDataURL('image/jpeg', quality);
+    }
+    function scanLoop() {
+      if (!hc.req || hc.mode !== 'scan') return;
+      var next = function (ms) { hc.timer = setTimeout(scanLoop, ms); };
+      if (hc.detector === null && 'BarcodeDetector' in window) {
+        try { hc.detector = new BarcodeDetector({ formats: ['qr_code'] }); } catch (e) { hc.detector = false; }
+      }
+      if (hc.detector && hc.video.readyState >= 2) {
+        hc.detector.detect(hc.video).then(function (r) {
+          if (r && r[0] && r[0].rawValue) { if (navigator.vibrate) navigator.vibrate(60); finishCam({ text: r[0].rawValue }); }
+          else next(150);
+        }).catch(function () { hc.detector = false; next(150); });
+        return;
+      }
+      // Tanpa BarcodeDetector: kirim gambar ke aplikasi untuk dibaca (jsQR di aplikasi).
+      if (hc.opt.decodeHere && hc.video.readyState >= 2) {
+        var url = grab(900, 0.75);
+        if (url) { try { hc.req.source.postMessage({ erpHost: 2, type: 'SCAN_FRAME', id: hc.req.id, dataUrl: url }, hc.req.origin); } catch (e) { /* abaikan */ } }
+      }
+      next(350);
+    }
+    document.getElementById('hcShot').addEventListener('click', function () {
+      var url = grab(1920, 0.85);
+      if (!url) { hc.info.textContent = 'Kamera belum siap, coba lagi.'; return; }
+      finishCam({ dataUrl: url });
+    });
+    document.getElementById('hcCancel').addEventListener('click', function () { finishCam({ cancel: true }); });
+    document.getElementById('hcSwitch').addEventListener('click', function () {
+      hc.facing = hc.facing === 'environment' ? 'user' : 'environment';
+      startStream().then(function () { if (hc.mode === 'scan') scanLoop(); }).catch(function () { hc.info.textContent = 'Kamera lain tidak tersedia.'; });
+    });
+  })();
 </script>
 </body>
 </html>
