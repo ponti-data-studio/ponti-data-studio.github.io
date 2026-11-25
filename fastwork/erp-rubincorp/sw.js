@@ -3,7 +3,7 @@
  * dan dipasang. Konten ERP itu sendiri ada di iframe Apps Script (lintas-origin)
  * dan TIDAK di-cache di sini: data/login selalu diambil langsung dari server.
  * Naikkan CACHE_VERSION setiap kali file shell diubah. */
-const CACHE_VERSION = 'erp-perhiasan-v2';
+const CACHE_VERSION = 'erp-perhiasan-v3';
 const SHELL = [
   './',
   './index.html',
